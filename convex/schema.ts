@@ -14,6 +14,7 @@ import {
   scanStatus,
   subscriptionInterval,
   subscriptionStatus,
+  reportMetric,
   widgetValidator,
 } from "./lib/validators";
 
@@ -240,6 +241,19 @@ export default defineSchema({
     .index("by_status", ["status"]),
 
   /** Registro di audit: chi ha fatto cosa e quando. Mai segreti qui dentro. */
+  /** Report mensile del cliente: metriche per servizio + commento dell'amministratore. Il cliente vede solo quelli pubblicati. */
+  clientReports: defineTable({
+    clientId: v.id("clients"),
+    /** Primo giorno del mese, 00:00 UTC. */
+    month: v.number(),
+    summary: v.optional(v.string()),
+    nextSteps: v.optional(v.string()),
+    metrics: v.array(reportMetric),
+    status: v.union(v.literal("draft"), v.literal("published")),
+    publishedAt: v.optional(v.number()),
+    updatedAt: v.number(),
+  }).index("by_clientId_and_month", ["clientId", "month"]),
+
   auditLogs: defineTable({
     actorType: v.union(v.literal("admin"), v.literal("client"), v.literal("system")),
     actorId: v.optional(v.string()),

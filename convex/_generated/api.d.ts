@@ -50,6 +50,8 @@ import type * as lib_pdfAnnotations from "../lib/pdfAnnotations.js";
 import type * as lib_pdfAutofill from "../lib/pdfAutofill.js";
 import type * as lib_pdfStamp from "../lib/pdfStamp.js";
 import type * as lib_reminders from "../lib/reminders.js";
+import type * as lib_reportData from "../lib/reportData.js";
+import type * as lib_reports from "../lib/reports.js";
 import type * as lib_resend from "../lib/resend.js";
 import type * as lib_sheets from "../lib/sheets.js";
 import type * as lib_templates from "../lib/templates.js";
@@ -64,6 +66,7 @@ import type * as pages from "../pages.js";
 import type * as portal from "../portal.js";
 import type * as projects from "../projects.js";
 import type * as reminders from "../reminders.js";
+import type * as reports from "../reports.js";
 import type * as subscriptions from "../subscriptions.js";
 import type * as webhooks from "../webhooks.js";
 
@@ -105,6 +108,8 @@ declare const fullApi: ApiFromModules<{
   "lib/pdfAutofill": typeof lib_pdfAutofill;
   "lib/pdfStamp": typeof lib_pdfStamp;
   "lib/reminders": typeof lib_reminders;
+  "lib/reportData": typeof lib_reportData;
+  "lib/reports": typeof lib_reports;
   "lib/resend": typeof lib_resend;
   "lib/sheets": typeof lib_sheets;
   "lib/templates": typeof lib_templates;
@@ -119,6 +124,7 @@ declare const fullApi: ApiFromModules<{
   portal: typeof portal;
   projects: typeof projects;
   reminders: typeof reminders;
+  reports: typeof reports;
   subscriptions: typeof subscriptions;
   webhooks: typeof webhooks;
 }>;

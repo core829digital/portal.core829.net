@@ -86,3 +86,7 @@ export const pdfAnnotation = v.object({
   color: v.union(v.literal("black"), v.literal("graphite"), v.literal("red"), v.literal("blue")),
   bold: v.boolean(),
 });
+
+export const metricUnit = v.union(v.literal("count"), v.literal("percent"), v.literal("eur"), v.literal("seconds"), v.literal("decimal"));
+/** Una metrica salvata nel report. Etichetta e unita' delle voci del catalogo sono sempre riscritte dal server. */
+export const reportMetric = v.object({ key: v.string(), label: v.string(), unit: metricUnit, value: v.number(), note: v.optional(v.string()) });

@@ -54,7 +54,14 @@ export async function buildOverview(ctx: QueryCtx, clientId: Id<"clients">) {
     .reduce((sum, i) => sum + i.amountCents, 0);
   const overdueCents = invoices.filter((i) => i.status === "overdue").reduce((sum, i) => sum + i.amountCents, 0);
 
+  const published = await ctx.db
+    .query("clientReports")
+    .withIndex("by_clientId_and_month", (q) => q.eq("clientId", client._id))
+    .order("desc")
+    .take(24);
+
   return {
+    hasReports: published.some((r) => r.status === "published"),
     client: {
       displayName: client.displayName,
       contactName: client.contactName,

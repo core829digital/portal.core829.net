@@ -4,6 +4,8 @@ import { audit } from "./lib/audit";
 import { fail, INVALID_LINK_MESSAGE } from "./lib/errors";
 import { requireUnlock, resolveLink } from "./lib/links";
 import { buildOverview, loadWidgets } from "./lib/overview";
+import { buildReportView } from "./lib/reportData";
+import { isMonthStart } from "./lib/reports";
 
 /**
  * Funzioni pubbliche del portale cliente (sola lettura, senza login).
@@ -51,6 +53,32 @@ export const documents = query({
         sizeBytes: d.sizeBytes,
         createdAt: d._creationTime,
       }));
+  },
+});
+
+/** Mesi con un report pubblicato (richiede il codice di sblocco: contiene dati del business del cliente). */
+export const reports = query({
+  args: { token: v.string(), unlockToken: v.string() },
+  handler: async (ctx, args) => {
+    const link = await resolveLink(ctx, args.token);
+    await requireUnlock(ctx, link, args.unlockToken);
+    const rows = await ctx.db
+      .query("clientReports")
+      .withIndex("by_clientId_and_month", (q) => q.eq("clientId", link.clientId))
+      .order("desc")
+      .take(60);
+    return rows.filter((r) => r.status === "published").map((r) => ({ month: r.month, metricCount: r.metrics.length, publishedAt: r.publishedAt ?? null }));
+  },
+});
+
+/** Un report pubblicato, con il confronto sul mese prima. Le bozze non esistono per il cliente. */
+export const report = query({
+  args: { token: v.string(), unlockToken: v.string(), month: v.number() },
+  handler: async (ctx, args) => {
+    const link = await resolveLink(ctx, args.token);
+    await requireUnlock(ctx, link, args.unlockToken);
+    if (!isMonthStart(args.month)) return null;
+    return await buildReportView(ctx, link.clientId, args.month, { onlyPublished: true });
   },
 });
 
