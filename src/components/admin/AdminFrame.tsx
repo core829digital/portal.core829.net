@@ -5,6 +5,8 @@ import { useQuery } from "convex/react";
 import {
   Activity,
   CreditCard,
+  FilePen,
+  FileStack,
   FileText,
   FolderKanban,
   LayoutDashboard,
@@ -51,6 +53,13 @@ function Frame({ children }: { children: ReactNode }) {
         { href: "/admin/activity", label: "Attività", icon: Activity },
       ],
     },
+    {
+      label: "Documenti",
+      items: [
+        { href: "/admin/templates", label: "Modelli", icon: FileStack },
+        { href: "/admin/drafts", label: "Bozze e invii", icon: FilePen },
+      ],
+    },
   ];
 
   if (clientId) {
@@ -63,6 +72,7 @@ function Frame({ children }: { children: ReactNode }) {
         { href: `${base}/invoices`, label: "Fatture", icon: Receipt },
         { href: `${base}/subscriptions`, label: "Abbonamenti", icon: CreditCard },
         { href: `${base}/documents`, label: "Documenti", icon: FileText },
+        { href: `${base}/contracts`, label: "Contratti da inviare", icon: FilePen },
         { href: `${base}/page`, label: "Pagina cliente", icon: LayoutTemplate },
         { href: `${base}/links`, label: "Link di accesso", icon: Link2 },
       ],

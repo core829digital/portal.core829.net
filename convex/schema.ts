@@ -5,6 +5,7 @@ import {
   auditMetadata,
   clientStatus,
   currency,
+  docCategory,
   documentKind,
   invoiceStatus,
   packageType,
@@ -191,6 +192,36 @@ export default defineSchema({
   })
     .index("by_eventId", ["eventId"])
     .index("by_receivedAt", ["receivedAt"]),
+
+  /** Modelli di documento (file DOCX) riservati all'amministratore: contratti, preventivi, documenti legali. */
+  docTemplates: defineTable({
+    name: v.string(),
+    category: docCategory,
+    storageId: v.id("_storage"),
+    sizeBytes: v.number(),
+    paragraphCount: v.number(),
+    fieldCount: v.number(),
+    archived: v.boolean(),
+    createdBy: v.string(),
+  }).index("by_archived", ["archived"]),
+
+  /** Bozza di un documento per un cliente (copia personalizzata di un modello o di un file caricato). */
+  docDrafts: defineTable({
+    clientId: v.id("clients"),
+    templateId: v.optional(v.id("docTemplates")),
+    name: v.string(),
+    category: docCategory,
+    /** DOCX corrente della bozza. */
+    storageId: v.id("_storage"),
+    /** Ultima anteprima PDF generata (si cancella alla successiva). */
+    previewStorageId: v.optional(v.id("_storage")),
+    status: v.union(v.literal("draft"), v.literal("sent")),
+    sentAt: v.optional(v.number()),
+    sentTo: v.optional(v.string()),
+    documentIds: v.optional(v.array(v.id("documents"))),
+  })
+    .index("by_clientId", ["clientId"])
+    .index("by_status", ["status"]),
 
   /** Registro di audit: chi ha fatto cosa e quando. Mai segreti qui dentro. */
   auditLogs: defineTable({

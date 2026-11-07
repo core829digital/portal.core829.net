@@ -23,6 +23,19 @@ describe("sendEmail", () => {
     expect(init.body as string).not.toContain("re_chiave_segreta");
   });
 
+  it("allega i file in base64 e imposta l'indirizzo di risposta, solo se richiesti", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response("{}", { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    await sendEmail("re_chiave_segreta", { ...message, replyTo: "office@core829.net", attachments: [{ filename: "contratto.pdf", content: "UERG" }] });
+    await sendEmail("re_chiave_segreta", message);
+    const first = JSON.parse((fetchMock.mock.calls[0] as [string, RequestInit])[1].body as string);
+    const second = JSON.parse((fetchMock.mock.calls[1] as [string, RequestInit])[1].body as string);
+    expect(first.attachments).toEqual([{ filename: "contratto.pdf", content: "UERG" }]);
+    expect(first.reply_to).toBe("office@core829.net");
+    expect(second).not.toHaveProperty("attachments");
+    expect(second).not.toHaveProperty("reply_to");
+  });
+
   it("se Resend risponde con un errore lancia un errore generico, senza esporre la chiave", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response('{"message":"dominio non verificato"}', { status: 403 })));
     const error = await sendEmail("re_chiave_segreta", message).catch((e: Error) => e);

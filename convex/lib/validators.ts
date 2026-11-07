@@ -43,6 +43,9 @@ export const scanStatus = v.union(v.literal("pending"), v.literal("clean"), v.li
 
 export const currency = v.literal("EUR");
 
+/** Categorie dei modelli di documento. */
+export const docCategory = v.union(v.literal("contract"), v.literal("quote"), v.literal("legal"), v.literal("other"));
+
 /** Metadati di audit: solo valori semplici, mai oggetti annidati o segreti. */
 export const auditMetadata = v.record(
   v.string(),

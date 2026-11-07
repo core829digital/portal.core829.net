@@ -1,0 +1,271 @@
+"use node";
+
+import { v } from "convex/values";
+import { internal } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
+import { action, env } from "./_generated/server";
+import { renderPdf } from "./lib/docPdf";
+import {
+  applyChanges,
+  detectFields,
+  DocxError,
+  listParagraphs,
+  MAX_DOCX_BYTES,
+  readDocx,
+  toModel,
+  writeDocx,
+  type DocField,
+  type DocParagraph,
+} from "./lib/docx";
+import { sendEmail } from "./lib/resend";
+import { cleanEmail, cleanText, escapeHtml, invalid } from "./lib/text";
+import { docCategory } from "./lib/validators";
+
+/**
+ * Azioni del runtime Node per i documenti (leggere/scrivere DOCX, generare PDF, spedire email con allegati).
+ * Tutte riservate all'amministratore: il primo passo e' sempre `assertAdmin`.
+ */
+
+const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+const PDF_MIME = "application/pdf";
+const MAX_ATTACH_TOTAL = 30 * 1024 * 1024;
+
+async function admin(ctx: { runQuery: (ref: typeof internal.docStudio.assertAdmin, args: Record<string, never>) => Promise<{ actorId: string }> }) {
+  return await ctx.runQuery(internal.docStudio.assertAdmin, {});
+}
+
+async function loadBytes(ctx: { storage: { get: (id: Id<"_storage">) => Promise<Blob | null> } }, id: Id<"_storage">): Promise<Uint8Array> {
+  const blob = await ctx.storage.get(id);
+  if (!blob) return invalid("file", "File non trovato.");
+  if (blob.size > MAX_DOCX_BYTES) return invalid("file", "Il file supera i 15 MB.");
+  return new Uint8Array(await blob.arrayBuffer());
+}
+
+/** Apre un DOCX trasformando gli errori del motore in errori applicativi leggibili. */
+function open(bytes: Uint8Array) {
+  try {
+    return readDocx(bytes);
+  } catch (error) {
+    if (error instanceof DocxError) return invalid("file", error.message);
+    throw error;
+  }
+}
+
+const rome = new Intl.DateTimeFormat("it-IT", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Europe/Rome" });
+
+/** Variabili compilate in automatico alla creazione di una bozza. Solo i valori noti: gli altri segnaposto restano da compilare. */
+function variablesFor(client: { displayName: string; contactName: string; email: string; phone: string | null; vatId: string | null }): Record<string, string> {
+  const vars: Record<string, string> = {
+    "client.name": client.displayName,
+    "client.contact": client.contactName,
+    "client.email": client.email,
+    "date.today": rome.format(new Date()),
+    "company.name": "CORE829 SRL",
+    "company.address": "Str. Mihai Eminescu, 10, Roman, Romania",
+    "company.vat": "CUI/CIF 54616345",
+  };
+  if (client.phone) vars["client.phone"] = client.phone;
+  if (client.vatId) vars["client.vat"] = client.vatId;
+  return vars;
+}
+
+const safeName = (name: string): string => {
+  const base = name
+    .replace(/[\u2013\u2014]/g, "-")
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .replace(/[^A-Za-z0-9._ -]+/g, "_")
+    .trim()
+    .slice(0, 80);
+  return base === "" ? "documento" : base;
+};
+
+async function storeBlob(ctx: { storage: { store: (b: Blob) => Promise<Id<"_storage">> } }, bytes: Uint8Array, type: string): Promise<Id<"_storage">> {
+  return await ctx.storage.store(new Blob([bytes as BlobPart], { type }));
+}
+
+/** Registra un file DOCX caricato come modello (contratto, preventivo, documento legale...). */
+export const importTemplate = action({
+  args: { storageId: v.id("_storage"), name: v.string(), category: docCategory },
+  handler: async (ctx, args): Promise<{ templateId: Id<"docTemplates">; paragraphs: number; fields: number }> => {
+    const { actorId } = await admin(ctx);
+    try {
+      const name = cleanText(args.name, { field: "nome", min: 1, max: 120 });
+      const bytes = await loadBytes(ctx, args.storageId);
+      const files = open(bytes);
+      const paragraphs = listParagraphs(files);
+      const fields = detectFields(paragraphs);
+      const templateId = await ctx.runMutation(internal.docStudio.insertTemplate, {
+        name,
+        category: args.category,
+        storageId: args.storageId,
+        sizeBytes: bytes.length,
+        paragraphCount: paragraphs.length,
+        fieldCount: fields.length,
+        createdBy: actorId,
+      });
+      return { templateId, paragraphs: paragraphs.length, fields: fields.length };
+    } catch (error) {
+      await ctx.storage.delete(args.storageId); // un file non valido non resta in archivio
+      throw error;
+    }
+  },
+});
+
+/** Crea la bozza di un cliente da un modello (con i dati del cliente gia' inseriti) o da un DOCX caricato. */
+export const createDraft = action({
+  args: {
+    clientId: v.id("clients"),
+    templateId: v.optional(v.id("docTemplates")),
+    uploadStorageId: v.optional(v.id("_storage")),
+    name: v.optional(v.string()),
+    category: v.optional(docCategory),
+  },
+  handler: async (ctx, args): Promise<{ draftId: Id<"docDrafts"> }> => {
+    const { actorId } = await admin(ctx);
+    try {
+      if ((args.templateId === undefined) === (args.uploadStorageId === undefined)) return invalid("origine", "Scegli un modello oppure carica un file.");
+      const { template, client } = await ctx.runQuery(internal.docStudio.templateAndClient, { templateId: args.templateId, clientId: args.clientId });
+      if (!client) return invalid("cliente", "Cliente non trovato.");
+      if (args.templateId !== undefined && !template) return invalid("modello", "Modello non trovato.");
+
+      const sourceId = template ? template.storageId : (args.uploadStorageId as Id<"_storage">);
+      const files = open(await loadBytes(ctx, sourceId));
+      const merged = writeDocx(applyChanges(files, { vars: variablesFor(client) }));
+      const storageId = await storeBlob(ctx, merged, DOCX_MIME);
+      const draftId = await ctx.runMutation(internal.docStudio.insertDraft, {
+        clientId: args.clientId,
+        templateId: args.templateId,
+        name: cleanText(args.name ?? (template ? `${template.name} — ${client.displayName}` : "Documento"), { field: "nome", min: 1, max: 120 }),
+        category: template ? template.category : (args.category ?? "other"),
+        storageId,
+        actorId,
+      });
+      if (args.uploadStorageId) await ctx.storage.delete(args.uploadStorageId); // la copia di lavoro e' quella nuova
+      return { draftId };
+    } catch (error) {
+      if (args.uploadStorageId) await ctx.storage.delete(args.uploadStorageId).catch(() => undefined);
+      throw error;
+    }
+  },
+});
+
+/** Testo e campi del documento, per l'editor. */
+export const inspectDraft = action({
+  args: { draftId: v.id("docDrafts") },
+  handler: async (ctx, args): Promise<{ paragraphs: DocParagraph[]; fields: DocField[] }> => {
+    await admin(ctx);
+    const draft = await ctx.runQuery(internal.docStudio.draftForAction, { draftId: args.draftId });
+    if (!draft) return invalid("bozza", "Bozza non trovata.");
+    const paragraphs = listParagraphs(open(await loadBytes(ctx, draft.storageId)));
+    return { paragraphs, fields: detectFields(paragraphs) };
+  },
+});
+
+const MAX_OPS = 3000;
+
+/** Salva le modifiche fatte nell'editor (testo, campi, paragrafi aggiunti/eliminati). */
+export const saveDraft = action({
+  args: {
+    draftId: v.id("docDrafts"),
+    edits: v.array(v.object({ index: v.number(), text: v.string() })),
+    deletes: v.array(v.number()),
+    inserts: v.array(v.object({ after: v.number(), texts: v.array(v.string()) })),
+    fills: v.array(v.object({ id: v.string(), value: v.string() })),
+  },
+  handler: async (ctx, args): Promise<{ paragraphs: number }> => {
+    const { actorId } = await admin(ctx);
+    if (args.edits.length + args.deletes.length + args.inserts.length + args.fills.length > MAX_OPS) return invalid("modifiche", "Troppe modifiche in un solo salvataggio.");
+    const draft = await ctx.runQuery(internal.docStudio.draftForAction, { draftId: args.draftId });
+    if (!draft) return invalid("bozza", "Bozza non trovata.");
+    if (draft.status === "sent") return invalid("bozza", "Il documento è già stato inviato: crea una nuova bozza per modificarlo.");
+    const original = open(await loadBytes(ctx, draft.storageId));
+    const updated = applyChanges(original, {
+      edits: Object.fromEntries(args.edits.map((e) => [e.index, e.text])),
+      deletes: args.deletes,
+      inserts: Object.fromEntries(args.inserts.map((i) => [i.after, i.texts])),
+      fills: Object.fromEntries(args.fills.map((f) => [f.id, f.value])),
+    });
+    const bytes = writeDocx(updated);
+    const storageId = await storeBlob(ctx, bytes, DOCX_MIME);
+    await ctx.runMutation(internal.docStudio.patchDraftFile, { draftId: args.draftId, storageId, actorId });
+    return { paragraphs: listParagraphs(updated).length };
+  },
+});
+
+/** Genera l'anteprima PDF e restituisce il suo indirizzo (valido per l'amministratore, si sovrascrive alla successiva). */
+export const previewDraft = action({
+  args: { draftId: v.id("docDrafts"), format: v.union(v.literal("pdf"), v.literal("docx")) },
+  handler: async (ctx, args): Promise<{ url: string; fileName: string }> => {
+    const { actorId } = await admin(ctx);
+    const draft = await ctx.runQuery(internal.docStudio.draftForAction, { draftId: args.draftId });
+    if (!draft) return invalid("bozza", "Bozza non trovata.");
+    if (args.format === "docx") {
+      const url = await ctx.storage.getUrl(draft.storageId);
+      if (!url) return invalid("file", "File non disponibile.");
+      return { url, fileName: `${safeName(draft.name)}.docx` };
+    }
+    const pdf = await renderPdf(toModel(open(await loadBytes(ctx, draft.storageId))), { title: draft.name });
+    const previewStorageId = await storeBlob(ctx, pdf, PDF_MIME);
+    await ctx.runMutation(internal.docStudio.patchDraftFile, { draftId: args.draftId, previewStorageId, actorId });
+    const url = await ctx.storage.getUrl(previewStorageId);
+    if (!url) return invalid("file", "File non disponibile.");
+    return { url, fileName: `${safeName(draft.name)}.pdf` };
+  },
+});
+
+/** Spedisce il documento al cliente via Resend (PDF e/o DOCX in allegato) e lo archivia nel suo fascicolo. */
+export const sendDraft = action({
+  args: {
+    draftId: v.id("docDrafts"),
+    to: v.string(),
+    subject: v.string(),
+    message: v.string(),
+    formats: v.array(v.union(v.literal("pdf"), v.literal("docx"))),
+  },
+  handler: async (ctx, args): Promise<{ sentTo: string; attachments: number }> => {
+    const { actorId } = await admin(ctx);
+    if (!env.RESEND_API_KEY || !env.AUTH_EMAIL_FROM) return invalid("email", "Configurazione email mancante (RESEND_API_KEY, AUTH_EMAIL_FROM).");
+    const to = cleanEmail(args.to, "destinatario");
+    const subject = cleanText(args.subject, { field: "oggetto", min: 1, max: 150 });
+    const message = cleanText(args.message, { field: "messaggio", max: 4000, multiline: true });
+    const formats = [...new Set(args.formats)];
+    if (formats.length === 0) return invalid("formato", "Scegli almeno un formato da allegare.");
+
+    const draft = await ctx.runQuery(internal.docStudio.draftForAction, { draftId: args.draftId });
+    if (!draft) return invalid("bozza", "Bozza non trovata.");
+    if (draft.status === "sent") return invalid("bozza", "Questo documento è già stato inviato.");
+    const docx = await loadBytes(ctx, draft.storageId);
+    const base = safeName(draft.name);
+
+    const generated: { fileName: string; mimeType: string; bytes: Uint8Array }[] = [];
+    if (formats.includes("pdf")) generated.push({ fileName: `${base}.pdf`, mimeType: PDF_MIME, bytes: await renderPdf(toModel(open(docx)), { title: draft.name }) });
+    if (formats.includes("docx")) generated.push({ fileName: `${base}.docx`, mimeType: DOCX_MIME, bytes: docx });
+    if (generated.reduce((n, g) => n + g.bytes.length, 0) > MAX_ATTACH_TOTAL) return invalid("allegati", "Gli allegati superano i 30 MB.");
+
+    const html =
+      `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1f2937">` +
+      `<p style="font-size:13px;letter-spacing:2px;color:#c2410c;font-weight:bold;margin:0">CORE829</p>` +
+      `<p style="font-size:16px;line-height:24px;white-space:pre-wrap">${escapeHtml(message)}</p>` +
+      `<p style="font-size:13px;line-height:20px;color:#6b7280">In allegato: ${generated.map((g) => escapeHtml(g.fileName)).join(", ")}.<br/>CORE829 SRL · Str. Mihai Eminescu 10, Roman, Romania · CUI/CIF 54616345</p>` +
+      `</div>`;
+
+    await sendEmail(env.RESEND_API_KEY, {
+      from: env.AUTH_EMAIL_FROM,
+      to,
+      subject,
+      text: `${message}\n\nIn allegato: ${generated.map((g) => g.fileName).join(", ")}.\nCORE829 SRL`,
+      html,
+      replyTo: "office@core829.net",
+      attachments: generated.map((g) => ({ filename: g.fileName, content: Buffer.from(g.bytes).toString("base64") })),
+    });
+
+    // L'email e' partita: si archiviano i file nel fascicolo del cliente (visibili nel suo portale, dietro il codice).
+    const files = [];
+    for (const g of generated) {
+      files.push({ storageId: await storeBlob(ctx, g.bytes, g.mimeType), fileName: g.fileName, mimeType: g.mimeType, sizeBytes: g.bytes.length });
+    }
+    await ctx.runMutation(internal.docStudio.recordSent, { draftId: args.draftId, to, actorId, files });
+    return { sentTo: to, attachments: generated.length };
+  },
+});

@@ -67,5 +67,18 @@ export const auditActionLabel: Record<string, string> = {
   "document.downloaded": "Documento scaricato dal cliente",
   "document.removed": "Documento eliminato",
   "page.saved": "Pagina cliente salvata",
+  "doc.template_imported": "Modello di documento importato",
+  "doc.template_archived": "Modello di documento archiviato",
+  "doc.draft_created": "Bozza di documento creata",
+  "doc.draft_saved": "Bozza di documento salvata",
+  "doc.draft_deleted": "Bozza di documento eliminata",
+  "doc.sent": "Documento inviato al cliente",
   "admin.bootstrapped": "Amministratore registrato",
 };
+
+export const docCategoryLabel = {
+  contract: "Contratto",
+  quote: "Preventivo",
+  legal: "Documento legale",
+  other: "Altro",
+} as const;

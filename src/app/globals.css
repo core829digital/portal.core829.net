@@ -201,6 +201,11 @@ body {
   line-height: 1.6;
 }
 
+/* La barra superiore su telefono e' fissa: gli elementi raggiunti con la tastiera o con uno scorrimento non devono finirci sotto. */
+html {
+  scroll-padding-top: 4.5rem;
+}
+
 /* Animazioni del brand (stesso easing "out-expo" di core829.net). Solo opacita' e transform: nessun salto di layout. */
 @keyframes dash-rise {
   from { opacity: 0; transform: translateY(14px); }

@@ -4,12 +4,20 @@
  * scritta nei log.
  */
 
+export type EmailAttachment = {
+  filename: string;
+  /** Contenuto del file in base64. */
+  content: string;
+};
+
 export type EmailMessage = {
   from: string;
   to: string;
   subject: string;
   text: string;
   html: string;
+  replyTo?: string;
+  attachments?: EmailAttachment[];
 };
 
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
@@ -33,6 +41,8 @@ export async function sendEmail(apiKey: string, message: EmailMessage): Promise<
         subject: message.subject,
         text: message.text,
         html: message.html,
+        ...(message.replyTo ? { reply_to: message.replyTo } : {}),
+        ...(message.attachments && message.attachments.length > 0 ? { attachments: message.attachments } : {}),
       }),
     });
   } catch {

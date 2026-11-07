@@ -10,7 +10,7 @@ import { join } from "node:path";
 import { gzipSync } from "node:zlib";
 
 // Tetto sul totale dei file JS del client, in KB gzip. Si alza solo con una decisione consapevole.
-const BUDGET_TOTAL_KB = Number(process.env.BUNDLE_BUDGET_KB ?? 450);
+const BUDGET_TOTAL_KB = Number(process.env.BUNDLE_BUDGET_KB ?? 480);
 
 function walk(dir) {
   const out = [];

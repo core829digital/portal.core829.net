@@ -96,3 +96,66 @@ test("la scheda introduttiva si chiude e resta chiusa", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Ciao Mario" })).toBeVisible();
   await expect(page.getByText("Come funziona questo spazio")).toHaveCount(0);
 });
+
+// ---- Editor dei documenti (dati inventati) ----
+
+test("editor documenti: nessuna violazione WCAG 2 A/AA e nessuno scorrimento orizzontale", async ({ page }) => {
+  await page.goto("/c/fixture/editor");
+  await expect(page.getByRole("heading", { level: 1, name: /Master Services Agreement/ })).toBeVisible();
+  const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
+  expect(results.violations.map((v) => `${v.id}: ${v.help} (${v.nodes.length})`)).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBe(false);
+});
+
+test("editor documenti: i campi compilati e il testo modificato segnano le modifiche, il salvataggio le azzera", async ({ page }) => {
+  await page.goto("/c/fixture/editor");
+  await expect(page.getByText(/compilati su/)).toBeVisible();
+  await expect(page.getByText("Modifiche non salvate")).toHaveCount(0);
+  const save = page.getByRole("button", { name: "Salva" });
+  await expect(save).toBeDisabled();
+
+  await page.getByLabel(/^\{\{client\.name\}\}/).fill("Caffè Rosso Srl");
+  await page.getByRole("textbox", { name: "Paragrafo 7", exact: true }).fill("1.1 Testo riscritto a mano.");
+  await expect(page.getByText("Modifiche non salvate")).toBeVisible();
+  await expect(page.getByText(/1 compilati su/)).toBeVisible();
+  // Un paragrafo riscritto blocca i suoi campi: si compila da lì.
+  await page.getByRole("textbox", { name: "Paragrafo 8", exact: true }).fill("Data di efficacia: 12/11/2026");
+  await expect(page.getByText("Hai riscritto a mano il paragrafo: compila da lì.").first()).toBeVisible();
+
+  await save.click();
+  await expect(page.getByText("Modifiche non salvate")).toHaveCount(0);
+});
+
+test("editor documenti: aggiungi ed elimina paragrafi, caselle accessibili, ricerca e pagine", async ({ page }) => {
+  await page.goto("/c/fixture/editor");
+  await page.getByRole("button", { name: "Aggiungi un paragrafo dopo il 7", exact: true }).click();
+  await page.getByRole("textbox", { name: "Nuovo paragrafo 1 dopo il 7" }).fill("Paragrafo nuovo");
+  await page.getByRole("button", { name: "Elimina il paragrafo 1", exact: true }).click();
+  await expect(page.getByRole("textbox", { name: "Paragrafo 1", exact: true })).toBeDisabled();
+  await page.getByRole("button", { name: "Ripristina il paragrafo 1", exact: true }).click();
+  await expect(page.getByRole("textbox", { name: "Paragrafo 1", exact: true })).toBeEnabled();
+
+  const box = page.getByRole("checkbox", { name: /Sviluppo software/ });
+  await expect(box).toHaveAttribute("aria-checked", "false");
+  await box.click();
+  await expect(box).toHaveAttribute("aria-checked", "true");
+
+  await page.getByRole("searchbox", { name: "Cerca nel testo" }).fill("Clausola 40.1");
+  await expect(page.getByText("1 paragrafi")).toBeVisible();
+  await page.getByRole("searchbox", { name: "Cerca nel testo" }).fill("");
+  await page.getByRole("button", { name: "Successiva" }).click();
+  await expect(page.getByText(/Pagina 2 di/)).toBeVisible();
+});
+
+test("editor documenti: la finestra di invio propone email del cliente, oggetto e formati", async ({ page }) => {
+  await page.goto("/c/fixture/editor");
+  await page.getByRole("button", { name: "Invia al cliente" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByLabel("Destinatario")).toHaveValue("mario@caffe.it");
+  await expect(dialog.getByLabel("Oggetto")).toHaveValue(/Master Services Agreement/);
+  await expect(dialog.getByRole("checkbox", { name: "PDF" })).toBeChecked();
+  await expect(dialog.getByRole("checkbox", { name: /Word/ })).not.toBeChecked();
+  await dialog.getByRole("checkbox", { name: "PDF" }).uncheck();
+  await dialog.getByRole("button", { name: "Invia ora" }).click();
+  await expect(page.getByText("Scegli almeno un formato da allegare.")).toBeVisible();
+});
