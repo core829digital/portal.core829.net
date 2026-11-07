@@ -36,6 +36,7 @@ import type * as lib_ipAllowlist from "../lib/ipAllowlist.js";
 import type * as lib_links from "../lib/links.js";
 import type * as lib_otpLimits from "../lib/otpLimits.js";
 import type * as lib_overview from "../lib/overview.js";
+import type * as lib_reminders from "../lib/reminders.js";
 import type * as lib_resend from "../lib/resend.js";
 import type * as lib_text from "../lib/text.js";
 import type * as lib_validators from "../lib/validators.js";
@@ -47,6 +48,7 @@ import type * as otpDelivery from "../otpDelivery.js";
 import type * as pages from "../pages.js";
 import type * as portal from "../portal.js";
 import type * as projects from "../projects.js";
+import type * as reminders from "../reminders.js";
 import type * as subscriptions from "../subscriptions.js";
 import type * as webhooks from "../webhooks.js";
 
@@ -74,6 +76,7 @@ declare const fullApi: ApiFromModules<{
   "lib/links": typeof lib_links;
   "lib/otpLimits": typeof lib_otpLimits;
   "lib/overview": typeof lib_overview;
+  "lib/reminders": typeof lib_reminders;
   "lib/resend": typeof lib_resend;
   "lib/text": typeof lib_text;
   "lib/validators": typeof lib_validators;
@@ -85,6 +88,7 @@ declare const fullApi: ApiFromModules<{
   pages: typeof pages;
   portal: typeof portal;
   projects: typeof projects;
+  reminders: typeof reminders;
   subscriptions: typeof subscriptions;
   webhooks: typeof webhooks;
 }>;

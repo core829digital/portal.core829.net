@@ -11,4 +11,6 @@ crons.interval("controlli dei file rimasti in sospeso", { minutes: 15 }, interna
 
 crons.interval("pulizia eventi webhook", { hours: 6 }, internal.maintenance.expireWebhookEvents, {});
 
+crons.interval("promemoria di rinnovo abbonamenti", { hours: 3 }, internal.reminders.run, {});
+
 export default crons;

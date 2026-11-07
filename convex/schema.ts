@@ -125,9 +125,14 @@ export default defineSchema({
     startedAt: v.number(),
     nextRenewalAt: v.optional(v.number()),
     cancelledAt: v.optional(v.number()),
+    /** Se presente, il cliente riceve un promemoria email questo numero di giorni prima del rinnovo (e l'admin una conferma). */
+    reminderDaysBefore: v.optional(v.number()),
+    /** Rinnovo (`nextRenewalAt`) per cui il promemoria e' gia' stato inviato: evita invii doppi. */
+    lastReminderForRenewalAt: v.optional(v.number()),
   })
     .index("by_clientId", ["clientId"])
-    .index("by_clientId_and_status", ["clientId", "status"]),
+    .index("by_clientId_and_status", ["clientId", "status"])
+    .index("by_status_and_nextRenewalAt", ["status", "nextRenewalAt"]),
 
   /** Pagina personalizzata del cliente: elenco ordinato di widget. Se manca, vale quella predefinita. */
   clientPages: defineTable({
