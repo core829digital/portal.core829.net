@@ -215,9 +215,11 @@ html {
   from { opacity: 0; }
   to { opacity: 1; }
 }
-@keyframes dash-draw {
-  from { stroke-dashoffset: 1; }
-  to { stroke-dashoffset: 0; }
+/* La linea si scopre da sinistra a destra. Niente trucco con stroke-dasharray: con vector-effect "non-scaling-stroke"
+   le lunghezze dei tratti sono in pixel dello schermo e la linea restava interrotta prima dell'ultimo mese. */
+@keyframes chart-reveal {
+  from { clip-path: inset(-8px 100% -8px 0); }
+  to { clip-path: inset(-8px -8px -8px 0); }
 }
 @keyframes dash-grow-y {
   from { transform: scaleY(0); }
@@ -239,8 +241,7 @@ html {
   animation-delay: calc(var(--i, 0) * 70ms);
 }
 .draw-line {
-  stroke-dasharray: 1;
-  animation: dash-draw 1.4s var(--ease-out-expo) 0.15s both;
+  animation: chart-reveal 1.4s var(--ease-out-expo) 0.15s both;
 }
 .grow-y {
   transform-origin: bottom;

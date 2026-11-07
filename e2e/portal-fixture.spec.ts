@@ -97,6 +97,40 @@ test("la scheda introduttiva si chiude e resta chiusa", async ({ page }) => {
   await expect(page.getByText("Come funziona questo spazio")).toHaveCount(0);
 });
 
+// ---- Grafico ad area: la linea deve arrivare fino all'ultimo mese ----
+
+test("grafico incassi: la linea e l'area arrivano fino a novembre (ultimo punto) e il punto attivo e' l'ultimo", async ({ page }) => {
+  await page.goto("/c/fixture/chart");
+  const svg = page.getByTestId("area-svg");
+  await expect(svg).toBeAttached();
+  await page.waitForTimeout(2200); // fine dell'animazione
+  const clip = await svg.evaluate((el) => getComputedStyle(el).clipPath);
+  expect(clip).not.toContain("100%");
+  // Il bordo destro della linea coincide con il bordo destro del grafico.
+  const [box, line] = await Promise.all([svg.boundingBox(), page.getByTestId("area-line").boundingBox()]);
+  expect(Math.abs(box!.x + box!.width - (line!.x + line!.width)), JSON.stringify({ box, line })).toBeLessThan(6);
+  // Pixel rossi della linea presenti nell'ultimo 3% della larghezza.
+  const png = await page.screenshot({ clip: { x: box!.x + box!.width * 0.94, y: box!.y, width: box!.width * 0.06 + 2, height: box!.height } });
+  const red = await page.evaluate(async (b64) => {
+    const img = new Image();
+    img.src = `data:image/png;base64,${b64}`;
+    await img.decode();
+    const c = document.createElement("canvas");
+    c.width = img.width;
+    c.height = img.height;
+    const ctx = c.getContext("2d")!;
+    ctx.drawImage(img, 0, 0);
+    const d = ctx.getImageData(0, 0, c.width, c.height).data;
+    let n = 0;
+    for (let i = 0; i < d.length; i += 4) if (d[i] > 190 && d[i + 1] < 80 && d[i + 2] < 90) n++;
+    return n;
+  }, png.toString("base64"));
+  expect(red).toBeGreaterThan(5);
+  await expect(page.getByText("NOV", { exact: true }).first()).toBeVisible();
+  await expect(page.locator("figcaption")).toContainText("NOV");
+  await expect(page.locator("figcaption")).toContainText("620 €");
+});
+
 // ---- Report mensili del cliente (dati inventati) ----
 
 test("report mensili: nessuna violazione WCAG, nessuno scorrimento orizzontale, contenuto non fidato come testo", async ({ page }) => {

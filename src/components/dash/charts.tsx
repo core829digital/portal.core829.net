@@ -62,7 +62,7 @@ export function AreaChart({
         <span className="font-display text-base text-foreground tabular-nums">{points[shown] ? format(points[shown].value) : "—"}</span>
       </figcaption>
       <div className="relative" onPointerMove={onMove} onPointerLeave={() => setActive(null)} role="img" aria-label={ariaLabel}>
-        <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="block h-44 w-full sm:h-52" aria-hidden="true">
+        <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="draw-line block h-44 w-full overflow-visible sm:h-52" aria-hidden="true" data-testid="area-svg">
           <defs>
             <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0" stopColor="var(--brand-red)" stopOpacity="0.22" />
@@ -72,8 +72,8 @@ export function AreaChart({
           {[0.25, 0.5, 0.75].map((r) => (
             <line key={r} x1="0" x2={W} y1={H * r} y2={H * r} stroke="var(--border)" strokeWidth="1" vectorEffect="non-scaling-stroke" strokeDasharray="3 5" />
           ))}
-          <path d={area} fill={`url(#${gid})`} className="fade-in" />
-          <path d={line} fill="none" stroke="var(--brand-red)" strokeWidth="2.5" strokeLinecap="round" vectorEffect="non-scaling-stroke" pathLength={1} className="draw-line" />
+          <path d={area} fill={`url(#${gid})`} />
+          <path d={line} fill="none" stroke="var(--brand-red)" strokeWidth="2.5" strokeLinecap="round" vectorEffect="non-scaling-stroke" data-testid="area-line" />
         </svg>
         {points.length > 0 ? (
           <>
