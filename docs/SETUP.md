@@ -1,0 +1,53 @@
+# Configurazione dell'accesso amministratore
+
+Passaggi una tantum per far funzionare il login dell'area `/admin`. Nessun segreto va scritto in file
+del progetto o committato: si impostano solo su Convex (dashboard o comando) e in `.env.local`.
+
+## 1. Prerequisiti
+```bash
+git pull origin claude/clever-cannon-8ohfai
+npm install
+npx convex dev        # lascialo in esecuzione in un terminale
+```
+
+## 2. Chiavi di firma e indirizzo del sito (comando ufficiale di Convex Auth)
+In un secondo terminale:
+```bash
+npx @convex-dev/auth --web-server-url http://localhost:3000
+```
+Imposta sul deployment `JWT_PRIVATE_KEY`, `JWKS` e `SITE_URL`. Se chiede di modificare file, **rispondi di no**:
+sono gia' presenti. Poi controlla con `git status` che non abbia cambiato `convex/auth.ts`, `convex/http.ts` o
+`convex/schema.ts`; se lo ha fatto, ripristinali con `git checkout -- convex/`.
+
+## 3. Variabili del deployment Convex
+Dalla dashboard di Convex: **Settings → Environment Variables** (cosi' la chiave non finisce nella cronologia del terminale).
+
+| Nome | Valore | Note |
+|---|---|---|
+| `ADMIN_EMAILS` | `tua-email@dominio.it` | Elenco separato da virgole. Solo questi indirizzi ricevono il codice. |
+| `AUTH_EMAIL_FROM` | `CORE829 Portale <portal@core829.net>` | Il dominio deve essere verificato su Resend. |
+| `RESEND_API_KEY` | chiave API di Resend | **Segreta.** Si crea su resend.com con permesso "Sending access". |
+
+## 4. Variabili di Next.js (`.env.local`, non committato)
+```
+NEXT_PUBLIC_CONVEX_URL=...        # la scrive gia' `npx convex dev`
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
+Le variabili `NEXT_PUBLIC_*` vengono incorporate nel codice **durante la build**: su Vercel vanno impostate prima
+del deploy, non dopo.
+
+## 5. Primo amministratore
+```bash
+npx convex run admins:bootstrap '{"email":"tua-email@dominio.it"}'
+npx convex run health:cryptoSelfTest
+```
+Il secondo comando deve restituire quattro valori `true`.
+
+## 6. Prova
+Apri `http://localhost:3000/admin`, inserisci la tua email, leggi il codice a 8 cifre ricevuto e accedi.
+
+## Se qualcosa non va
+- **Nessuna email:** l'indirizzo non e' in `ADMIN_EMAILS` (per sicurezza il sistema non lo dice), oppure la chiave o il
+  mittente di Resend non sono validi. Guarda i log in Convex → Logs.
+- **«Accesso non autorizzato» dopo il login:** manca la riga in `admins` (rilancia il `bootstrap`).
+- **Errore «Missing environment variable NEXT_PUBLIC_CONVEX_URL»:** la variabile non c'era al momento della build.

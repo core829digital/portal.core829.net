@@ -7,24 +7,28 @@ import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
 
-const ADMIN_IDENTITY = {
-  subject: "admin-1",
-  issuer: "https://test.local",
-  tokenIdentifier: "https://test.local|admin-1",
-  email: "stefan@core829.net",
-  emailVerified: true,
-};
+const ADMIN_EMAIL = "stefan@core829.net";
 const DAY = 24 * 60 * 60 * 1000;
 const NOW = Date.UTC(2026, 10, 7, 10, 0, 0);
 
 type Harness = Awaited<ReturnType<typeof setup>>;
 
+/** Come fa Convex Auth: il subject del token e' "<userId>|<sessionId>". */
+function asUser(t: ReturnType<typeof convexTest>, userId: Id<"users">) {
+  return t.withIdentity({
+    subject: `${userId}|session-1`,
+    issuer: "https://test.local",
+    tokenIdentifier: `https://test.local|${userId}|session-1`,
+  });
+}
+
 async function setup() {
   const t = convexTest(schema, modules);
-  await t.run(async (ctx) => {
-    await ctx.db.insert("admins", { email: "stefan@core829.net", addedAt: Date.now() });
+  const adminUserId = await t.run(async (ctx) => {
+    await ctx.db.insert("admins", { email: ADMIN_EMAIL, addedAt: Date.now() });
+    return ctx.db.insert("users", { email: ADMIN_EMAIL, emailVerificationTime: Date.now() });
   });
-  return { t, admin: t.withIdentity(ADMIN_IDENTITY) };
+  return { t, admin: asUser(t, adminUserId) };
 }
 
 /** Restituisce il codice di errore applicativo, "OK" se la chiamata riesce. */
@@ -134,13 +138,21 @@ describe("autorizzazione amministratore", () => {
       "documents.setVisibility": (c) => c.mutation(api.documents.setVisibility, { documentId, visibleToClient: false }),
     };
 
-    const stranger = h.t.withIdentity({ ...ADMIN_IDENTITY, subject: "x", tokenIdentifier: "https://test.local|x", email: "intruso@esempio.it" });
-    const unverified = h.t.withIdentity({ ...ADMIN_IDENTITY, emailVerified: false });
+    // Utente con sessione valida ed email verificata, ma NON nella tabella admins.
+    const strangerId = await h.t.run(async (ctx) => ctx.db.insert("users", { email: "intruso@esempio.it", emailVerificationTime: NOW }));
+    // Stessa email dell'admin ma mai verificata con il codice: non basta dichiararla.
+    const unverifiedId = await h.t.run(async (ctx) => ctx.db.insert("users", { email: ADMIN_EMAIL }));
+    // Utente senza email (es. account anonimo).
+    const noEmailId = await h.t.run(async (ctx) => ctx.db.insert("users", {}));
+    const stranger = asUser(h.t, strangerId);
+    const unverified = asUser(h.t, unverifiedId);
+    const noEmail = asUser(h.t, noEmailId);
 
     for (const [name, call] of Object.entries(calls)) {
       expect(await codeOf(call(h.t)), `${name} anonimo`).toBe("UNAUTHENTICATED");
       expect(await codeOf(call(stranger)), `${name} non admin`).toBe("FORBIDDEN");
       expect(await codeOf(call(unverified)), `${name} email non verificata`).toBe("FORBIDDEN");
+      expect(await codeOf(call(noEmail)), `${name} senza email`).toBe("FORBIDDEN");
     }
     // L'amministratore vero passa.
     expect(await codeOf(calls["clients.get"](h.admin))).toBe("OK");
@@ -148,8 +160,19 @@ describe("autorizzazione amministratore", () => {
 
   it("admins.me non lancia errori e riconosce solo l'admin", async () => {
     const h = await setup();
+    const strangerId = await h.t.run(async (ctx) => ctx.db.insert("users", { email: "intruso@esempio.it", emailVerificationTime: NOW }));
     expect(await h.t.query(api.admins.me, {})).toEqual({ isAdmin: false });
+    expect(await asUser(h.t, strangerId).query(api.admins.me, {})).toEqual({ isAdmin: false });
     expect(await h.admin.query(api.admins.me, {})).toEqual({ isAdmin: true });
+  });
+
+  it("l'email dell'admin e' confrontata senza distinguere maiuscole", async () => {
+    const t = convexTest(schema, modules);
+    const userId = await t.run(async (ctx) => {
+      await ctx.db.insert("admins", { email: "stefan@core829.net", addedAt: NOW });
+      return ctx.db.insert("users", { email: "  STEFAN@Core829.net ", emailVerificationTime: NOW });
+    });
+    expect(await asUser(t, userId).query(api.admins.me, {})).toEqual({ isAdmin: true });
   });
 });
 

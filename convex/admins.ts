@@ -1,20 +1,15 @@
 import { v } from "convex/values";
 import { internalMutation, query } from "./_generated/server";
 import { audit } from "./lib/audit";
+import { lookupAdmin } from "./lib/auth";
 import { cleanEmail } from "./lib/text";
 
 /** Dice all'interfaccia se l'utente collegato e' un amministratore. Non lancia errori per chi non lo e'. */
 export const me = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    const email = typeof identity?.email === "string" ? identity.email.trim().toLowerCase() : "";
-    if (!identity || email === "" || identity.emailVerified === false) return { isAdmin: false };
-    const admin = await ctx.db
-      .query("admins")
-      .withIndex("by_email", (q) => q.eq("email", email))
-      .unique();
-    return { isAdmin: admin !== null };
+    const result = await lookupAdmin(ctx);
+    return { isAdmin: result.status === "admin" };
   },
 });
 

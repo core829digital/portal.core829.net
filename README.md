@@ -15,6 +15,9 @@ Next.js (App Router) · Convex · Tailwind CSS · shadcn/ui · TypeScript strict
 | `npm run build` | Build di produzione |
 | `npm run check` | Lint + typecheck + build |
 
+## Prima configurazione
+Vedi [`docs/SETUP.md`](docs/SETUP.md) per login amministratore, Resend e variabili.
+
 ## Variabili d'ambiente
 Vedi `.env.example`. Non committare mai segreti.
 

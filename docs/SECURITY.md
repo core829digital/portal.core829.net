@@ -42,6 +42,21 @@ La CSP e' generata per richiesta in `src/proxy.ts` con nonce nuovo a ogni rispos
 - Il metodo HTTP `TRACE` produce una risposta 500 invece di 405 (nessuna fuga di dati). Da bloccare con una
   regola del firewall di Vercel in Fase 9.
 
+## Accesso dell'amministratore
+- **Codice a 8 cifre via email** (Resend), valido 10 minuti, nessuna password da rubare o riutilizzare.
+- Il codice parte **solo** verso gli indirizzi in `ADMIN_EMAILS`: per gli altri la risposta e' identica e non succede nulla
+  (non si scopre chi e' amministratore e il dominio non si puo' usare per spedire email a chiunque).
+- Per contare come amministratore servono: sessione valida, **email verificata con il codice**, email presente nella
+  tabella `admins`. Test e prova di rottura per ciascuna condizione.
+- Sessione: 12 ore al massimo, 2 senza attivita'; al massimo 5 codici errati all'ora per account.
+- **Nota onesta:** `@convex-dev/auth` e' ancora in versione 0.0.x (pre-1.0). L'abbiamo scelto per semplicita' e perche'
+  l'autorizzazione vera resta nel nostro codice (`requireAdmin`), ma va tenuto aggiornato e riesaminato prima del lancio.
+
+## Interfaccia e CSP
+- Le librerie di interfaccia che inseriscono stili vanno gestite con il **nonce** (Base UI: `CSPProvider`, vedi `UiProvider`).
+  Le notifiche sono scritte in casa (`src/lib/toast.ts`) perche' la libreria precedente iniettava stili senza nonce.
+- Verificato in Chromium in produzione: zero violazioni CSP nel login, e con dialog, schede e notifiche.
+
 ## Dettagli di progettazione importanti
 - **Errori e scritture in Convex:** un errore lanciato in una mutazione annulla tutte le sue scritture. Per questo
   i tentativi errati di codice *restituiscono un risultato* invece di lanciare: altrimenti il contatore sparirebbe e

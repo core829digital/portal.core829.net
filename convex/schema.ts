@@ -1,3 +1,4 @@
+import { authTables } from "@convex-dev/auth/server";
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import {
@@ -24,6 +25,9 @@ import {
  *   (le funzioni del cliente in `portal.ts` scelgono i campi uno per uno).
  */
 export default defineSchema({
+  /** Utenti, sessioni e account gestiti da Convex Auth. */
+  ...authTables,
+
   /** Amministratori autorizzati. L'identita' arriva dal provider di login, l'autorizzazione da qui. */
   admins: defineTable({
     email: v.string(),
