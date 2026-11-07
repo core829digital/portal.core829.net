@@ -154,7 +154,7 @@ const PACKAGES = ["standard", "advanced", "custom"] as const;
  *
  * Stesse difese dell'endpoint di Resend: dimensione limitata, FIRMA (Standard Webhooks, HMAC-SHA256) con timestamp
  * recente, risposta identica per ogni difetto, nessun dettaglio dell'errore. Senza B2B_WEBHOOK_SECRET rifiuta tutto.
- * Corpo JSON: { dealId, client: { displayName, contactName, email, phone?, vatId?, packageType? }, notes?, salesAgent? }.
+ * Corpo JSON: { dealId, client: { displayName, contactName, email, phone?, vatId?, address?, pec?, legalRep?, website?, packageType? }, notes?, salesAgent? }.
  */
 http.route({
   path: "/integrations/b2b/deals",
@@ -197,6 +197,10 @@ http.route({
         email,
         phone: str(client.phone),
         vatId: str(client.vatId),
+        address: str(client.address),
+        pec: str(client.pec),
+        legalRep: str(client.legalRep),
+        website: str(client.website),
         packageType: pkg,
         notes: str(body.notes),
         salesAgent: str(body.salesAgent),

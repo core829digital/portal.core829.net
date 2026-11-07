@@ -3,8 +3,10 @@
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
-import { action, env } from "./_generated/server";
+import { action, env, type ActionCtx } from "./_generated/server";
 import { renderPdf } from "./lib/docPdf";
+import { autofillFields, buildVariables, documentNumber, formatDateRome, type ClientData, type DocCategory } from "./lib/autofill";
+import { autofillPdf } from "./lib/pdfAutofill";
 import {
   applyChanges,
   detectFields,
@@ -69,22 +71,14 @@ async function checkPdf(bytes: Uint8Array): Promise<PdfInfo> {
   }
 }
 
-const rome = new Intl.DateTimeFormat("it-IT", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Europe/Rome" });
+type ClientForDocs = ClientData;
 
-/** Variabili compilate in automatico alla creazione di una bozza. Solo i valori noti: gli altri segnaposto restano da compilare. */
-function variablesFor(client: { displayName: string; contactName: string; email: string; phone: string | null; vatId: string | null }): Record<string, string> {
-  const vars: Record<string, string> = {
-    "client.name": client.displayName,
-    "client.contact": client.contactName,
-    "client.email": client.email,
-    "date.today": rome.format(new Date()),
-    "company.name": "CORE829 SRL",
-    "company.address": "Str. Mihai Eminescu, 10, Roman, Romania",
-    "company.vat": "CUI/CIF 54616345",
-  };
-  if (client.phone) vars["client.phone"] = client.phone;
-  if (client.vatId) vars["client.vat"] = client.vatId;
-  return vars;
+/** Numero del prossimo documento della categoria e variabili compilate (CORE829 SRL + cliente). */
+async function autofillContext(ctx: ActionCtx, client: ClientForDocs, category: DocCategory) {
+  const now = Date.now();
+  const year = Number(formatDateRome(now).slice(-4));
+  const count = await ctx.runQuery(internal.docStudio.countDraftsInYear, { category, year });
+  return buildVariables(client, { now, number: documentNumber(category, year, count) });
 }
 
 const safeName = (name: string): string => {
@@ -139,7 +133,7 @@ export const createDraft = action({
     name: v.optional(v.string()),
     category: v.optional(docCategory),
   },
-  handler: async (ctx, args): Promise<{ draftId: Id<"docDrafts"> }> => {
+  handler: async (ctx, args): Promise<{ draftId: Id<"docDrafts">; autofilled: number; number: string }> => {
     const { actorId } = await admin(ctx);
     try {
       if ((args.templateId === undefined) === (args.uploadStorageId === undefined)) return invalid("origine", "Scegli un modello oppure carica un file.");
@@ -149,18 +143,21 @@ export const createDraft = action({
 
       const sourceId = template ? template.storageId : (args.uploadStorageId as Id<"_storage">);
       const files = open(await loadBytes(ctx, sourceId));
-      const merged = writeDocx(applyChanges(files, { vars: variablesFor(client) }));
+      const category = template ? template.category : (args.category ?? "other");
+      const vars = await autofillContext(ctx, client, category);
+      const { fills, filled } = autofillFields(detectFields(listParagraphs(files)), vars);
+      const merged = writeDocx(applyChanges(files, { vars, fills }));
       const storageId = await storeBlob(ctx, merged, DOCX_MIME);
       const draftId = await ctx.runMutation(internal.docStudio.insertDraft, {
         clientId: args.clientId,
         templateId: args.templateId,
         name: cleanText(args.name ?? (template ? `${template.name} — ${client.displayName}` : "Documento"), { field: "nome", min: 1, max: 120 }),
-        category: template ? template.category : (args.category ?? "other"),
+        category,
         storageId,
         actorId,
       });
       if (args.uploadStorageId) await ctx.storage.delete(args.uploadStorageId); // la copia di lavoro e' quella nuova
-      return { draftId };
+      return { draftId, autofilled: filled.length, number: vars["contract.number"] };
     } catch (error) {
       if (args.uploadStorageId) await ctx.storage.delete(args.uploadStorageId).catch(() => undefined);
       throw error;
@@ -304,7 +301,7 @@ export const sendDraft = action({
 /** Crea la bozza di un cliente da un PDF gia' pronto caricato (da completare con testi sovrapposti). */
 export const createPdfDraft = action({
   args: { clientId: v.id("clients"), uploadStorageId: v.id("_storage"), name: v.string(), category: docCategory },
-  handler: async (ctx, args): Promise<{ draftId: Id<"docDrafts"> }> => {
+  handler: async (ctx, args): Promise<{ draftId: Id<"docDrafts">; autofilled: number }> => {
     const { actorId } = await admin(ctx);
     try {
       const { client } = await ctx.runQuery(internal.docStudio.templateAndClient, { clientId: args.clientId });
@@ -312,8 +309,11 @@ export const createPdfDraft = action({
       const name = cleanText(args.name, { field: "nome", min: 1, max: 120 });
       const bytes = await loadPdfBytes(ctx, args.uploadStorageId);
       await checkPdf(bytes);
+      // Campi modulo riconoscibili: compilati in automatico come testi sovrapposti (modificabili nell'editor).
+      const { annotations, filled } = await autofillPdf(bytes, await autofillContext(ctx, client, args.category));
+      const kept = cleanAnnotations(annotations, (await inspectPdf(bytes)).pages.length);
       // Il file caricato resta intatto (originale); la copia di lavoro e' un oggetto a parte.
-      const working = await storeBlob(ctx, bytes, PDF_MIME);
+      const working = await storeBlob(ctx, kept.length > 0 ? await stampPdf(bytes, kept) : bytes, PDF_MIME);
       const draftId = await ctx.runMutation(internal.docStudio.insertDraft, {
         clientId: args.clientId,
         name,
@@ -321,9 +321,10 @@ export const createPdfDraft = action({
         storageId: working,
         format: "pdf",
         originalStorageId: args.uploadStorageId,
+        annotations: kept,
         actorId,
       });
-      return { draftId };
+      return { draftId, autofilled: filled.length };
     } catch (error) {
       await ctx.storage.delete(args.uploadStorageId).catch(() => undefined);
       throw error;

@@ -16,7 +16,9 @@ si gestisce tutto (contratto dai modelli, fatture, abbonamenti, documenti).
 {
   "dealId": "D-2026-014",
   "client": { "displayName": "Caffè Rosso Srl", "contactName": "Mario Rossi", "email": "mario@caffe.it",
-              "phone": "+39 333 1112223", "vatId": "IT01234567890", "packageType": "standard|advanced|custom" },
+              "phone": "+39 333 1112223", "vatId": "IT01234567890",
+              "address": "Via Roma 1, 52048 Monte San Savino (AR)", "pec": "caffe@pec.it", "legalRep": "Mario Rossi, amministratore",
+              "website": "caffe.it", "packageType": "standard|advanced|custom" },
   "notes": "Testo libero per l'amministratore",
   "salesAgent": "Giulia"
 }

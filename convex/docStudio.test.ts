@@ -98,11 +98,11 @@ describe("bozze", () => {
     const { draftId } = await h.admin.action(api.docStudioActions.createDraft, { clientId: h.clientId, templateId });
     const { paragraphs, fields } = await h.admin.action(api.docStudioActions.inspectDraft, { draftId });
     expect(paragraphs.map((p) => p.text)).toEqual([
-      "Contratto n. {{contract.number}}",
+      `Contratto n. CTR-${new Date().getUTCFullYear()}-001`,
       "Cliente: Caffè Rosso Srl — referente Mario Rossi",
       "Firma: ________ ☐ accetto",
     ]);
-    expect(fields.map((f) => f.kind)).toEqual(["variable", "blank", "checkbox"]);
+    expect(fields.map((f) => f.kind)).toEqual(["blank", "checkbox"]);
     const draft = await h.admin.query(api.docStudio.getDraft, { draftId });
     expect(draft).toMatchObject({ name: "MSA di prova — Caffè Rosso Srl", status: "draft", client: { displayName: "Caffè Rosso Srl" } });
   });
@@ -128,7 +128,7 @@ describe("bozze", () => {
       edits: [{ index: 0, text: "Master Services Agreement" }],
       deletes: [],
       inserts: [{ after: 2, texts: ["Luogo e data: Roman, 12/11/2026"] }],
-      fills: [{ id: fields[1].id, value: "Mario Rossi" }, { id: fields[2].id, value: "true" }],
+      fills: [{ id: fields[0].id, value: "Mario Rossi" }, { id: fields[1].id, value: "true" }],
     });
     const after = (await h.t.run((ctx) => ctx.db.get("docDrafts", draftId)))!.storageId;
     expect(after).not.toBe(before);
@@ -243,6 +243,63 @@ async function pdfTexts(bytes: Uint8Array, pageNumber: number): Promise<string[]
 }
 
 const note = (extra: Record<string, unknown> = {}) => ({ page: 0, x: 0.3, y: 0.4, text: "Mario Rossi", size: 12, color: "black" as const, bold: false, ...extra });
+
+describe("compilazione automatica", () => {
+  const year = new Date().getUTCFullYear();
+
+  it("compila i campi con etichetta chiara (cliente + CORE829) e numera i documenti per categoria", async () => {
+    const h = await setup();
+    await h.t.run((ctx) => ctx.db.patch("clients", h.clientId, { vatId: "IT01234567890", address: "Via Roma 1, Milano", pec: "caffe@pec.it", legalRep: "Mario Rossi, Amministratore" }));
+    const form = createBlankDocx([
+      { type: "table", rows: [["Cliente", ""], ["Sede legale", ""], ["Partita IVA", ""], ["PEC", ""], ["Rappresentante legale", ""], ["Forma giuridica", ""], ["Riferimento MSA n.", ""]] },
+      { type: "p", text: "Per CORE829: {{company.rep}} — {{company.name}} — {{company.cui}}" },
+    ]);
+    const storageId = await store(h.t, form);
+    const { templateId } = await h.admin.action(api.docStudioActions.importTemplate, { storageId, name: "Modulo", category: "contract" });
+    const first = await h.admin.action(api.docStudioActions.createDraft, { clientId: h.clientId, templateId });
+    expect(first).toMatchObject({ autofilled: 6, number: `CTR-${year}-001` });
+    const second = await h.admin.action(api.docStudioActions.createDraft, { clientId: h.clientId, templateId });
+    expect(second.number).toBe(`CTR-${year}-002`);
+    const { paragraphs, fields } = await h.admin.action(api.docStudioActions.inspectDraft, { draftId: first.draftId });
+    const text = paragraphs.map((p) => p.text);
+    for (const expected of ["Caffè Rosso Srl", "Via Roma 1, Milano", "IT01234567890", "caffe@pec.it", "Mario Rossi, Amministratore", `CTR-${year}-001`, "Per CORE829: Stefan Serban — CORE829 SRL — 54616345"]) {
+      expect(text).toContain(expected);
+    }
+    // Il campo ambiguo resta da compilare a mano.
+    expect(fields.filter((f) => f.kind === "blank").map((f) => f.label)).toEqual(["Forma giuridica"]);
+  });
+
+  it("la numerazione e' separata per categoria", async () => {
+    const h = await setup();
+    const mk = async (category: "contract" | "quote") => {
+      const storageId = await store(h.t, sampleDocx());
+      const { templateId } = await h.admin.action(api.docStudioActions.importTemplate, { storageId, name: category, category });
+      return (await h.admin.action(api.docStudioActions.createDraft, { clientId: h.clientId, templateId })).number;
+    };
+    expect(await mk("contract")).toBe(`CTR-${year}-001`);
+    expect(await mk("quote")).toBe(`PRV-${year}-001`);
+    expect(await mk("contract")).toBe(`CTR-${year}-002`);
+  });
+
+  it("PDF con campi modulo: i campi riconosciuti arrivano gia' compilati, modificabili nell'editor, l'originale resta intatto", async () => {
+    const h = await setup();
+    await h.t.run((ctx) => ctx.db.patch("clients", h.clientId, { vatId: "IT01234567890" }));
+    const pdf = await PDFDocument.create();
+    const page = pdf.addPage([600, 800]);
+    pdf.getForm().createTextField("Partita_IVA").addToPage(page, { x: 100, y: 700, width: 200, height: 18 });
+    pdf.getForm().createTextField("Forma_giuridica").addToPage(page, { x: 100, y: 650, width: 200, height: 18 });
+    const upload = await store(h.t, await pdf.save(), "application/pdf");
+    const { draftId, autofilled } = await h.admin.action(api.docStudioActions.createPdfDraft, { clientId: h.clientId, uploadStorageId: upload, name: "Modulo", category: "other" });
+    expect(autofilled).toBe(1);
+    const data = await h.admin.action(api.docStudioActions.pdfEditorData, { draftId });
+    expect(data.annotations).toHaveLength(1);
+    expect(data.annotations[0]).toMatchObject({ page: 0, text: "IT01234567890" });
+    const row = (await h.t.run((ctx) => ctx.db.get("docDrafts", draftId)))!;
+    expect(row.originalStorageId).toBe(upload);
+    expect((await bytesOf(h.t, upload)).length).toBeGreaterThan(0);
+    expect(row.storageId).not.toBe(upload);
+  });
+});
 
 describe("PDF gia' pronti (editor PDF)", () => {
   async function pdfDraft(h: Awaited<ReturnType<typeof setup>>) {

@@ -17,6 +17,10 @@ export const create = mutation({
     email: v.string(),
     phone: v.optional(v.string()),
     vatId: v.optional(v.string()),
+    address: v.optional(v.string()),
+    pec: v.optional(v.string()),
+    legalRep: v.optional(v.string()),
+    website: v.optional(v.string()),
     packageType,
     welcomeMessage: v.optional(v.string()),
     internalNotes: v.optional(v.string()),
@@ -36,6 +40,10 @@ export const create = mutation({
       email,
       phone: args.phone === undefined ? undefined : cleanPhone(args.phone),
       vatId: args.vatId === undefined ? undefined : cleanVatId(args.vatId),
+      address: args.address === undefined ? undefined : cleanText(args.address, { field: "sede legale", max: 200 }),
+      pec: args.pec === undefined ? undefined : cleanEmail(args.pec, "PEC"),
+      legalRep: args.legalRep === undefined ? undefined : cleanText(args.legalRep, { field: "rappresentante legale", max: 120 }),
+      website: args.website === undefined ? undefined : cleanText(args.website, { field: "sito web", max: 200 }),
       packageType: args.packageType,
       status: "onboarding",
       welcomeMessage:
@@ -68,6 +76,10 @@ export const update = mutation({
     // `null` cancella il campo, `undefined` lo lascia com'e'.
     phone: nullableString,
     vatId: nullableString,
+    address: nullableString,
+    pec: nullableString,
+    legalRep: nullableString,
+    website: nullableString,
     packageType: v.optional(packageType),
     status: v.optional(clientStatus),
     welcomeMessage: nullableString,
@@ -94,6 +106,10 @@ export const update = mutation({
     }
     if (args.phone !== undefined) patch.phone = args.phone === null ? undefined : cleanPhone(args.phone);
     if (args.vatId !== undefined) patch.vatId = args.vatId === null ? undefined : cleanVatId(args.vatId);
+    if (args.address !== undefined) patch.address = args.address === null ? undefined : cleanText(args.address, { field: "sede legale", max: 200 });
+    if (args.pec !== undefined) patch.pec = args.pec === null ? undefined : cleanEmail(args.pec, "PEC");
+    if (args.legalRep !== undefined) patch.legalRep = args.legalRep === null ? undefined : cleanText(args.legalRep, { field: "rappresentante legale", max: 120 });
+    if (args.website !== undefined) patch.website = args.website === null ? undefined : cleanText(args.website, { field: "sito web", max: 200 });
     if (args.packageType !== undefined) patch.packageType = args.packageType;
     if (args.status !== undefined) patch.status = args.status;
     if (args.welcomeMessage !== undefined) {

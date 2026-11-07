@@ -44,6 +44,10 @@ export function CreateClientDialog() {
         email: String(form.get("email") ?? ""),
         phone: optional(form, "phone"),
         vatId: optional(form, "vatId"),
+        address: optional(form, "address"),
+        pec: optional(form, "pec"),
+        legalRep: optional(form, "legalRep"),
+        website: optional(form, "website"),
         packageType,
         welcomeMessage: optional(form, "welcomeMessage"),
       });
@@ -76,6 +80,12 @@ export function CreateClientDialog() {
               <TextField id="phone" label="Telefono" type="tel" maxLength={20} />
               <TextField id="vatId" label="Partita IVA" maxLength={32} />
             </div>
+            <TextField id="address" label="Sede legale / residenza" maxLength={200} hint="Serve a compilare in automatico contratti e documenti." />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <TextField id="pec" label="PEC" type="email" maxLength={254} />
+              <TextField id="legalRep" label="Rappresentante legale" maxLength={120} placeholder="Nome e carica" />
+            </div>
+            <TextField id="website" label="Sito web" maxLength={200} />
             <Field id="packageType" label="Pacchetto">
               <NativeSelect id="packageType" name="packageType" defaultValue="standard">
                 {Object.entries(packageLabel).map(([value, label]) => (

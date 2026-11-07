@@ -43,6 +43,12 @@ export default defineSchema({
     email: v.string(),
     phone: v.optional(v.string()),
     vatId: v.optional(v.string()),
+    /** Sede legale / residenza: serve a compilare contratti e documenti. */
+    address: v.optional(v.string()),
+    pec: v.optional(v.string()),
+    /** Rappresentante legale (nome e carica). */
+    legalRep: v.optional(v.string()),
+    website: v.optional(v.string()),
     packageType,
     status: clientStatus,
     /** Messaggio personalizzato mostrato nella pagina di benvenuto. */

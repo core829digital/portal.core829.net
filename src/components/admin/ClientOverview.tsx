@@ -62,6 +62,10 @@ export function ClientOverview({ client }: { client: Doc<"clients"> }) {
         email: String(form.get("email") ?? ""),
         phone: nullable(form, "phone"),
         vatId: nullable(form, "vatId"),
+        address: nullable(form, "address"),
+        pec: nullable(form, "pec"),
+        legalRep: nullable(form, "legalRep"),
+        website: nullable(form, "website"),
         status,
         packageType,
         welcomeMessage: nullable(form, "welcomeMessage"),
@@ -90,6 +94,10 @@ export function ClientOverview({ client }: { client: Doc<"clients"> }) {
           <Row label="Email" value={client.email} />
           <Row label="Telefono" value={client.phone} />
           <Row label="Partita IVA" value={client.vatId} />
+          <Row label="Sede legale" value={client.address} />
+          <Row label="PEC" value={client.pec} />
+          <Row label="Rappresentante legale" value={client.legalRep} />
+          <Row label="Sito web" value={client.website} />
           <Row label="Pacchetto" value={packageLabel[client.packageType]} />
           <div className="grid gap-0.5 sm:grid-cols-[10rem_1fr] sm:gap-4">
             <dt className="text-sm text-muted-foreground">Stato</dt>
@@ -117,6 +125,12 @@ export function ClientOverview({ client }: { client: Doc<"clients"> }) {
               <TextField id="phone" label="Telefono" type="tel" defaultValue={client.phone ?? ""} maxLength={20} />
               <TextField id="vatId" label="Partita IVA" defaultValue={client.vatId ?? ""} maxLength={32} />
             </div>
+            <TextField id="address" label="Sede legale / residenza" defaultValue={client.address ?? ""} maxLength={200} hint="Serve a compilare in automatico contratti e documenti." />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <TextField id="pec" label="PEC" type="email" defaultValue={client.pec ?? ""} maxLength={254} />
+              <TextField id="legalRep" label="Rappresentante legale" defaultValue={client.legalRep ?? ""} maxLength={120} placeholder="Nome e carica" />
+            </div>
+            <TextField id="website" label="Sito web" defaultValue={client.website ?? ""} maxLength={200} />
             <div className="grid gap-4 sm:grid-cols-2">
               <Field id="status" label="Stato">
                 <NativeSelect id="status" name="status" defaultValue={client.status}>

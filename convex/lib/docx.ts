@@ -199,12 +199,23 @@ function rowLabelOf(p: Element): string | null {
   if (!cell) return null;
   const row = cell.parentNode as Element;
   const cells = children(row, "tc");
-  if (cells.length < 2 || cells[0] === cell) return null;
+  const at = cells.indexOf(cell as Element);
+  if (cells.length < 2 || at < 1) return null;
   const textOf = (c: Element) => Array.from(c.getElementsByTagNameNS(W, "p")).map((fp) => paragraphText(fp)).join(" ").trim();
-  let label = textOf(cells[0]);
+  // L'etichetta e' il testo della cella piu' vicina a sinistra che ne ha uno (nei moduli a 4 colonne:
+  // etichetta | valore | etichetta | valore), altrimenti nulla.
+  let labelAt = -1;
+  for (let i = at - 1; i >= 0; i--) {
+    if (textOf(cells[i]) !== "") {
+      labelAt = i;
+      break;
+    }
+  }
+  if (labelAt < 0) return null;
+  let label = textOf(cells[labelAt]);
   if (label.length <= 2) {
-    // Prima cella con un solo simbolo (es. una casella ☐): si aggiunge il primo testo successivo della riga.
-    for (const c of cells.slice(1)) {
+    // Cella con un solo simbolo (es. una casella ☐): si aggiunge il primo testo successivo della riga.
+    for (const c of cells.slice(labelAt + 1)) {
       const t = textOf(c);
       if (t !== "" && c !== cell) {
         label = `${label} ${t}`.trim();

@@ -111,7 +111,20 @@ export const getDraft = query({
       status: d.status,
       sentAt: d.sentAt ?? null,
       sentTo: d.sentTo ?? null,
-      client: client ? { id: client._id, displayName: client.displayName, email: client.email } : null,
+      client: client
+        ? {
+            id: client._id,
+            displayName: client.displayName,
+            email: client.email,
+            contactName: client.contactName,
+            phone: client.phone ?? null,
+            vatId: client.vatId ?? null,
+            address: client.address ?? null,
+            pec: client.pec ?? null,
+            legalRep: client.legalRep ?? null,
+            website: client.website ?? null,
+          }
+        : null,
     };
   },
 });
@@ -168,9 +181,34 @@ export const templateAndClient = internalQuery({
     return {
       template: template && !template.archived ? { id: template._id, name: template.name, category: template.category, storageId: template.storageId } : null,
       client: client
-        ? { id: client._id, displayName: client.displayName, contactName: client.contactName, email: client.email, phone: client.phone ?? null, vatId: client.vatId ?? null }
+        ? {
+            id: client._id,
+            displayName: client.displayName,
+            contactName: client.contactName,
+            email: client.email,
+            phone: client.phone ?? null,
+            vatId: client.vatId ?? null,
+            address: client.address ?? null,
+            pec: client.pec ?? null,
+            legalRep: client.legalRep ?? null,
+            website: client.website ?? null,
+          }
         : null,
     };
+  },
+});
+
+/** Quante bozze della categoria esistono gia' nell'anno: serve al numero progressivo del documento (CTR-2026-001...). */
+export const countDraftsInYear = internalQuery({
+  args: { category: docCategory, year: v.number() },
+  handler: async (ctx, args): Promise<number> => {
+    const from = Date.UTC(args.year, 0, 1) - 24 * 3600 * 1000;
+    const to = Date.UTC(args.year + 1, 0, 1) + 24 * 3600 * 1000;
+    const rows = await ctx.db
+      .query("docDrafts")
+      .withIndex("by_creation_time", (q) => q.gte("_creationTime", from).lt("_creationTime", to))
+      .take(5000);
+    return rows.filter((d) => d.category === args.category).length;
   },
 });
 
@@ -183,6 +221,7 @@ export const insertDraft = internalMutation({
     storageId: v.id("_storage"),
     format: v.optional(v.union(v.literal("docx"), v.literal("pdf"))),
     originalStorageId: v.optional(v.id("_storage")),
+    annotations: v.optional(v.array(pdfAnnotation)),
     actorId: v.string(),
   },
   handler: async (ctx, args): Promise<Id<"docDrafts">> => {
@@ -194,7 +233,7 @@ export const insertDraft = internalMutation({
       format: args.format,
       storageId: args.storageId,
       originalStorageId: args.originalStorageId,
-      annotations: args.format === "pdf" ? [] : undefined,
+      annotations: args.format === "pdf" ? (args.annotations ?? []) : undefined,
       status: "draft",
     });
     await audit(ctx, { actorType: "admin", actorId: args.actorId, clientId: args.clientId, action: "doc.draft_created", resourceType: "docDraft", resourceId: id });
