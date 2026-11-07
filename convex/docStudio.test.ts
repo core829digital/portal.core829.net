@@ -208,6 +208,48 @@ describe("invio al cliente", () => {
     await expect(h.admin.mutation(api.docStudio.deleteDraft, { draftId })).rejects.toThrow();
   });
 
+  it("eliminare un documento inviato al cliente richiede una conferma esplicita; il riferimento nella bozza si pulisce", async () => {
+    const { h, draftId } = await ready();
+    await h.admin.action(api.docStudioActions.sendDraft, args(draftId));
+    const docs = await h.t.run((ctx) => ctx.db.query("documents").collect());
+    const target = docs[0];
+    await expect(h.admin.mutation(api.documents.remove, { documentId: target._id })).rejects.toThrow();
+    await expect(h.admin.mutation(api.documents.remove, { documentId: target._id, confirmSent: false })).rejects.toThrow();
+    expect(await h.t.run((ctx) => ctx.db.get("documents", target._id))).not.toBeNull();
+    await h.admin.mutation(api.documents.remove, { documentId: target._id, confirmSent: true });
+    expect(await h.t.run((ctx) => ctx.db.get("documents", target._id))).toBeNull();
+    expect(await exists(h.t, target.storageId)).toBe(false);
+    const draft = (await h.t.run((ctx) => ctx.db.get("docDrafts", draftId)))!;
+    expect(draft.documentIds).not.toContain(target._id);
+    const log = await h.t.run((ctx) => ctx.db.query("auditLogs").collect());
+    expect(log.find((l) => l.action === "document.deleted")?.metadata).toMatchObject({ wasSent: "true" });
+  });
+
+  it("un documento caricato a mano (mai inviato) si elimina senza conferma extra", async () => {
+    const h = await setup();
+    const storageId = await store(h.t, new Uint8Array([1, 2, 3]), "application/pdf");
+    const documentId = await h.t.run((ctx) =>
+      ctx.db.insert("documents", { clientId: h.clientId, title: "x", fileName: "x.pdf", kind: "other", storageId, sizeBytes: 3, mimeType: "application/pdf", scanStatus: "clean", visibleToClient: false } as never),
+    );
+    await h.admin.mutation(api.documents.remove, { documentId });
+    expect(await exists(h.t, storageId)).toBe(false);
+  });
+
+  it("l'eliminazione di una bozza toglie tutti i file; chi non e' admin non puo' eliminare nulla", async () => {
+    const h = await setup();
+    const { templateId } = await template(h);
+    const { draftId } = await h.admin.action(api.docStudioActions.createDraft, { clientId: h.clientId, templateId });
+    await h.admin.action(api.docStudioActions.previewDraft, { draftId, format: "pdf" });
+    const row = (await h.t.run((ctx) => ctx.db.get("docDrafts", draftId)))!;
+    await expect(h.other.mutation(api.docStudio.deleteDraft, { draftId })).rejects.toThrow();
+    expect(await h.t.run((ctx) => ctx.db.get("docDrafts", draftId))).not.toBeNull();
+    await h.admin.mutation(api.docStudio.deleteDraft, { draftId });
+    expect(await exists(h.t, row.storageId)).toBe(false);
+    expect(await exists(h.t, row.previewStorageId!)).toBe(false);
+    const log = await h.t.run((ctx) => ctx.db.query("auditLogs").collect());
+    expect(log.some((l) => l.action === "doc.draft_deleted")).toBe(true);
+  });
+
   it("se Resend rifiuta l'invio non salva nulla e la bozza resta modificabile", async () => {
     const { h, draftId } = await ready();
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("{}", { status: 403 })));

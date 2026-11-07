@@ -131,11 +131,28 @@ export const finalize = mutation({
 
 /** Elimina il documento e il file. */
 export const remove = mutation({
-  args: { documentId: v.id("documents") },
+  args: {
+    documentId: v.id("documents"),
+    /** Serve per eliminare un documento che era stato inviato al cliente (es. un contratto): va chiesto di proposito. */
+    confirmSent: v.optional(v.boolean()),
+  },
   handler: async (ctx, args) => {
     const { actorId } = await requireAdmin(ctx);
     const document = await ctx.db.get("documents", args.documentId);
     if (!document) return null;
+    // Un documento inviato al cliente (contratto, preventivo) e' una prova: si elimina solo con conferma esplicita.
+    const sentDrafts = (
+      await ctx.db
+        .query("docDrafts")
+        .withIndex("by_clientId", (q) => q.eq("clientId", document.clientId))
+        .take(500)
+    ).filter((d) => d.documentIds?.includes(args.documentId));
+    if (sentDrafts.length > 0 && args.confirmSent !== true) {
+      return fail("BAD_STATE", "Questo documento è stato inviato al cliente. Conferma l'eliminazione per cancellarlo.");
+    }
+    for (const d of sentDrafts) {
+      await ctx.db.patch("docDrafts", d._id, { documentIds: (d.documentIds ?? []).filter((id) => id !== args.documentId) });
+    }
     // Le fatture che puntavano a questo PDF restano, senza il collegamento.
     const invoices = await ctx.db
       .query("invoices")
@@ -153,7 +170,7 @@ export const remove = mutation({
       action: "document.deleted",
       resourceType: "document",
       resourceId: args.documentId,
-      metadata: { fileName: document.fileName },
+      metadata: { fileName: document.fileName, wasSent: String(sentDrafts.length > 0) },
     });
     return null;
   },

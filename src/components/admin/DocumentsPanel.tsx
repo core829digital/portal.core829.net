@@ -143,6 +143,7 @@ export function DocumentsPanel({ clientId }: { clientId: Id<"clients"> }) {
   const removeDocument = useMutation(api.documents.remove);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [toDelete, setToDelete] = useState<Document | null>(null);
+  const [toDeleteSent, setToDeleteSent] = useState<Document | null>(null);
 
   return (
     <section aria-labelledby="docs-title" className="space-y-4">
@@ -231,11 +232,32 @@ export function DocumentsPanel({ clientId }: { clientId: Id<"clients"> }) {
         onCancel={() => setToDelete(null)}
         onConfirm={() => {
           if (toDelete) {
-            void removeDocument({ documentId: toDelete._id })
+            const target = toDelete;
+            void removeDocument({ documentId: target._id })
+              .then(() => toast.success("Documento eliminato."))
+              .catch((e: unknown) => {
+                // Documento già inviato al cliente: serve una seconda conferma, di proposito.
+                if (errorMessage(e).includes("inviato al cliente")) setToDeleteSent(target);
+                else toast.error(errorMessage(e));
+              });
+          }
+          setToDelete(null);
+        }}
+      />
+      <ConfirmDialog
+        open={toDeleteSent !== null}
+        title="Questo documento è stato inviato al cliente"
+        description={`«${toDeleteSent?.title ?? ""}» è una copia di ciò che il cliente ha ricevuto (es. contratto o preventivo). Eliminarlo toglie la prova dal fascicolo. Vuoi eliminarlo comunque?`}
+        confirmLabel="Elimina comunque"
+        destructive
+        onCancel={() => setToDeleteSent(null)}
+        onConfirm={() => {
+          if (toDeleteSent) {
+            void removeDocument({ documentId: toDeleteSent._id, confirmSent: true })
               .then(() => toast.success("Documento eliminato."))
               .catch((e: unknown) => toast.error(errorMessage(e)));
           }
-          setToDelete(null);
+          setToDeleteSent(null);
         }}
       />
     </section>
