@@ -26,3 +26,23 @@ jobs:
       - run: npm run build
       # Vulnerabilita' nelle dipendenze di produzione (gravita' alta o critica).
       - run: npm audit --omit=dev --audit-level=high
+
+  e2e:
+    runs-on: ubuntu-latest
+    needs: check
+    env:
+      NEXT_PUBLIC_CONVEX_URL: https://e2e-test.convex.cloud
+      NEXT_PUBLIC_APP_URL: http://localhost:3100
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      # Limite di peso degli script caricati dalla pagina.
+      - run: npm run check:bundle
+      # Browser reale: sicurezza, accessibilita' WCAG, adattamento ai telefoni, Core Web Vitals.
+      - run: npx playwright test --project=chromium --project=android --trace off

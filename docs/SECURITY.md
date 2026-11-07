@@ -150,3 +150,12 @@ del portale; ogni download finisce nel registro di audit. Provato: tre protezion
 3. Mai restituire documenti interi al cliente: solo campi scelti esplicitamente.
 4. Mai committare `.env*` (tranne `.env.example`) ne' scrivere segreti nel codice.
 5. Prima di ogni commit: `npm run check`.
+
+## Browser supportati e configurazioni manuali su Vercel
+
+- **Provati in un browser reale:** Chromium (desktop) e un profilo Android. Firefox e Safari/WebKit sono configurati in
+  `playwright.config.ts` ma non eseguibili in questo ambiente: vanno provati a mano prima del lancio.
+- **Regione:** `vercel.json` fissa Francoforte (`fra1`), vicina ai clienti italiani.
+- **Da attivare nel pannello Vercel (non si puo' fare da codice):** Firewall con limite di richieste per indirizzo IP
+  (consigliato su `/c` e `/admin/login`) e blocco del metodo TRACE.
+

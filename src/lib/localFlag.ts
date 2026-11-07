@@ -21,8 +21,9 @@ export function useLocalFlag(key: string): [boolean, () => void] {
       return false;
     }
   }, [key]);
-  // Sul server si assume "gia' fatto", cosi' la scheda non lampeggia prima di essere nascosta.
-  const value = useSyncExternalStore(subscribe, read, () => true);
+  // Sul server si assume "non ancora fatto": la scheda esiste gia' nell'HTML. Per chi l'ha gia' chiusa la nasconde
+  // uno script eseguito prima del disegno (vedi onboardingFlag.ts), quindi non c'e' lampeggio ne' salto.
+  const value = useSyncExternalStore(subscribe, read, () => false);
   const set = useCallback(() => {
     try {
       window.localStorage.setItem(key, "1");

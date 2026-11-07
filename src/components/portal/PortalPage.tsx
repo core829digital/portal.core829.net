@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCents, formatDate, formatDateTime } from "@/lib/format";
 import { intervalLabel, invoiceStatusLabel, projectStatusLabel, subscriptionStatusLabel } from "@/lib/labels";
 import { useLocalFlag } from "@/lib/localFlag";
+import { ONBOARDING_FLAG_KEY } from "@/lib/onboardingFlag";
 
 export type PortalData = FunctionReturnType<typeof api.portal.overview>;
 
@@ -42,10 +43,10 @@ function WelcomeWidget({ data }: { data: PortalData }) {
 }
 
 function OnboardingWidget() {
-  const [seen, markSeen] = useLocalFlag("portal-onboarding-v1");
+  const [seen, markSeen] = useLocalFlag(ONBOARDING_FLAG_KEY);
   if (seen) return null;
   return (
-    <Card className="border-primary/30 bg-primary/5">
+    <Card data-onboarding className="border-primary/30 bg-primary/5">
       <CardHeader>
         <CardTitle>Come funziona questo spazio</CardTitle>
       </CardHeader>

@@ -60,10 +60,12 @@
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
+  /* Contrasto >= 4.5:1 anche sugli sfondi tenui (WCAG AA). Il valore originale (0.556) arrivava a 4.27:1. */
+  --muted-foreground: oklch(0.49 0 0);
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
+  /* Il valore originale (0.577) dava 4.0:1 sul fondo rosato dei bollini. */
+  --destructive: oklch(0.5 0.22 27);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
@@ -127,4 +129,8 @@
   html {
     @apply font-sans;
   }
+}
+/* Scheda introduttiva gia' letta: nascosta prima del disegno da uno script (src/lib/onboardingFlag.ts). */
+html[data-onboarding-seen] [data-onboarding] {
+  display: none;
 }
