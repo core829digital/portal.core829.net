@@ -63,7 +63,10 @@ export function DraftsList({ clientId }: { clientId?: Id<"clients"> }) {
                     </Link>
                   </TableCell>
                 ) : null}
-                <TableCell>{docCategoryLabel[d.category]}</TableCell>
+                <TableCell>
+                  {docCategoryLabel[d.category]}
+                  <span className="ml-1 font-mono text-[10px] uppercase text-muted-foreground">{d.format === "pdf" ? "PDF" : "Word"}</span>
+                </TableCell>
                 <TableCell>
                   <Badge variant={d.status === "sent" ? "default" : "secondary"}>{d.status === "sent" ? "Inviato" : "Bozza"}</Badge>
                   {d.status === "sent" && d.sentTo ? <div className="mt-1 text-xs text-muted-foreground">a {d.sentTo}</div> : null}

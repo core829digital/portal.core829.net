@@ -75,3 +75,14 @@ export const widgetValidator = v.union(
   }),
   v.object({ id: v.string(), type: v.literal("contact"), enabled: v.boolean(), title: v.string(), body: v.string() }),
 );
+
+/** Testo posizionato sopra un PDF (coordinate relative alla pagina, 0-1, origine in alto a sinistra). */
+export const pdfAnnotation = v.object({
+  page: v.number(),
+  x: v.number(),
+  y: v.number(),
+  text: v.string(),
+  size: v.number(),
+  color: v.union(v.literal("black"), v.literal("graphite"), v.literal("red"), v.literal("blue")),
+  bold: v.boolean(),
+});

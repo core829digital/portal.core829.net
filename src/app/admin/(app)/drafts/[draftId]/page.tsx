@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import type { Id } from "@convex/_generated/dataModel";
-import { DraftEditor } from "@/components/admin/docs/DraftEditor";
+import { DraftRouter } from "@/components/admin/docs/DraftRouter";
 
 export const metadata: Metadata = { title: "Documento" };
 
@@ -11,5 +11,5 @@ const CONVEX_ID = /^[a-z0-9]{16,64}$/;
 export default async function Page({ params }: { params: Promise<{ draftId: string }> }) {
   const { draftId } = await params;
   if (!CONVEX_ID.test(draftId)) notFound();
-  return <DraftEditor draftId={draftId as Id<"docDrafts">} />;
+  return <DraftRouter draftId={draftId as Id<"docDrafts">} />;
 }

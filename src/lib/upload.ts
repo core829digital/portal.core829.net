@@ -9,3 +9,4 @@ export async function uploadToStorage(uploadUrl: string, file: File): Promise<st
 }
 
 export const DOCX_EXTENSION = /\.docx$/i;
+export const PDF_EXTENSION = /\.pdf$/i;

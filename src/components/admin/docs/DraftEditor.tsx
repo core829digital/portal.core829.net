@@ -26,7 +26,8 @@ type Content = { paragraphs: DocParagraph[]; fields: DocField[] };
 
 export type SendInput = { to: string; subject: string; message: string; formats: ("pdf" | "docx")[] };
 
-function SendDialog({
+export function SendDialog({
+  pdfOnly = false,
   defaultTo,
   defaultSubject,
   clientName,
@@ -34,6 +35,8 @@ function SendDialog({
   onSend,
   beforeSend,
 }: {
+  /** Per i PDF caricati esiste solo il PDF (nessuna versione Word da allegare). */
+  pdfOnly?: boolean;
   defaultTo: string;
   defaultSubject: string;
   clientName: string;
@@ -46,7 +49,7 @@ function SendDialog({
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    const formats = (["pdf", "docx"] as const).filter((f) => form.get(f) === "on");
+    const formats: ("pdf" | "docx")[] = pdfOnly ? ["pdf"] : (["pdf", "docx"] as const).filter((f) => form.get(f) === "on");
     if (formats.length === 0) return void toast.error("Scegli almeno un formato da allegare.");
     setPending(true);
     try {
@@ -86,15 +89,19 @@ function SendDialog({
               defaultValue={`Buongiorno,\n\nin allegato trova il documento «${defaultSubject}» da leggere e firmare. Per qualsiasi dubbio risponda pure a questa email.\n\nCordiali saluti,\nCORE829 SRL`}
             />
           </Field>
-          <fieldset className="flex flex-wrap gap-4 text-sm">
-            <legend className="mb-1 text-sm font-medium">Allegati</legend>
-            <label className="flex items-center gap-2">
-              <input type="checkbox" name="pdf" defaultChecked className="size-4" /> PDF
-            </label>
-            <label className="flex items-center gap-2">
-              <input type="checkbox" name="docx" className="size-4" /> Word (modificabile)
-            </label>
-          </fieldset>
+          {pdfOnly ? (
+            <p className="text-sm text-muted-foreground">In allegato: il PDF con i testi che hai aggiunto.</p>
+          ) : (
+            <fieldset className="flex flex-wrap gap-4 text-sm">
+              <legend className="mb-1 text-sm font-medium">Allegati</legend>
+              <label className="flex items-center gap-2">
+                <input type="checkbox" name="pdf" defaultChecked className="size-4" /> PDF
+              </label>
+              <label className="flex items-center gap-2">
+                <input type="checkbox" name="docx" className="size-4" /> Word (modificabile)
+              </label>
+            </fieldset>
+          )}
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={onClose} disabled={pending}>
               Annulla

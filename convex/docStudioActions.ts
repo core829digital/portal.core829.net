@@ -17,9 +17,10 @@ import {
   type DocField,
   type DocParagraph,
 } from "./lib/docx";
+import { cleanAnnotations, inspectPdf, MAX_PDF_BYTES, PdfError, stampPdf, type PdfInfo } from "./lib/pdfStamp";
 import { sendEmail } from "./lib/resend";
 import { cleanEmail, cleanText, escapeHtml, invalid } from "./lib/text";
-import { docCategory } from "./lib/validators";
+import { docCategory, pdfAnnotation } from "./lib/validators";
 
 /**
  * Azioni del runtime Node per i documenti (leggere/scrivere DOCX, generare PDF, spedire email con allegati).
@@ -47,6 +48,23 @@ function open(bytes: Uint8Array) {
     return readDocx(bytes);
   } catch (error) {
     if (error instanceof DocxError) return invalid("file", error.message);
+    throw error;
+  }
+}
+
+async function loadPdfBytes(ctx: { storage: { get: (id: Id<"_storage">) => Promise<Blob | null> } }, id: Id<"_storage">): Promise<Uint8Array> {
+  const blob = await ctx.storage.get(id);
+  if (!blob) return invalid("file", "File non trovato.");
+  if (blob.size > MAX_PDF_BYTES) return invalid("file", "Il file supera i 15 MB.");
+  return new Uint8Array(await blob.arrayBuffer());
+}
+
+/** Controlla un PDF trasformando gli errori del motore in errori applicativi leggibili. */
+async function checkPdf(bytes: Uint8Array): Promise<PdfInfo> {
+  try {
+    return await inspectPdf(bytes);
+  } catch (error) {
+    if (error instanceof PdfError) return invalid("file", error.message);
     throw error;
   }
 }
@@ -157,6 +175,7 @@ export const inspectDraft = action({
     await admin(ctx);
     const draft = await ctx.runQuery(internal.docStudio.draftForAction, { draftId: args.draftId });
     if (!draft) return invalid("bozza", "Bozza non trovata.");
+    if (draft.format === "pdf") return invalid("bozza", "Questo documento è un PDF: usa l'editor PDF.");
     const paragraphs = listParagraphs(open(await loadBytes(ctx, draft.storageId)));
     return { paragraphs, fields: detectFields(paragraphs) };
   },
@@ -179,6 +198,7 @@ export const saveDraft = action({
     const draft = await ctx.runQuery(internal.docStudio.draftForAction, { draftId: args.draftId });
     if (!draft) return invalid("bozza", "Bozza non trovata.");
     if (draft.status === "sent") return invalid("bozza", "Il documento è già stato inviato: crea una nuova bozza per modificarlo.");
+    if (draft.format === "pdf") return invalid("bozza", "Questo documento è un PDF: usa l'editor PDF.");
     const original = open(await loadBytes(ctx, draft.storageId));
     const updated = applyChanges(original, {
       edits: Object.fromEntries(args.edits.map((e) => [e.index, e.text])),
@@ -200,6 +220,12 @@ export const previewDraft = action({
     const { actorId } = await admin(ctx);
     const draft = await ctx.runQuery(internal.docStudio.draftForAction, { draftId: args.draftId });
     if (!draft) return invalid("bozza", "Bozza non trovata.");
+    if (draft.format === "pdf") {
+      if (args.format !== "pdf") return invalid("formato", "Un PDF caricato si scarica solo in PDF.");
+      const url = await ctx.storage.getUrl(draft.storageId);
+      if (!url) return invalid("file", "File non disponibile.");
+      return { url, fileName: `${safeName(draft.name)}.pdf` };
+    }
     if (args.format === "docx") {
       const url = await ctx.storage.getUrl(draft.storageId);
       if (!url) return invalid("file", "File non disponibile.");
@@ -235,12 +261,17 @@ export const sendDraft = action({
     const draft = await ctx.runQuery(internal.docStudio.draftForAction, { draftId: args.draftId });
     if (!draft) return invalid("bozza", "Bozza non trovata.");
     if (draft.status === "sent") return invalid("bozza", "Questo documento è già stato inviato.");
-    const docx = await loadBytes(ctx, draft.storageId);
     const base = safeName(draft.name);
 
     const generated: { fileName: string; mimeType: string; bytes: Uint8Array }[] = [];
-    if (formats.includes("pdf")) generated.push({ fileName: `${base}.pdf`, mimeType: PDF_MIME, bytes: await renderPdf(toModel(open(docx)), { title: draft.name }) });
-    if (formats.includes("docx")) generated.push({ fileName: `${base}.docx`, mimeType: DOCX_MIME, bytes: docx });
+    if (draft.format === "pdf") {
+      // PDF caricato: si invia il file con i testi gia' applicati (non esiste una versione Word).
+      generated.push({ fileName: `${base}.pdf`, mimeType: PDF_MIME, bytes: await loadPdfBytes(ctx, draft.storageId) });
+    } else {
+      const docx = await loadBytes(ctx, draft.storageId);
+      if (formats.includes("pdf")) generated.push({ fileName: `${base}.pdf`, mimeType: PDF_MIME, bytes: await renderPdf(toModel(open(docx)), { title: draft.name }) });
+      if (formats.includes("docx")) generated.push({ fileName: `${base}.docx`, mimeType: DOCX_MIME, bytes: docx });
+    }
     if (generated.reduce((n, g) => n + g.bytes.length, 0) > MAX_ATTACH_TOTAL) return invalid("allegati", "Gli allegati superano i 30 MB.");
 
     const html =
@@ -267,5 +298,73 @@ export const sendDraft = action({
     }
     await ctx.runMutation(internal.docStudio.recordSent, { draftId: args.draftId, to, actorId, files });
     return { sentTo: to, attachments: generated.length };
+  },
+});
+
+/** Crea la bozza di un cliente da un PDF gia' pronto caricato (da completare con testi sovrapposti). */
+export const createPdfDraft = action({
+  args: { clientId: v.id("clients"), uploadStorageId: v.id("_storage"), name: v.string(), category: docCategory },
+  handler: async (ctx, args): Promise<{ draftId: Id<"docDrafts"> }> => {
+    const { actorId } = await admin(ctx);
+    try {
+      const { client } = await ctx.runQuery(internal.docStudio.templateAndClient, { clientId: args.clientId });
+      if (!client) return invalid("cliente", "Cliente non trovato.");
+      const name = cleanText(args.name, { field: "nome", min: 1, max: 120 });
+      const bytes = await loadPdfBytes(ctx, args.uploadStorageId);
+      await checkPdf(bytes);
+      // Il file caricato resta intatto (originale); la copia di lavoro e' un oggetto a parte.
+      const working = await storeBlob(ctx, bytes, PDF_MIME);
+      const draftId = await ctx.runMutation(internal.docStudio.insertDraft, {
+        clientId: args.clientId,
+        name,
+        category: args.category,
+        storageId: working,
+        format: "pdf",
+        originalStorageId: args.uploadStorageId,
+        actorId,
+      });
+      return { draftId };
+    } catch (error) {
+      await ctx.storage.delete(args.uploadStorageId).catch(() => undefined);
+      throw error;
+    }
+  },
+});
+
+/** Dati per l'editor PDF: indirizzo del PDF originale, dimensioni delle pagine e testi gia' inseriti. */
+export const pdfEditorData = action({
+  args: { draftId: v.id("docDrafts") },
+  handler: async (ctx, args): Promise<{ url: string; pages: PdfInfo["pages"]; annotations: typeof pdfAnnotation.type[] }> => {
+    await admin(ctx);
+    const draft = await ctx.runQuery(internal.docStudio.draftForAction, { draftId: args.draftId });
+    if (!draft || draft.format !== "pdf" || !draft.originalStorageId) return invalid("bozza", "PDF non trovato.");
+    const info = await checkPdf(await loadPdfBytes(ctx, draft.originalStorageId));
+    const url = await ctx.storage.getUrl(draft.originalStorageId);
+    if (!url) return invalid("file", "File non disponibile.");
+    return { url, pages: info.pages, annotations: draft.annotations };
+  },
+});
+
+/** Salva i testi sovrapposti: riparte sempre dal PDF originale e riscrive il PDF di lavoro. */
+export const savePdf = action({
+  args: { draftId: v.id("docDrafts"), annotations: v.array(pdfAnnotation) },
+  handler: async (ctx, args): Promise<{ annotations: number }> => {
+    const { actorId } = await admin(ctx);
+    const draft = await ctx.runQuery(internal.docStudio.draftForAction, { draftId: args.draftId });
+    if (!draft || draft.format !== "pdf" || !draft.originalStorageId) return invalid("bozza", "PDF non trovato.");
+    if (draft.status === "sent") return invalid("bozza", "Il documento è già stato inviato: crea una nuova bozza per modificarlo.");
+    let stamped: Uint8Array;
+    let kept: typeof args.annotations;
+    try {
+      const original = await loadPdfBytes(ctx, draft.originalStorageId);
+      kept = cleanAnnotations(args.annotations, (await inspectPdf(original)).pages.length);
+      stamped = await stampPdf(original, kept);
+    } catch (error) {
+      if (error instanceof PdfError) return invalid("testi", error.message);
+      throw error;
+    }
+    const storageId = await storeBlob(ctx, stamped, PDF_MIME);
+    await ctx.runMutation(internal.docStudio.patchDraftFile, { draftId: args.draftId, storageId, annotations: kept, actorId });
+    return { annotations: kept.length };
   },
 });

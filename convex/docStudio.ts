@@ -5,7 +5,7 @@ import { audit } from "./lib/audit";
 import { requireAdmin } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { cleanText } from "./lib/text";
-import { docCategory } from "./lib/validators";
+import { docCategory, pdfAnnotation } from "./lib/validators";
 
 /**
  * Studio documenti (solo amministratore): modelli DOCX, bozze per cliente, invio via email.
@@ -87,6 +87,7 @@ export const listDrafts = query({
       clientName: names.get(d.clientId) ?? "Cliente",
       name: d.name,
       category: d.category,
+      format: d.format ?? "docx",
       status: d.status,
       sentAt: d.sentAt ?? null,
       sentTo: d.sentTo ?? null,
@@ -106,6 +107,7 @@ export const getDraft = query({
       id: d._id,
       name: d.name,
       category: d.category,
+      format: d.format ?? "docx",
       status: d.status,
       sentAt: d.sentAt ?? null,
       sentTo: d.sentTo ?? null,
@@ -123,6 +125,7 @@ export const deleteDraft = mutation({
     if (d.status === "sent") return fail("BAD_STATE", "Un documento già inviato non si elimina: resta nel fascicolo del cliente.");
     await ctx.storage.delete(d.storageId);
     if (d.previewStorageId) await ctx.storage.delete(d.previewStorageId);
+    if (d.originalStorageId) await ctx.storage.delete(d.originalStorageId);
     await ctx.db.delete("docDrafts", d._id);
     await audit(ctx, { actorType: "admin", actorId, clientId: d.clientId, action: "doc.draft_deleted", resourceType: "docDraft", resourceId: d._id });
     return null;
@@ -178,6 +181,8 @@ export const insertDraft = internalMutation({
     name: v.string(),
     category: docCategory,
     storageId: v.id("_storage"),
+    format: v.optional(v.union(v.literal("docx"), v.literal("pdf"))),
+    originalStorageId: v.optional(v.id("_storage")),
     actorId: v.string(),
   },
   handler: async (ctx, args): Promise<Id<"docDrafts">> => {
@@ -186,7 +191,10 @@ export const insertDraft = internalMutation({
       templateId: args.templateId,
       name: cleanText(args.name, { field: "nome", min: 1, max: 120 }),
       category: args.category,
+      format: args.format,
       storageId: args.storageId,
+      originalStorageId: args.originalStorageId,
+      annotations: args.format === "pdf" ? [] : undefined,
       status: "draft",
     });
     await audit(ctx, { actorType: "admin", actorId: args.actorId, clientId: args.clientId, action: "doc.draft_created", resourceType: "docDraft", resourceId: id });
@@ -205,7 +213,10 @@ export const draftForAction = internalQuery({
       clientId: d.clientId,
       name: d.name,
       category: d.category,
+      format: d.format ?? "docx",
       storageId: d.storageId,
+      originalStorageId: d.originalStorageId ?? null,
+      annotations: d.annotations ?? [],
       previewStorageId: d.previewStorageId ?? null,
       status: d.status,
       clientEmail: client?.email ?? null,
@@ -215,7 +226,13 @@ export const draftForAction = internalQuery({
 });
 
 export const patchDraftFile = internalMutation({
-  args: { draftId: v.id("docDrafts"), storageId: v.optional(v.id("_storage")), previewStorageId: v.optional(v.id("_storage")), actorId: v.string() },
+  args: {
+    draftId: v.id("docDrafts"),
+    storageId: v.optional(v.id("_storage")),
+    previewStorageId: v.optional(v.id("_storage")),
+    annotations: v.optional(v.array(pdfAnnotation)),
+    actorId: v.string(),
+  },
   handler: async (ctx, args): Promise<null> => {
     const d = await ctx.db.get("docDrafts", args.draftId);
     if (!d) return null;
@@ -228,6 +245,7 @@ export const patchDraftFile = internalMutation({
       if (d.previewStorageId) await ctx.storage.delete(d.previewStorageId);
       patch.previewStorageId = args.previewStorageId;
     }
+    if (args.annotations) patch.annotations = args.annotations;
     await ctx.db.patch("docDrafts", d._id, patch);
     if (args.storageId) {
       await audit(ctx, { actorType: "admin", actorId: args.actorId, clientId: d.clientId, action: "doc.draft_saved", resourceType: "docDraft", resourceId: d._id });

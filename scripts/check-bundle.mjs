@@ -31,16 +31,34 @@ try {
   process.exit(2);
 }
 
-const sizes = files
-  .map((f) => ({ file: f.replace(".next/static/", ""), kb: gzipSync(readFileSync(f)).length / 1024 }))
-  .sort((a, b) => b.kb - a.kb);
+// pdf.js (visualizzatore PDF dell'editor) e' caricato SOLO quando si apre un PDF nell'editor, non nelle altre pagine:
+// ha un tetto a parte, cosi' non gonfia il peso delle pagine normali. Si riconosce dal contenuto.
+const BUDGET_PDF_KB = Number(process.env.BUNDLE_BUDGET_PDF_KB ?? 350);
+const PDF_MARKER = /WorkerMessageHandler|GlobalWorkerOptions|pdfjsVersion/;
+
+const all = files.map((f) => {
+  const raw = readFileSync(f);
+  return { file: f.replace(".next/static/", ""), kb: gzipSync(raw).length / 1024, pdf: PDF_MARKER.test(raw.toString("utf8")) };
+});
+const sizes = all.filter((s) => !s.pdf).sort((a, b) => b.kb - a.kb);
+const pdfSizes = all.filter((s) => s.pdf);
 const total = sizes.reduce((sum, s) => sum + s.kb, 0);
+const pdfTotal = pdfSizes.reduce((sum, s) => sum + s.kb, 0);
 
 console.log(`JavaScript del client: ${total.toFixed(0)} KB (gzip) in ${sizes.length} file. Tetto: ${BUDGET_TOTAL_KB} KB.`);
+console.log(`Visualizzatore PDF (solo nell'editor PDF): ${pdfTotal.toFixed(0)} KB in ${pdfSizes.length} file. Tetto: ${BUDGET_PDF_KB} KB.`);
 console.log("I 5 piu' pesanti:");
 for (const s of sizes.slice(0, 5)) console.log(`  ${s.kb.toFixed(1).padStart(7)} KB  ${s.file}`);
 
-if (!process.argv.includes("--report") && total > BUDGET_TOTAL_KB) {
-  console.error(`\nSuperato il tetto di ${BUDGET_TOTAL_KB} KB di ${(total - BUDGET_TOTAL_KB).toFixed(0)} KB. Controlla cosa e' stato aggiunto.`);
-  process.exit(1);
+if (!process.argv.includes("--report")) {
+  let failed = false;
+  if (total > BUDGET_TOTAL_KB) {
+    console.error(`\nSuperato il tetto di ${BUDGET_TOTAL_KB} KB di ${(total - BUDGET_TOTAL_KB).toFixed(0)} KB. Controlla cosa e' stato aggiunto.`);
+    failed = true;
+  }
+  if (pdfTotal > BUDGET_PDF_KB) {
+    console.error(`\nIl visualizzatore PDF supera il tetto di ${BUDGET_PDF_KB} KB di ${(pdfTotal - BUDGET_PDF_KB).toFixed(0)} KB.`);
+    failed = true;
+  }
+  if (failed) process.exit(1);
 }

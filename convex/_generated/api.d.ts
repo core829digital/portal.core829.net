@@ -45,6 +45,8 @@ import type * as lib_logoPng from "../lib/logoPng.js";
 import type * as lib_metrics from "../lib/metrics.js";
 import type * as lib_otpLimits from "../lib/otpLimits.js";
 import type * as lib_overview from "../lib/overview.js";
+import type * as lib_pdfAnnotations from "../lib/pdfAnnotations.js";
+import type * as lib_pdfStamp from "../lib/pdfStamp.js";
 import type * as lib_reminders from "../lib/reminders.js";
 import type * as lib_resend from "../lib/resend.js";
 import type * as lib_text from "../lib/text.js";
@@ -94,6 +96,8 @@ declare const fullApi: ApiFromModules<{
   "lib/metrics": typeof lib_metrics;
   "lib/otpLimits": typeof lib_otpLimits;
   "lib/overview": typeof lib_overview;
+  "lib/pdfAnnotations": typeof lib_pdfAnnotations;
+  "lib/pdfStamp": typeof lib_pdfStamp;
   "lib/reminders": typeof lib_reminders;
   "lib/resend": typeof lib_resend;
   "lib/text": typeof lib_text;

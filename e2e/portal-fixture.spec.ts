@@ -159,3 +159,104 @@ test("editor documenti: la finestra di invio propone email del cliente, oggetto 
   await dialog.getByRole("button", { name: "Invia ora" }).click();
   await expect(page.getByText("Scegli almeno un formato da allegare.")).toBeVisible();
 });
+
+// ---- Editor PDF (PDF di prova generato dal server di prova) ----
+
+async function openPdfEditor(page: import("@playwright/test").Page) {
+  await page.goto("/c/fixture/pdf-editor");
+  const sheet = page.getByTestId("pdf-page");
+  await expect(sheet).toBeVisible();
+  // Aspetta che pdf.js abbia davvero disegnato la pagina (il canvas non e' piu' tutto bianco).
+  await expect
+    .poll(async () => page.evaluate(() => {
+      const c = document.querySelector<HTMLCanvasElement>("[data-testid=pdf-page] canvas");
+      if (!c) return false;
+      const d = c.getContext("2d")!.getImageData(0, 0, c.width, c.height).data;
+      for (let i = 0; i < d.length; i += 4 * 97) if (d[i] < 200) return true;
+      return false;
+    }), { timeout: 15000 })
+    .toBe(true);
+  return sheet;
+}
+const saved = async (page: import("@playwright/test").Page) => JSON.parse((await page.getByTestId("saved").textContent()) || "[]") as { page: number; x: number; y: number; text: string; size: number; color: string; bold: boolean }[];
+
+test("editor PDF: mostra la pagina, nessuna violazione WCAG, nessuno scorrimento orizzontale", async ({ page }) => {
+  await openPdfEditor(page);
+  const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
+  expect(results.violations.map((v) => `${v.id}: ${v.help} (${v.nodes.length})`)).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBe(false);
+});
+
+test("editor PDF: un clic aggiunge un testo nel punto giusto e il salvataggio lo restituisce in coordinate relative", async ({ page }) => {
+  const sheet = await openPdfEditor(page);
+  const box = (await sheet.boundingBox())!;
+  await sheet.click({ position: { x: box.width * 0.4, y: box.height * 0.5 } });
+  const note = page.getByRole("textbox", { name: "Testo sulla pagina 1" });
+  await expect(note).toBeFocused();
+  await note.fill("Mario Rossi");
+  await expect(page.getByText("Modifiche non salvate")).toBeVisible();
+  await page.getByRole("button", { name: "Salva" }).click();
+  await expect(page.getByText("Modifiche non salvate")).toHaveCount(0);
+  const [a] = await saved(page);
+  expect(a).toMatchObject({ page: 0, text: "Mario Rossi", size: 12, color: "black", bold: false });
+  expect(a.x).toBeCloseTo(0.4, 1);
+  expect(a.y).toBeCloseTo(0.5, 1);
+});
+
+test("editor PDF: la maniglia sposta il testo col mouse e con le frecce, Canc lo elimina", async ({ page, isMobile }) => {
+  test.skip(isMobile, "il trascinamento con il mouse si prova su desktop");
+  const sheet = await openPdfEditor(page);
+  const box = (await sheet.boundingBox())!;
+  await page.getByRole("button", { name: "Aggiungi testo" }).click();
+  const handle = page.getByRole("button", { name: /Sposta il testo/ });
+  const h = (await handle.boundingBox())!;
+  await page.mouse.move(h.x + h.width / 2, h.y + h.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(h.x + h.width / 2 + box.width * 0.3, h.y + h.height / 2 + box.height * 0.2, { steps: 6 });
+  await page.mouse.up();
+  await page.getByRole("button", { name: "Salva" }).click();
+  let [a] = await saved(page);
+  expect(a.x).toBeCloseTo(0.4, 1); // 0,1 + 0,3
+  expect(a.y).toBeCloseTo(0.3, 1); // 0,1 + 0,2
+
+  await handle.focus();
+  for (let i = 0; i < 3; i++) await page.keyboard.press("ArrowRight");
+  await page.getByRole("button", { name: "Salva" }).click();
+  [a] = await saved(page);
+  expect(a.x).toBeCloseTo(0.415, 2);
+
+  await handle.focus();
+  await page.keyboard.press("Delete");
+  await expect(page.getByRole("textbox", { name: "Testo sulla pagina 1" })).toHaveCount(0);
+});
+
+test("editor PDF: corpo, colore e grassetto del testo selezionato; testi rapidi; pagina successiva", async ({ page }) => {
+  await openPdfEditor(page);
+  await page.getByRole("button", { name: "Data di oggi" }).click();
+  await expect(page.getByRole("textbox", { name: "Testo sulla pagina 1" })).toHaveValue("12/11/2026");
+  await page.getByLabel("Dimensione del testo").selectOption("24");
+  await page.getByLabel("Colore del testo").selectOption("red");
+  await page.getByRole("button", { name: "Grassetto" }).click();
+  await expect(page.getByRole("button", { name: "Grassetto" })).toHaveAttribute("aria-pressed", "true");
+
+  await page.getByRole("button", { name: "Successiva" }).click();
+  await expect(page.getByText("Pagina 2 di 2")).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "Testo sulla pagina 1" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Nome cliente" }).click();
+  await expect(page.getByRole("textbox", { name: "Testo sulla pagina 2" })).toHaveValue("Caffè Rosso Srl");
+
+  await page.getByRole("button", { name: "Salva" }).click();
+  const all = await saved(page);
+  expect(all).toHaveLength(2);
+  expect(all.find((n) => n.page === 0)).toMatchObject({ text: "12/11/2026", size: 24, color: "red", bold: true });
+  expect(all.find((n) => n.page === 1)).toMatchObject({ text: "Caffè Rosso Srl" });
+});
+
+test("editor PDF: l'invio e' solo PDF (nessuna scelta del Word)", async ({ page }) => {
+  await openPdfEditor(page);
+  await page.getByRole("button", { name: "Invia al cliente" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByLabel("Destinatario")).toHaveValue("mario@caffe.it");
+  await expect(dialog.getByText("In allegato: il PDF con i testi che hai aggiunto.")).toBeVisible();
+  await expect(dialog.getByRole("checkbox")).toHaveCount(0);
+});

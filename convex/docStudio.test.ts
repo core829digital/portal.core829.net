@@ -3,6 +3,8 @@ import { convexTest } from "convex-test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
+import { PDFDocument, degrees } from "pdf-lib";
+import * as pdfjs from "pdfjs-dist/legacy/build/pdf.mjs";
 import { createBlankDocx, detectFields, listParagraphs, readDocx } from "./lib/docx";
 import schema from "./schema";
 
@@ -221,6 +223,141 @@ describe("invio al cliente", () => {
     delete process.env.RESEND_API_KEY;
     await expect(h.admin.action(api.docStudioActions.sendDraft, args(draftId))).rejects.toThrow();
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+async function pdfBytes(pages = 2, rotate = 0): Promise<Uint8Array> {
+  const pdf = await PDFDocument.create();
+  for (let i = 0; i < pages; i++) {
+    const p = pdf.addPage([595.28, 841.89]);
+    p.drawText(`Originale ${i + 1}`, { x: 60, y: 780, size: 14 });
+    if (rotate) p.setRotation(degrees(rotate));
+  }
+  return pdf.save();
+}
+
+async function pdfTexts(bytes: Uint8Array, pageNumber: number): Promise<string[]> {
+  const doc = await pdfjs.getDocument({ data: new Uint8Array(bytes), useSystemFonts: true } as Parameters<typeof pdfjs.getDocument>[0]).promise;
+  const content = await (await doc.getPage(pageNumber)).getTextContent();
+  return content.items.filter((i): i is typeof i & { str: string } => "str" in i).map((i) => i.str).filter((t) => t.trim() !== "");
+}
+
+const note = (extra: Record<string, unknown> = {}) => ({ page: 0, x: 0.3, y: 0.4, text: "Mario Rossi", size: 12, color: "black" as const, bold: false, ...extra });
+
+describe("PDF gia' pronti (editor PDF)", () => {
+  async function pdfDraft(h: Awaited<ReturnType<typeof setup>>) {
+    const uploadStorageId = await store(h.t, await pdfBytes(), "application/pdf");
+    const { draftId } = await h.admin.action(api.docStudioActions.createPdfDraft, { clientId: h.clientId, uploadStorageId, name: "Preventivo del fornitore", category: "quote" });
+    return { draftId, uploadStorageId };
+  }
+
+  it("crea la bozza da un PDF caricato, tenendo intatto l'originale e una copia di lavoro separata", async () => {
+    const h = await setup();
+    const { draftId, uploadStorageId } = await pdfDraft(h);
+    const row = (await h.t.run((ctx) => ctx.db.get("docDrafts", draftId)))!;
+    expect(row).toMatchObject({ format: "pdf", status: "draft", category: "quote", annotations: [] });
+    expect(row.originalStorageId).toBe(uploadStorageId);
+    expect(row.storageId).not.toBe(uploadStorageId);
+    expect((await h.admin.query(api.docStudio.getDraft, { draftId }))?.format).toBe("pdf");
+    const data = await h.admin.action(api.docStudioActions.pdfEditorData, { draftId });
+    expect(data.pages).toHaveLength(2);
+    expect(data.annotations).toEqual([]);
+    expect(data.url).toBeTruthy();
+  });
+
+  it("rifiuta file che non sono PDF e PDF con pagine ruotate, e non li lascia in archivio", async () => {
+    const h = await setup();
+    const fake = await store(h.t, new TextEncoder().encode("non sono un pdf ".repeat(20)), "text/plain");
+    await expect(h.admin.action(api.docStudioActions.createPdfDraft, { clientId: h.clientId, uploadStorageId: fake, name: "X", category: "other" })).rejects.toThrow();
+    expect(await exists(h.t, fake)).toBe(false);
+    const rotated = await store(h.t, await pdfBytes(1, 90), "application/pdf");
+    await expect(h.admin.action(api.docStudioActions.createPdfDraft, { clientId: h.clientId, uploadStorageId: rotated, name: "X", category: "other" })).rejects.toThrow();
+    expect(await exists(h.t, rotated)).toBe(false);
+    expect(await h.admin.query(api.docStudio.listDrafts, {})).toHaveLength(0);
+  });
+
+  it("salva i testi sovrapposti ripartendo sempre dall'originale", async () => {
+    const h = await setup();
+    const { draftId, uploadStorageId } = await pdfDraft(h);
+    const original = await bytesOf(h.t, uploadStorageId);
+    const before = (await h.t.run((ctx) => ctx.db.get("docDrafts", draftId)))!.storageId;
+
+    expect(await h.admin.action(api.docStudioActions.savePdf, { draftId, annotations: [note(), note({ page: 1, text: "Seconda pagina", bold: true }), note({ text: "   " })] })).toEqual({ annotations: 2 });
+    const row = (await h.t.run((ctx) => ctx.db.get("docDrafts", draftId)))!;
+    expect(row.storageId).not.toBe(before);
+    expect(await exists(h.t, before)).toBe(false);
+    expect(row.annotations).toHaveLength(2);
+    const stamped = await bytesOf(h.t, row.storageId);
+    expect(await pdfTexts(stamped, 1)).toContain("Mario Rossi");
+    expect(await pdfTexts(stamped, 2)).toContain("Seconda pagina");
+    expect(await bytesOf(h.t, uploadStorageId)).toEqual(original); // l'originale non cambia mai
+
+    // Un secondo salvataggio con meno testi non porta con se' quelli di prima.
+    await h.admin.action(api.docStudioActions.savePdf, { draftId, annotations: [note({ text: "Solo questo" })] });
+    const again = await bytesOf(h.t, (await h.t.run((ctx) => ctx.db.get("docDrafts", draftId)))!.storageId);
+    expect(await pdfTexts(again, 1)).toContain("Solo questo");
+    expect(await pdfTexts(again, 1)).not.toContain("Mario Rossi");
+    expect(await pdfTexts(again, 2)).not.toContain("Seconda pagina");
+  });
+
+  it("rifiuta una pagina inesistente senza cambiare nulla", async () => {
+    const h = await setup();
+    const { draftId } = await pdfDraft(h);
+    const before = (await h.t.run((ctx) => ctx.db.get("docDrafts", draftId)))!.storageId;
+    await expect(h.admin.action(api.docStudioActions.savePdf, { draftId, annotations: [note({ page: 9 })] })).rejects.toThrow();
+    expect((await h.t.run((ctx) => ctx.db.get("docDrafts", draftId)))!.storageId).toBe(before);
+  });
+
+  it("le funzioni del Word non si applicano a un PDF e il PDF si apre solo come PDF", async () => {
+    const h = await setup();
+    const { draftId } = await pdfDraft(h);
+    await expect(h.admin.action(api.docStudioActions.inspectDraft, { draftId })).rejects.toThrow();
+    await expect(h.admin.action(api.docStudioActions.saveDraft, { draftId, edits: [], deletes: [], inserts: [], fills: [] })).rejects.toThrow();
+    await expect(h.admin.action(api.docStudioActions.previewDraft, { draftId, format: "docx" })).rejects.toThrow();
+    expect((await h.admin.action(api.docStudioActions.previewDraft, { draftId, format: "pdf" })).fileName).toMatch(/\.pdf$/);
+    // Il contrario: un Word non e' un PDF.
+    const { templateId } = await template(h);
+    const docxDraft = (await h.admin.action(api.docStudioActions.createDraft, { clientId: h.clientId, templateId })).draftId;
+    await expect(h.admin.action(api.docStudioActions.pdfEditorData, { draftId: docxDraft })).rejects.toThrow();
+    await expect(h.admin.action(api.docStudioActions.savePdf, { draftId: docxDraft, annotations: [] })).rejects.toThrow();
+  });
+
+  it("invia il PDF con i testi applicati come unico allegato e lo archivia nel fascicolo; poi e' bloccato", async () => {
+    const h = await setup();
+    const { draftId } = await pdfDraft(h);
+    await h.admin.action(api.docStudioActions.savePdf, { draftId, annotations: [note({ text: "Firmato per accettazione" })] });
+    const fetchMock = vi.fn().mockResolvedValue(new Response("{}", { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    // Anche se la richiesta chiede il Word, per un PDF parte solo il PDF.
+    expect(await h.admin.action(api.docStudioActions.sendDraft, { draftId, to: "mario@caffe.it", subject: "Preventivo", message: "In allegato", formats: ["docx"] })).toMatchObject({ attachments: 1 });
+    const body = JSON.parse((fetchMock.mock.calls[0] as [string, RequestInit])[1].body as string);
+    expect(body.attachments).toHaveLength(1);
+    expect(body.attachments[0].filename).toMatch(/\.pdf$/);
+    expect(await pdfTexts(new Uint8Array(Buffer.from(body.attachments[0].content, "base64")), 1)).toContain("Firmato per accettazione");
+    const docs = await h.t.run((ctx) => ctx.db.query("documents").collect());
+    expect(docs).toHaveLength(1);
+    expect(docs[0]).toMatchObject({ kind: "quote", mimeType: "application/pdf", scanStatus: "clean" });
+    await expect(h.admin.action(api.docStudioActions.savePdf, { draftId, annotations: [] })).rejects.toThrow();
+    await expect(h.admin.mutation(api.docStudio.deleteDraft, { draftId })).rejects.toThrow();
+  });
+
+  it("eliminare una bozza PDF toglie anche il file originale", async () => {
+    const h = await setup();
+    const { draftId, uploadStorageId } = await pdfDraft(h);
+    await h.admin.mutation(api.docStudio.deleteDraft, { draftId });
+    expect(await exists(h.t, uploadStorageId)).toBe(false);
+  });
+
+  it("chi non e' amministratore non puo' usare l'editor PDF", async () => {
+    const h = await setup();
+    const { draftId } = await pdfDraft(h);
+    const upload = await store(h.t, await pdfBytes(), "application/pdf");
+    for (const caller of [h.other, h.t] as unknown as (typeof h.admin)[]) {
+      await expect(caller.action(api.docStudioActions.createPdfDraft, { clientId: h.clientId, uploadStorageId: upload, name: "X", category: "other" })).rejects.toThrow();
+      await expect(caller.action(api.docStudioActions.pdfEditorData, { draftId })).rejects.toThrow();
+      await expect(caller.action(api.docStudioActions.savePdf, { draftId, annotations: [note()] })).rejects.toThrow();
+    }
+    expect((await h.t.run((ctx) => ctx.db.get("docDrafts", draftId)))!.annotations).toEqual([]);
   });
 });
 

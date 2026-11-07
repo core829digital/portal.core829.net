@@ -18,7 +18,7 @@ import { errorMessage } from "@/lib/errors";
 import { formatBytes, formatDate } from "@/lib/format";
 import { docCategoryLabel } from "@/lib/labels";
 import { toast } from "@/lib/toast";
-import { DOCX_EXTENSION, uploadToStorage } from "@/lib/upload";
+import { DOCX_EXTENSION, PDF_EXTENSION, uploadToStorage } from "@/lib/upload";
 
 type Category = keyof typeof docCategoryLabel;
 
@@ -95,6 +95,7 @@ export function NewDraftDialog({ onClose, clientId, templateId }: { onClose: () 
   const clients = useQuery(api.clients.list, clientId ? "skip" : { paginationOpts: { numItems: 100, cursor: null } });
   const uploadUrl = useMutation(api.docStudio.uploadUrl);
   const createDraft = useAction(api.docStudioActions.createDraft);
+  const createPdfDraft = useAction(api.docStudioActions.createPdfDraft);
   const [pending, setPending] = useState(false);
   const [source, setSource] = useState<"template" | "upload">("template");
 
@@ -112,14 +113,14 @@ export function NewDraftDialog({ onClose, clientId, templateId }: { onClose: () 
         result = await createDraft({ clientId: chosenClient, templateId: chosen, name: String(form.get("name") ?? "").trim() || undefined });
       } else {
         const file = form.get("file");
-        if (!(file instanceof File) || file.size === 0 || !DOCX_EXTENSION.test(file.name)) return void toast.error("Carica un file Word (.docx).");
-        const storageId = await uploadToStorage(await uploadUrl({}), file);
-        result = await createDraft({
-          clientId: chosenClient,
-          uploadStorageId: storageId as Id<"_storage">,
-          name: String(form.get("name") ?? "").trim() || file.name.replace(DOCX_EXTENSION, ""),
-          category: form.get("category") as Category,
-        });
+        const isPdf = file instanceof File && PDF_EXTENSION.test(file.name);
+        if (!(file instanceof File) || file.size === 0 || !(isPdf || DOCX_EXTENSION.test(file.name))) return void toast.error("Carica un file Word (.docx) o un PDF.");
+        const storageId = (await uploadToStorage(await uploadUrl({}), file)) as Id<"_storage">;
+        const name = String(form.get("name") ?? "").trim() || file.name.replace(/\.(docx|pdf)$/i, "");
+        const category = form.get("category") as Category;
+        result = isPdf
+          ? await createPdfDraft({ clientId: chosenClient, uploadStorageId: storageId, name, category })
+          : await createDraft({ clientId: chosenClient, uploadStorageId: storageId, name, category });
       }
       router.push(`/admin/drafts/${result.draftId}`);
     } catch (error) {
@@ -134,7 +135,7 @@ export function NewDraftDialog({ onClose, clientId, templateId }: { onClose: () 
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Nuovo documento per un cliente</DialogTitle>
-          <DialogDescription>Parte da un modello (con i dati del cliente già inseriti) oppure da un file Word che carichi ora.</DialogDescription>
+          <DialogDescription>Parte da un modello (con i dati del cliente già inseriti) oppure da un file Word o PDF che carichi ora.</DialogDescription>
         </DialogHeader>
         <form onSubmit={onSubmit} className="grid gap-4" noValidate>
           {!clientId ? (
@@ -155,7 +156,7 @@ export function NewDraftDialog({ onClose, clientId, templateId }: { onClose: () 
             <Field id="source" label="Origine">
               <NativeSelect id="source" value={source} onChange={(e) => setSource(e.target.value as "template" | "upload")}>
                 <option value="template">Da un modello</option>
-                <option value="upload">Da un file Word caricato</option>
+                <option value="upload">Da un file caricato (Word o PDF)</option>
               </NativeSelect>
             </Field>
           ) : null}
@@ -175,8 +176,8 @@ export function NewDraftDialog({ onClose, clientId, templateId }: { onClose: () 
           ) : null}
           {source === "upload" ? (
             <>
-              <Field id="file" label="File DOCX">
-                <Input id="file" name="file" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" required />
+              <Field id="file" label="File Word (.docx) o PDF" hint="Un Word si modifica come testo e campi; un PDF si completa aggiungendo testi sopra la pagina.">
+                <Input id="file" name="file" type="file" accept=".docx,.pdf,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" required />
               </Field>
               <Field id="category" label="Tipo">
                 <NativeSelect id="category" name="category" defaultValue="other">

@@ -6,6 +6,7 @@ import {
   clientStatus,
   currency,
   docCategory,
+  pdfAnnotation,
   documentKind,
   invoiceStatus,
   packageType,
@@ -211,8 +212,14 @@ export default defineSchema({
     templateId: v.optional(v.id("docTemplates")),
     name: v.string(),
     category: docCategory,
-    /** DOCX corrente della bozza. */
+    /** "docx" (predefinito) = documento Word modificabile; "pdf" = PDF caricato con testi sovrapposti. */
+    format: v.optional(v.union(v.literal("docx"), v.literal("pdf"))),
+    /** File corrente: il DOCX della bozza, oppure il PDF con i testi gia' applicati. */
     storageId: v.id("_storage"),
+    /** Solo PDF: il file caricato, mai modificato (ogni salvataggio riparte da qui). */
+    originalStorageId: v.optional(v.id("_storage")),
+    /** Solo PDF: i testi sovrapposti, per poterli modificare ancora. */
+    annotations: v.optional(v.array(pdfAnnotation)),
     /** Ultima anteprima PDF generata (si cancella alla successiva). */
     previewStorageId: v.optional(v.id("_storage")),
     status: v.union(v.literal("draft"), v.literal("sent")),
