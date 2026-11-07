@@ -12,15 +12,15 @@ Non promette sicurezza assoluta: riduce il rischio e rende le scelte verificabil
 ## Stato per voce OWASP Top 10 (2021)
 | Voce | Misure | Stato |
 |---|---|---|
-| A01 Controllo degli accessi | Ogni funzione verifica ruolo e proprieta' lato server; test "cliente A non legge cliente B" | Fase 2 |
-| A02 Crittografia | HTTPS forzato (HSTS), token e codici salvati come hash | HSTS fatto, hash Fase 2 |
+| A01 Controllo degli accessi | `requireAdmin` come prima istruzione di ogni funzione admin; il portale ricava il cliente solo dal link, risposte costruite campo per campo; test "il cliente A non legge il cliente B" | **Fatto e testato** |
+| A02 Crittografia | HTTPS forzato (HSTS); token (256 bit), sessioni e codici salvati solo come hash SHA-256; confronto a tempo costante | **Fatto e testato** |
 | A03 Injection / XSS | Validatori Convex, `cleanText` (normalizzazione, invisibili/bidi, lunghezze), `escapeHtml`, CSP con nonce, lint contro `dangerouslySetInnerHTML` ed `eval` | **Fatto e testato** |
-| A04 Design insicuro | Link magico + codice per i documenti, scadenze, revoca, limiti di tentativi | Fasi 2 e 4 |
+| A04 Design insicuro | Link magico + codice per i documenti, scadenze, revoca, limiti di tentativi | Dati e regole fatti (Fase 2); interfaccia Fase 4 |
 | A05 Configurazione errata | Header di sicurezza, `X-Powered-By` disattivato, errori generici senza dettagli tecnici, `noindex` | **Fatto e verificato su server reale** |
 | A06 Componenti vulnerabili | `npm audit --omit=dev` in CI, Dependabot settimanale | **Fatto** |
-| A07 Autenticazione | Limite di 5 tentativi per codice, scadenza breve | Fase 2 |
+| A07 Autenticazione | 5 tentativi per codice, codice valido 10 minuti, max 3 codici ogni 15 minuti e 10 al giorno per link (circa 50 tentativi/giorno su 1.000.000 di combinazioni) | **Fatto e testato** |
 | A08 Integrita' | Controllo anti Trojan Source in CI, lockfile, webhook con firma HMAC | Controllo fatto, webhook Fase 7 |
-| A09 Log e monitoraggio | Registro di audit di accessi e azioni admin | Fase 2 |
+| A09 Log e monitoraggio | Registro di audit di ogni azione admin e di accessi/codici del cliente; vietati segreti nei metadati | **Fatto e testato** |
 | A10 SSRF | Nessuna richiesta server verso URL forniti dall'utente; i link esterni passano da `cleanHttpsUrl` (solo https) | Fatto |
 
 ## Header e CSP (verificati con `next start`)
@@ -41,6 +41,20 @@ La CSP e' generata per richiesta in `src/proxy.ts` con nonce nuovo a ogni rispos
 ## Limiti noti
 - Il metodo HTTP `TRACE` produce una risposta 500 invece di 405 (nessuna fuga di dati). Da bloccare con una
   regola del firewall di Vercel in Fase 9.
+
+## Dettagli di progettazione importanti
+- **Errori e scritture in Convex:** un errore lanciato in una mutazione annulla tutte le sue scritture. Per questo
+  i tentativi errati di codice *restituiscono un risultato* invece di lanciare: altrimenti il contatore sparirebbe e
+  si potrebbe provare all'infinito. Esiste un test dedicato.
+- **Scadenze senza orologio nelle query:** le query di Convex non devono leggere l'ora. La scadenza dei link e
+  delle sessioni e' applicata da lavori periodici (`convex/crons.ts`, ogni 10 minuti): una scadenza puo' quindi
+  applicarsi con un ritardo massimo di circa 10 minuti. La **revoca** manuale e' invece immediata.
+- **Stesso errore per ogni link non valido:** inesistente, scaduto, revocato o malformato non si distinguono.
+- **Elenchi sempre limitati** (`take`), mai `collect()` senza limite.
+
+## Comandi da conoscere (dopo il collegamento a Convex)
+- Primo amministratore: `npx convex run admins:bootstrap '{"email":"nome@dominio.it"}'`
+- Prova della crittografia nel runtime reale: `npx convex run health:cryptoSelfTest` (tutti i valori devono essere `true`)
 
 ## Regole per chi sviluppa
 1. Mai `dangerouslySetInnerHTML`, `eval`, `new Function` (il lint lo vieta).

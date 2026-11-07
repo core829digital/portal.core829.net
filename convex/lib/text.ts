@@ -115,6 +115,13 @@ export function cleanHttpsUrl(raw: unknown, field = "link"): string {
   return u.href;
 }
 
+/** Partita IVA / codice fiscale / CUI: lettere, cifre, spazi, punto e trattino. */
+export function cleanVatId(raw: unknown, field = "partita IVA"): string {
+  const s = cleanText(raw, { field, min: 4, max: 32 });
+  if (!/^[A-Za-z0-9 .-]{4,32}$/.test(s)) invalid(field, "Valore non valido.");
+  return s.toUpperCase();
+}
+
 /** Importo in centesimi: intero, non negativo, massimo 10 milioni di euro. */
 export function assertCents(raw: unknown, field = "importo"): number {
   if (typeof raw !== "number" || !Number.isSafeInteger(raw)) invalid(field, "Importo non valido.");
