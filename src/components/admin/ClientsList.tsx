@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { api } from "@convex/_generated/api";
 import { CreateClientDialog } from "@/components/admin/CreateClientDialog";
 import { NativeSelect } from "@/components/admin/Field";
+import { PageHeader } from "@/components/dash/DashShell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,13 +33,10 @@ export function ClientsList() {
   }, [results, search]);
 
   return (
-    <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight">Clienti</h1>
-        <CreateClientDialog />
-      </div>
+    <>
+      <PageHeader kicker="Clienti" title="Tutti i clienti" description="Apri un cliente per vedere progetti, fatture, abbonamenti, documenti e link." actions={<CreateClientDialog />} />
 
-      <div className="mb-4 flex flex-wrap gap-3">
+      <div className="flex flex-wrap gap-3">
         <Input
           type="search"
           placeholder="Cerca per nome o email"
@@ -69,11 +67,11 @@ export function ClientsList() {
           <Skeleton className="h-10 w-full" />
         </div>
       ) : visible.length === 0 ? (
-        <p className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
+        <p className="rounded-2xl border border-dashed bg-card p-8 text-center text-sm text-muted-foreground">
           {results.length === 0 ? "Nessun cliente ancora. Crea il primo con «Nuovo cliente»." : "Nessun cliente corrisponde alla ricerca."}
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border">
+        <div className="reveal overflow-x-auto rounded-2xl bg-card ring-1 ring-foreground/10 shadow-(--shadow-soft)">
           <Table>
             <TableHeader>
               <TableRow>
@@ -107,12 +105,12 @@ export function ClientsList() {
       )}
 
       {loadStatus === "CanLoadMore" ? (
-        <div className="mt-4 flex justify-center">
+        <div className="flex justify-center">
           <Button variant="outline" onClick={() => loadMore(25)}>
             Carica altri
           </Button>
         </div>
       ) : null}
-    </main>
+    </>
   );
 }

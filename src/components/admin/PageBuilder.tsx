@@ -8,7 +8,7 @@ import type { Id } from "@convex/_generated/dataModel";
 import { CORE_WIDGET_TYPES, FREE_WIDGET_TYPES, MAX_WIDGETS, WIDGET_LABEL, type Widget, type WidgetType } from "@convex/lib/widgets";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { Field, NativeSelect, TextField } from "@/components/admin/Field";
-import { PortalPage } from "@/components/portal/PortalPage";
+import { PortalPreview } from "@/components/portal/PortalPages";
 import { ErrorBoundary } from "@/components/portal/ErrorBoundary";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -105,7 +105,7 @@ function Preview({ clientId, widgets }: { clientId: Id<"clients">; widgets: Widg
   const data = useQuery(api.pages.preview, { clientId, widgets });
   if (data === undefined) return <Skeleton className="h-40 w-full" />;
   if (data === null) return <p className="text-sm text-muted-foreground">Cliente non trovato.</p>;
-  return <PortalPage data={data} documents={<DocumentsPreviewPlaceholder />} />;
+  return <PortalPreview data={data} documents={<DocumentsPreviewPlaceholder />} />;
 }
 
 export function PageBuilder({ clientId }: { clientId: Id<"clients"> }) {

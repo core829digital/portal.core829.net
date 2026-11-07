@@ -5,6 +5,7 @@ import { ExternalLink } from "lucide-react";
 import type { ReactNode } from "react";
 import { api } from "@convex/_generated/api";
 import type { Widget } from "@convex/lib/widgets";
+import { PageHeader } from "@/components/dash/DashShell";
 import { ProgressBar } from "@/components/ProgressBar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,10 +17,10 @@ import { ONBOARDING_FLAG_KEY } from "@/lib/onboardingFlag";
 
 export type PortalData = FunctionReturnType<typeof api.portal.overview>;
 
-function Section({ id, title, children }: { id: string; title: string; children: ReactNode }) {
+export function Section({ id, title, children }: { id: string; title: string; children: ReactNode }) {
   return (
-    <section aria-labelledby={id} className="space-y-4">
-      <h2 id={id} className="text-xl font-semibold tracking-tight">
+    <section aria-labelledby={id} className="reveal space-y-4">
+      <h2 id={id} className="font-display text-lg tracking-tight">
         {title}
       </h2>
       {children}
@@ -28,25 +29,24 @@ function Section({ id, title, children }: { id: string; title: string; children:
 }
 
 function Empty({ children }: { children: ReactNode }) {
-  return <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">{children}</p>;
+  return <p className="rounded-2xl border border-dashed bg-card p-6 text-center text-sm text-muted-foreground">{children}</p>;
 }
 
-function WelcomeWidget({ data }: { data: PortalData }) {
+export function WelcomeWidget({ data }: { data: PortalData }) {
   return (
-    <div className="space-y-2">
-      <h1 className="text-3xl font-semibold tracking-tight">Ciao {data.client.contactName}</h1>
-      <p className="whitespace-pre-wrap text-base leading-7 text-muted-foreground">
-        {data.client.welcomeMessage ?? "Qui trovi tutto quello che riguarda il tuo progetto con noi."}
-      </p>
-    </div>
+    <PageHeader
+      kicker="Panoramica"
+      title={`Ciao ${data.client.contactName}`}
+      description={data.client.welcomeMessage ?? "Qui trovi tutto quello che riguarda il tuo progetto con noi."}
+    />
   );
 }
 
-function OnboardingWidget() {
+export function OnboardingWidget() {
   const [seen, markSeen] = useLocalFlag(ONBOARDING_FLAG_KEY);
   if (seen) return null;
   return (
-    <Card data-onboarding className="border-primary/30 bg-primary/5">
+    <Card data-onboarding className="reveal bg-brand-tint ring-primary/20">
       <CardHeader>
         <CardTitle>Come funziona questo spazio</CardTitle>
       </CardHeader>
@@ -72,36 +72,7 @@ function OnboardingWidget() {
   );
 }
 
-function SummaryWidget({ data }: { data: PortalData }) {
-  const openProjects = data.projects.filter((p) => p.status !== "completed").length;
-  const activeSubscriptions = data.subscriptions.filter((s) => s.status === "active").length;
-  const { outstandingCents, overdueCents } = data.billing;
-  return (
-    <div className="grid gap-4 sm:grid-cols-3" role="list" aria-label="Riepilogo">
-      <Card role="listitem">
-        <CardContent>
-          <p className="text-sm text-muted-foreground">Progetti in corso</p>
-          <p className="mt-1 text-3xl font-semibold tabular-nums">{openProjects}</p>
-        </CardContent>
-      </Card>
-      <Card role="listitem">
-        <CardContent>
-          <p className="text-sm text-muted-foreground">Da pagare</p>
-          <p className="mt-1 text-3xl font-semibold tabular-nums">{formatCents(outstandingCents)}</p>
-          {overdueCents > 0 ? <p className="mt-1 text-sm font-medium text-destructive">di cui scaduti {formatCents(overdueCents)}</p> : null}
-        </CardContent>
-      </Card>
-      <Card role="listitem">
-        <CardContent>
-          <p className="text-sm text-muted-foreground">Abbonamenti attivi</p>
-          <p className="mt-1 text-3xl font-semibold tabular-nums">{activeSubscriptions}</p>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-function ProjectsWidget({ data }: { data: PortalData }) {
+export function ProjectsWidget({ data }: { data: PortalData }) {
   return (
     <Section id="projects-heading" title="I tuoi progetti">
       {data.projects.length === 0 ? (
@@ -109,7 +80,7 @@ function ProjectsWidget({ data }: { data: PortalData }) {
       ) : (
         <div className="grid gap-4">
           {data.projects.map((project) => (
-            <Card key={project.id}>
+            <Card key={project.id} className="rounded-2xl shadow-(--shadow-soft)">
               <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3">
                 <div>
                   <CardTitle className="text-lg">{project.name}</CardTitle>
@@ -146,7 +117,7 @@ function ProjectsWidget({ data }: { data: PortalData }) {
   );
 }
 
-function BillingWidget({ data }: { data: PortalData }) {
+export function BillingWidget({ data }: { data: PortalData }) {
   const { outstandingCents, invoices } = data.billing;
   return (
     <Section id="billing-heading" title="Fatture e pagamenti">
@@ -155,7 +126,7 @@ function BillingWidget({ data }: { data: PortalData }) {
       ) : (
         <>
           {outstandingCents === 0 ? <p className="text-sm text-muted-foreground">Non c&apos;è nulla da pagare. Grazie!</p> : null}
-          <ul className="divide-y rounded-lg border">
+          <ul className="divide-y rounded-2xl bg-card ring-1 ring-foreground/10">
             {invoices.map((invoice) => (
               <li key={invoice.id} className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 p-4">
                 <div>
@@ -181,13 +152,13 @@ function BillingWidget({ data }: { data: PortalData }) {
   );
 }
 
-function SubscriptionsWidget({ data }: { data: PortalData }) {
+export function SubscriptionsWidget({ data }: { data: PortalData }) {
   return (
     <Section id="subscriptions-heading" title="I tuoi abbonamenti">
       {data.subscriptions.length === 0 ? (
         <Empty>Non hai abbonamenti attivi.</Empty>
       ) : (
-        <ul className="divide-y rounded-lg border">
+        <ul className="divide-y rounded-2xl bg-card ring-1 ring-foreground/10">
           {data.subscriptions.map((s) => (
             <li key={s.id} className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 p-4">
               <div>
@@ -210,7 +181,7 @@ function SubscriptionsWidget({ data }: { data: PortalData }) {
 }
 
 /** Contenuto scritto dall'amministratore: solo testo, mostrato con l'escape di React (mai come HTML). */
-function NoticeWidget({ widget }: { widget: Extract<Widget, { type: "notice" }> }) {
+export function NoticeWidget({ widget }: { widget: Extract<Widget, { type: "notice" }> }) {
   return (
     <Card role="note" className="border-primary/30">
       <CardHeader>
@@ -223,7 +194,7 @@ function NoticeWidget({ widget }: { widget: Extract<Widget, { type: "notice" }> 
   );
 }
 
-function ContactWidget({ widget }: { widget: Extract<Widget, { type: "contact" }> }) {
+export function ContactWidget({ widget }: { widget: Extract<Widget, { type: "contact" }> }) {
   return (
     <Section id={`contact-${widget.id}`} title={widget.title}>
       <Card>
@@ -235,10 +206,10 @@ function ContactWidget({ widget }: { widget: Extract<Widget, { type: "contact" }
   );
 }
 
-function LinksWidget({ widget }: { widget: Extract<Widget, { type: "links" }> }) {
+export function LinksWidget({ widget }: { widget: Extract<Widget, { type: "links" }> }) {
   return (
     <Section id={`links-${widget.id}`} title={widget.title}>
-      <ul className="divide-y rounded-lg border">
+      <ul className="divide-y rounded-2xl bg-card ring-1 ring-foreground/10">
         {widget.items
           // Difesa in piu': il server ammette solo https, qui non si mostra mai nient'altro.
           .filter((item) => item.url.startsWith("https://"))
@@ -257,41 +228,5 @@ function LinksWidget({ widget }: { widget: Extract<Widget, { type: "links" }> })
           ))}
       </ul>
     </Section>
-  );
-}
-
-function WidgetView({ widget, data, documents }: { widget: Widget; data: PortalData; documents: ReactNode }) {
-  switch (widget.type) {
-    case "welcome":
-      return <WelcomeWidget data={data} />;
-    case "onboarding":
-      return <OnboardingWidget />;
-    case "summary":
-      return <SummaryWidget data={data} />;
-    case "projects":
-      return <ProjectsWidget data={data} />;
-    case "billing":
-      return <BillingWidget data={data} />;
-    case "subscriptions":
-      return <SubscriptionsWidget data={data} />;
-    case "documents":
-      return <>{documents}</>;
-    case "notice":
-      return <NoticeWidget widget={widget} />;
-    case "contact":
-      return <ContactWidget widget={widget} />;
-    case "links":
-      return <LinksWidget widget={widget} />;
-  }
-}
-
-/** La pagina del cliente: i blocchi attivi, nell'ordine scelto dall'amministratore. */
-export function PortalPage({ data, documents }: { data: PortalData; documents: ReactNode }) {
-  return (
-    <>
-      {(data.widgets as Widget[]).map((widget) => (
-        <WidgetView key={widget.id} widget={widget} data={data} documents={documents} />
-      ))}
-    </>
   );
 }

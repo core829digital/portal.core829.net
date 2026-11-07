@@ -19,7 +19,7 @@ test.describe("pagine pubbliche", () => {
     await page.goto("/");
     await expect(page.getByRole("heading", { name: "Portale clienti" })).toBeVisible();
     const font = await page.locator("h1").evaluate((el) => getComputedStyle(el).fontFamily);
-    expect(font, "deve usare il font Geist, non quello di sistema").toContain("Geist");
+    expect(font, "deve usare il font del brand (Unbounded), non quello di sistema").toContain("Unbounded");
     expect(csp).toEqual([]);
   });
 
@@ -63,6 +63,13 @@ test.describe("area amministratore (non autenticato)", () => {
     await expect(page).toHaveURL(/\/admin\/login$/);
     await expect(page.getByRole("heading", { name: "Accesso amministratore" })).toBeVisible();
   });
+
+  for (const path of ["/admin/clients", "/admin/invoices", "/admin/subscriptions", "/admin/projects", "/admin/activity"]) {
+    test(`${path} porta al login`, async ({ page }) => {
+      await page.goto(path);
+      await expect(page).toHaveURL(/\/admin\/login$/);
+    });
+  }
 
   test("una pagina cliente dell'admin porta al login", async ({ page }) => {
     await page.goto("/admin/clients/abcdefghijklmnopqrstuvwxyz123456");

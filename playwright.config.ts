@@ -21,7 +21,8 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [["github"], ["list"]] : "list",
-  use: { baseURL: BASE, trace: "off" },
+  // "Riduci animazioni" di default: i controlli di accessibilita' leggono i colori finali, non quelli a meta' di una dissolvenza.
+  use: { baseURL: BASE, trace: "off", reducedMotion: "reduce" },
   projects: [
     { name: "chromium", use: { ...devices["Desktop Chrome"], ...chromiumLaunch } },
     { name: "firefox", use: { ...devices["Desktop Firefox"] } },

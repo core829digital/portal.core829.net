@@ -1,5 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
 
+// Misura con le animazioni attive (come le vede un utente): non devono spostare il layout.
+test.use({ reducedMotion: "no-preference" });
+
 /**
  * Misure reali nel browser (solo Chromium: Firefox e WebKit non espongono tutte queste metriche).
  * Le soglie sono quelle "buone" di Google per i Core Web Vitals; localhost e' piu' veloce di un cliente

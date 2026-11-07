@@ -9,17 +9,54 @@ test("con il consenso esplicito (E2E_FIXTURES=1) la pagina di prova esiste", asy
   expect((await request.get("/c/fixture")).status()).toBe(200);
 });
 
-test("accessibilita' con tutti i blocchi: nessuna violazione WCAG 2 A/AA", async ({ page }) => {
+const PAGES = ["/c/fixture", "/c/fixture/projects", "/c/fixture/billing", "/c/fixture/subscriptions", "/c/fixture/documents"] as const;
+
+for (const path of PAGES) {
+  test(`accessibilita' di ${path}: nessuna violazione WCAG 2 A/AA`, async ({ page }) => {
+    await page.goto(path);
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
+    expect(results.violations.map((v) => `${v.id}: ${v.help} (${v.nodes.length})`)).toEqual([]);
+  });
+
+  test(`nessuno scorrimento orizzontale in ${path}`, async ({ page }) => {
+    await page.goto(path);
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBe(false);
+  });
+}
+
+test("menu laterale: ogni voce e' una pagina, la corrente e' segnalata, non ci sono schede (tabs)", async ({ page, isMobile }) => {
   await page.goto("/c/fixture");
-  await expect(page.getByRole("heading", { name: "Ciao Mario" })).toBeVisible();
-  const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
-  expect(results.violations.map((v) => `${v.id}: ${v.help} (${v.nodes.length})`)).toEqual([]);
+  if (isMobile) await page.getByRole("button", { name: "Apri il menu" }).click();
+  const nav = page.getByRole("navigation", { name: "Pagine" });
+  await expect(nav.getByRole("link")).toHaveText(["Panoramica", "Progetti", "Fatture", "Abbonamenti", "Documenti"]);
+  await expect(nav.getByRole("link", { name: "Panoramica" })).toHaveAttribute("aria-current", "page");
+  await nav.getByRole("link", { name: "Fatture" }).click();
+  await expect(page).toHaveURL(/\/c\/fixture\/billing$/);
+  await expect(page.getByRole("heading", { level: 1, name: "Fatture" })).toBeVisible();
+  await expect(page.getByText("Fattura 2026/014")).toBeVisible();
+  expect(await page.getByRole("tablist").count()).toBe(0);
 });
 
-test("nessuno scorrimento orizzontale con tutti i blocchi", async ({ page }) => {
+test("la panoramica mostra le metriche calcolate dai dati del cliente", async ({ page }) => {
   await page.goto("/c/fixture");
-  await expect(page.getByRole("heading", { name: "Ciao Mario" })).toBeVisible();
-  expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBe(false);
+  const kpis = page.getByRole("list", { name: "Riepilogo" });
+  await expect(kpis).toContainText("Da pagare");
+  await expect(kpis).toContainText("390");
+  await expect(kpis).toContainText("scaduti");
+  await expect(kpis).toContainText("Progetti in corso");
+});
+
+test("il menu a scomparsa su telefono si apre e si chiude con Esc", async ({ page, isMobile }) => {
+  test.skip(!isMobile, "solo schermi piccoli");
+  await page.goto("/c/fixture");
+  const open = page.getByRole("button", { name: "Apri il menu" });
+  await expect(page.getByRole("navigation", { name: "Pagine" })).toBeHidden();
+  await open.click();
+  await expect(page.getByRole("navigation", { name: "Pagine" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("navigation", { name: "Pagine" })).toBeHidden();
 });
 
 test("contenuto non fidato: il codice HTML dei blocchi liberi appare come testo e non viene eseguito", async ({ page }) => {

@@ -15,6 +15,26 @@ export function formatCents(cents: number): string {
   return euro.format(cents / 100);
 }
 
+const euroRound = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
+
+/** Importo senza decimali, per le metriche in evidenza (es. "3.700 €"). */
+export function formatEuroRound(cents: number): string {
+  return euroRound.format(Math.round(cents / 100));
+}
+
+const monthShort = new Intl.DateTimeFormat("it-IT", { month: "short", timeZone: "UTC" });
+
+/** Mese abbreviato (es. "nov") di un timestamp a inizio mese UTC. */
+export function formatMonthShort(ms: number): string {
+  return monthShort.format(ms).replace(".", "");
+}
+
+const monthLong = new Intl.DateTimeFormat("it-IT", { month: "long", year: "numeric", timeZone: "UTC" });
+
+export function formatMonthLong(ms: number): string {
+  return monthLong.format(ms);
+}
+
 export function formatDate(ms: number | null | undefined): string {
   return typeof ms === "number" ? dateFormat.format(ms) : "—";
 }
