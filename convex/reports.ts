@@ -1,7 +1,8 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { audit } from "./lib/audit";
 import { requireAdmin } from "./lib/auth";
+import { requireUnlock, resolveLink } from "./lib/links";
 import { fail } from "./lib/errors";
 import { addMonths, buildReportView } from "./lib/reportData";
 import { cleanMetrics, isMonthStart, MAX_METRICS } from "./lib/reports";
@@ -114,6 +115,28 @@ export const remove = mutation({
     if (report.status === "published" && args.confirmPublished !== true) return fail("BAD_STATE", "Questo report è già visibile al cliente. Conferma l'eliminazione per cancellarlo.");
     await ctx.db.delete("clientReports", report._id);
     await audit(ctx, { actorType: "admin", actorId, clientId: args.clientId, action: "report.deleted", resourceType: "clientReport", metadata: { month: args.month, wasPublished: report.status === "published" } });
+    return null;
+  },
+});
+
+/** Dati per l'esportazione in PDF da parte del cliente: stessi controlli del portale (link valido + sblocco) e solo report pubblicati. */
+export const exportData = internalQuery({
+  args: { token: v.string(), unlockToken: v.string(), month: v.number() },
+  handler: async (ctx, args) => {
+    const link = await resolveLink(ctx, args.token);
+    await requireUnlock(ctx, link, args.unlockToken);
+    if (!isMonthStart(args.month)) return null;
+    const report = await buildReportView(ctx, link.clientId, args.month, { onlyPublished: true });
+    const client = await ctx.db.get("clients", link.clientId);
+    if (!report || !client) return null;
+    return { clientId: link.clientId, clientName: client.displayName, report };
+  },
+});
+
+export const logExport = internalMutation({
+  args: { clientId: v.id("clients"), month: v.number() },
+  handler: async (ctx, args): Promise<null> => {
+    await audit(ctx, { actorType: "client", clientId: args.clientId, action: "report.exported", resourceType: "clientReport", metadata: { month: args.month } });
     return null;
   },
 });

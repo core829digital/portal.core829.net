@@ -216,7 +216,7 @@ function readOds(files: Record<string, Uint8Array>): Sheet[] {
 
 /** CSV/TSV: virgolette, separatore , ; o tab riconosciuto dalla prima riga. */
 export function parseCsv(text: string): Sheet {
-  const src = text.replace(/^﻿/, "");
+  const src = text.replace(/^\uFEFF/, "");
   const head = src.split(/\r?\n/, 1)[0] ?? "";
   const count = (ch: string) => head.split(ch).length - 1;
   const sep = count("\t") >= Math.max(count(";"), count(",")) && count("\t") > 0 ? "\t" : count(";") > count(",") ? ";" : ",";

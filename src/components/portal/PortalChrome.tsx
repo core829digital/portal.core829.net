@@ -1,6 +1,6 @@
 "use client";
 
-import { FileText, FolderKanban, LayoutDashboard, Receipt, Repeat } from "lucide-react";
+import { BarChart3, FileText, FolderKanban, LayoutDashboard, Receipt, Repeat } from "lucide-react";
 import type { ReactNode } from "react";
 import type { Widget } from "@convex/lib/widgets";
 import { DashShell, type NavGroup } from "@/components/dash/DashShell";
@@ -15,6 +15,7 @@ export function enabledPages(data: PortalData) {
     billing: types.has("billing"),
     subscriptions: types.has("subscriptions"),
     documents: types.has("documents"),
+    reports: data.hasReports,
   };
 }
 
@@ -27,6 +28,7 @@ export function PortalChrome({ data, token, base, children }: { data: PortalData
     ...(pages.billing ? [{ href: `${base}/billing`, label: "Fatture", icon: Receipt }] : []),
     ...(pages.subscriptions ? [{ href: `${base}/subscriptions`, label: "Abbonamenti", icon: Repeat }] : []),
     ...(pages.documents ? [{ href: `${base}/documents`, label: "Documenti", icon: FileText }] : []),
+    ...(pages.reports ? [{ href: `${base}/reports`, label: "Report", icon: BarChart3 }] : []),
   ];
   const groups: NavGroup[] = [{ items }];
 

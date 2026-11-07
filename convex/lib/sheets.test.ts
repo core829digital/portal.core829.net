@@ -77,7 +77,7 @@ describe("lettore fogli di calcolo", () => {
     expect(s.rows[0]).toEqual(["Follower", "1200", "50%", "07/11/2026"]);
   });
   it("legge CSV con virgolette, punto e virgola e BOM", () => {
-    const s = parseCsv('﻿Nome;Valore\r\n"Rossi; Mario";"12,5"\r\n"Con ""virgolette""";3\r\n\r\n');
+    const s = parseCsv('\uFEFFNome;Valore\r\n"Rossi; Mario";"12,5"\r\n"Con ""virgolette""";3\r\n\r\n');
     expect(s.rows).toEqual([["Nome", "Valore"], ["Rossi; Mario", "12,5"], ['Con "virgolette"', "3"]]);
     expect(parseCsv("a\tb\n1\t2").rows).toEqual([["a", "b"], ["1", "2"]]);
   });

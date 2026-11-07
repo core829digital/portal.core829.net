@@ -30,7 +30,7 @@ test("menu laterale: ogni voce e' una pagina, la corrente e' segnalata, non ci s
   await page.goto("/c/fixture");
   if (isMobile) await page.getByRole("button", { name: "Apri il menu" }).click();
   const nav = page.getByRole("navigation", { name: "Pagine" });
-  await expect(nav.getByRole("link")).toHaveText(["Panoramica", "Progetti", "Fatture", "Abbonamenti", "Documenti"]);
+  await expect(nav.getByRole("link")).toHaveText(["Panoramica", "Progetti", "Fatture", "Abbonamenti", "Documenti", "Report"]);
   await expect(nav.getByRole("link", { name: "Panoramica" })).toHaveAttribute("aria-current", "page");
   await nav.getByRole("link", { name: "Fatture" }).click();
   await expect(page).toHaveURL(/\/c\/fixture\/billing$/);
@@ -95,6 +95,35 @@ test("la scheda introduttiva si chiude e resta chiusa", async ({ page }) => {
   await page.reload();
   await expect(page.getByRole("heading", { name: "Ciao Mario" })).toBeVisible();
   await expect(page.getByText("Come funziona questo spazio")).toHaveCount(0);
+});
+
+// ---- Report mensili del cliente (dati inventati) ----
+
+test("report mensili: nessuna violazione WCAG, nessuno scorrimento orizzontale, contenuto non fidato come testo", async ({ page }) => {
+  await page.goto("/c/fixture/reports");
+  await expect(page.getByRole("heading", { level: 1, name: "Report mensili" })).toBeVisible();
+  await expect(page.getByText("Visite al sito")).toBeVisible();
+  await expect(page.getByText("1520")).toBeVisible();
+  await expect(page.getByText("+52%")).toBeVisible();
+  await expect(page.getByText("-4,5 punti")).toBeVisible();
+  await expect(page.getByText("2 min 05 s")).toBeVisible();
+  await expect(page.getByText("<script>alert('xss')</script>")).toBeVisible(); // visibile come testo, non eseguito
+  const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
+  expect(results.violations.map((v) => `${v.id}: ${v.help} (${v.nodes.length})`)).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBe(false);
+});
+
+test("report mensili: si cambia mese, si chiede il PDF e il menu mostra la pagina Report", async ({ page, isMobile }) => {
+  await page.goto("/c/fixture/reports");
+  const oct = page.getByRole("button", { name: "ottobre 2026" });
+  await expect(oct).toHaveAttribute("aria-pressed", "false");
+  await oct.click();
+  await expect(oct).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByText("Report non disponibile.")).toBeVisible();
+  await page.getByRole("button", { name: "novembre 2026" }).click();
+  await page.getByRole("button", { name: "Scarica il PDF" }).click();
+  await expect(page.getByTestId("downloads")).toHaveText("Download richiesti: 1");
+  if (!isMobile) await expect(page.getByRole("link", { name: "Report", exact: true })).toBeVisible();
 });
 
 // ---- Editor dei documenti (dati inventati) ----

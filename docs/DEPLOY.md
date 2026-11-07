@@ -72,3 +72,10 @@ Da fare **dopo** i passi di `docs/SETUP.md` (chiavi Convex Auth, variabili, prim
 2. Nel deployment Convex di produzione devono esserci `RESEND_API_KEY`, `AUTH_EMAIL_FROM` (dominio verificato in Resend) e `ADMIN_EMAILS`.
 3. Per il B2B: imposta `B2B_WEBHOOK_SECRET` (vedi `docs/B2B.md`).
 4. In *Documenti → Modelli → Importa un modello* carica il file del Master Services Agreement (versione con segnaposto).
+
+## 9. Novità: report, modelli, Excel (dopo il deploy di Convex)
+
+1. `git pull origin main`, poi `npx convex deploy` (nuova tabella `clientReports`, campi dei modelli, nuove funzioni).
+2. Documenti → Modelli → **Installa i modelli CORE829** (una volta sola; sicuro da ripetere). Importa il MSA dal tuo file Word.
+3. Completa la scheda dei clienti (sede, P. IVA, PEC, rappresentante legale): più dati hai, più documenti escono già compilati.
+4. Clienti → Report mensili: vedi `docs/REPORTS.md`.

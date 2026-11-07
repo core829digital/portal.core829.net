@@ -47,3 +47,19 @@ Alla creazione di una bozza (Word o PDF, qualunque categoria) il portale compila
 
 Numerazione automatica per categoria e anno: CTR-2026-001 (contratti), PRV (preventivi), LEG (legali), DOC (altri).
 I dati del cliente mancanti non vengono scritti: il campo resta da compilare. Completa la scheda cliente per ottenere documenti pronti.
+
+## Anteprima live e tabelle da Excel
+
+- Nell'editor Word la vista **Anteprima live** mostra il documento come sarà (campi rossi = da compilare, verdi = compilati, gialli = testo modificato) e si aggiorna a ogni tasto. Clic su un campo → si va a compilarlo; clic su un testo → si corregge. Il badge «N campi vuoti» ti dice cosa manca prima dell'invio.
+- **Inserisci tabella da Excel**: formati .xlsx, .xlsm, .ods, .csv/.tsv (max 5 MB, 2000 righe, 50 colonne). Le formule non si calcolano (si legge l'ultimo valore salvato). I vecchi **.xls/.xlsb non sono supportati**: in Excel «Salva con nome» → .xlsx. Scelta di proposito: l'unica libreria che li legge ha vulnerabilità note.
+
+## Modelli CORE829 inclusi
+
+In *Documenti → Modelli → Installa i modelli CORE829*: Preventivo, Modulo d'ordine (sotto MSA), Accordo sul trattamento dei dati (DPA, art. 28 GDPR), NDA reciproco, Liberatoria per riprese foto/video, Verbale di consegna e accettazione. Il contratto quadro resta uno solo, il **MSA**, che importi dal tuo file Word.
+
+> **Revisione legale necessaria.** I testi contengono i riferimenti normativi più comuni (GDPR artt. 13, 28, 32, 33; L. 633/1941 artt. 96-97; Direttiva 2006/112/CE e 2011/7/UE) ma non possono sostituire la verifica di un avvocato: legge applicabile, foro, regime IVA, limiti di responsabilità e durata vanno validati prima dell'uso con i clienti.
+
+## Eliminazione
+
+- Le bozze si eliminano dall'elenco (con conferma); i documenti **già inviati** non si eliminano dalle bozze.
+- Un documento inviato al cliente (es. contratto) richiede una **seconda conferma** esplicita per essere cancellato dal fascicolo; l'evento è nel registro con `wasSent`.

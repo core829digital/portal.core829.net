@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery } from "convex/react";
 import { Download, FileText, Lock } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
 import { api } from "@convex/_generated/api";
 import { ErrorBoundary } from "@/components/portal/ErrorBoundary";
 import { useConvexSiteUrl } from "@/components/portal/PortalProvider";
@@ -81,7 +81,23 @@ function DocumentList({ token, unlockToken }: { token: string; unlockToken: stri
   );
 }
 
-export function PortalDocuments({ token }: { token: string }) {
+/**
+ * Sblocco con codice via email, condiviso dalle pagine con dati riservati (documenti, report).
+ * Il segreto di sblocco resta solo in memoria della scheda e scade da solo.
+ */
+export function UnlockGate({
+  token,
+  heading,
+  intro,
+  submitLabel,
+  children,
+}: {
+  token: string;
+  heading: string;
+  intro: string;
+  submitLabel: string;
+  children: (unlockToken: string) => ReactNode;
+}) {
   const requestCode = useMutation(api.otp.requestCode);
   const verifyCode = useMutation(api.otp.verifyCode);
   const [phase, setPhase] = useState<Phase>("locked");
@@ -133,7 +149,7 @@ export function PortalDocuments({ token }: { token: string }) {
   return (
     <section aria-labelledby="documents-heading" className="space-y-4">
       <h2 id="documents-heading" className="text-xl font-semibold tracking-tight">
-        Contratti e documenti
+        {heading}
       </h2>
 
       {phase === "unlocked" && unlockToken ? (
@@ -154,14 +170,14 @@ export function PortalDocuments({ token }: { token: string }) {
             </div>
           )}
         >
-          <DocumentList token={token} unlockToken={unlockToken} />
+          {children(unlockToken)}
         </ErrorBoundary>
       ) : (
         <div className="space-y-4 rounded-lg border p-5">
           <div className="flex items-start gap-3">
             <Lock className="mt-0.5 size-5 shrink-0 text-muted-foreground" aria-hidden />
             <p className="text-sm leading-6 text-muted-foreground">
-              Per proteggere i tuoi contratti e le tue fatture, prima di mostrarli ti mandiamo un codice di 6 cifre via email.
+              {intro}
             </p>
           </div>
 
@@ -176,7 +192,7 @@ export function PortalDocuments({ token }: { token: string }) {
                 <Input id="code" name="code" inputMode="numeric" autoComplete="one-time-code" maxLength={6} pattern="[0-9]{6}" placeholder="123456" required autoFocus />
               </div>
               <Button type="submit" disabled={pending}>
-                {pending ? "Verifica in corso…" : "Mostra i documenti"}
+                {pending ? "Verifica in corso…" : submitLabel}
               </Button>
               <Button type="button" variant="ghost" onClick={() => void onRequest()} disabled={pending}>
                 Non è arrivato: invia un nuovo codice
@@ -192,5 +208,18 @@ export function PortalDocuments({ token }: { token: string }) {
         </div>
       )}
     </section>
+  );
+}
+
+export function PortalDocuments({ token }: { token: string }) {
+  return (
+    <UnlockGate
+      token={token}
+      heading="Contratti e documenti"
+      intro="Per proteggere i tuoi contratti e le tue fatture, prima di mostrarli ti mandiamo un codice di 6 cifre via email."
+      submitLabel="Mostra i documenti"
+    >
+      {(unlockToken) => <DocumentList token={token} unlockToken={unlockToken} />}
+    </UnlockGate>
   );
 }

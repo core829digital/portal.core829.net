@@ -3,6 +3,8 @@ import { convexTest } from "convex-test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
+import { PDFDocument } from "pdf-lib";
+import * as pdfjs from "pdfjs-dist/legacy/build/pdf.mjs";
 import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
@@ -173,5 +175,64 @@ describe("report mensile: portale cliente", () => {
     expect((await h.t.query(api.portal.overview, { token: linkA.token })).hasReports).toBe(true);
     await h.admin.mutation(api.reports.setPublished, { clientId: h.clientA, month: NOV, published: false });
     expect((await h.t.query(api.portal.overview, { token: linkA.token })).hasReports).toBe(false);
+  });
+});
+
+describe("report mensile: esportazione PDF del cliente", () => {
+  async function ready() {
+    const h = await setup();
+    await h.admin.mutation(api.reports.save, { clientId: h.clientA, month: OCT, summary: null, nextSteps: null, metrics: [{ key: "web.visits", value: 1000 }] });
+    await h.admin.mutation(api.reports.setPublished, { clientId: h.clientA, month: OCT, published: true });
+    await h.admin.mutation(api.reports.save, {
+      clientId: h.clientA,
+      month: NOV,
+      summary: "Un ottimo mese per il sito.",
+      nextSteps: "Campagna di dicembre.",
+      metrics: [{ key: "web.visits", value: 1500 }, { key: "social.instagram.followers", value: 2300, note: "da Meta" }, { key: "ads.spend", value: 350.5 }],
+    });
+    await h.admin.mutation(api.reports.setPublished, { clientId: h.clientA, month: NOV, published: true });
+    await h.admin.mutation(api.reports.save, { clientId: h.clientA, month: Date.UTC(2026, 11, 1), summary: "BOZZA DI DICEMBRE", nextSteps: null, metrics: [] });
+    return h;
+  }
+  async function textOf(base64: string): Promise<string> {
+    const doc = await pdfjs.getDocument({ data: new Uint8Array(Buffer.from(base64, "base64")), useSystemFonts: true } as Parameters<typeof pdfjs.getDocument>[0]).promise;
+    let out = "";
+    for (let i = 1; i <= doc.numPages; i++) out += (await (await doc.getPage(i)).getTextContent()).items.map((it) => ("str" in it ? it.str : "")).join(" ") + "\n";
+    return out;
+  }
+
+  it("genera un PDF vero con commento, metriche, variazioni e prossimi passi, e lo registra", async () => {
+    const h = await ready();
+    const s = await unlock(h, h.clientA);
+    const r = await h.t.action(api.reportExport.exportPdf, { ...s, month: NOV });
+    expect(r.fileName).toMatch(/^Report-Cliente-a-2026-11\.pdf$/);
+    expect((await PDFDocument.load(Buffer.from(r.base64, "base64"))).getPageCount()).toBeGreaterThan(0);
+    const text = await textOf(r.base64);
+    expect(text).toContain("novembre 2026");
+    expect(text).toContain("Un ottimo mese per il sito.");
+    expect(text).toContain("Visite al sito");
+    expect(text).toContain("1500");
+    expect(text).toContain("+50%");
+    expect(text).toContain("da Meta");
+    expect(text).toContain("Campagna di dicembre.");
+    expect(text).not.toContain("BOZZA DI DICEMBRE");
+    const log = await h.t.run((ctx) => ctx.db.query("auditLogs").collect());
+    expect(log.find((l) => l.action === "report.exported")).toMatchObject({ actorType: "client", clientId: h.clientA });
+    // Niente file salvati: il PDF non esiste in archivio.
+    expect(await h.t.run(async (ctx) => (await ctx.db.system.query("_storage").collect()).length)).toBe(0);
+  });
+
+  it("senza sblocco, con un link di un altro cliente, per una bozza o per un mese inesistente non esce nulla", async () => {
+    const h = await ready();
+    const s = await unlock(h, h.clientA);
+    const linkB = await h.admin.mutation(api.accessLinks.create, { clientId: h.clientB });
+    expect(await code(h.t.action(api.reportExport.exportPdf, { token: s.token, unlockToken: "x".repeat(43), month: NOV }))).toBe("UNLOCK_REQUIRED");
+    expect(await code(h.t.action(api.reportExport.exportPdf, { token: linkB.token, unlockToken: s.unlockToken, month: NOV }))).toBe("UNLOCK_REQUIRED");
+    expect(await code(h.t.action(api.reportExport.exportPdf, { token: "no", unlockToken: "no", month: NOV }))).toBe("INVALID_LINK");
+    expect(await code(h.t.action(api.reportExport.exportPdf, { ...s, month: Date.UTC(2026, 11, 1) }))).toBe("NOT_FOUND");
+    expect(await code(h.t.action(api.reportExport.exportPdf, { ...s, month: NOV + 1 }))).toBe("NOT_FOUND");
+    expect(await code(h.t.action(api.reportExport.exportPdf, { ...s, month: Date.UTC(2025, 0, 1) }))).toBe("NOT_FOUND");
+    const log = await h.t.run((ctx) => ctx.db.query("auditLogs").collect());
+    expect(log.some((l) => l.action === "report.exported")).toBe(false);
   });
 });

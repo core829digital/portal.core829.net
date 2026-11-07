@@ -19,6 +19,7 @@ import { Kpi, KpiGrid, Panel } from "@/components/dash/Kpi";
 import { enabledPages } from "@/components/portal/PortalChrome";
 import { PortalContextProvider, usePortal } from "@/components/portal/PortalContext";
 import { PortalDocuments } from "@/components/portal/PortalDocuments";
+import { PortalReports } from "@/components/portal/PortalReports";
 import {
   BillingWidget,
   ContactWidget,
@@ -236,5 +237,15 @@ export function PortalPreview({ data, documents }: { data: PortalData; documents
         ) : null}
       </div>
     </PortalContextProvider>
+  );
+}
+
+export function ReportsPage() {
+  const { data, token } = usePortal();
+  if (!data.hasReports) return <NotAvailable title="Report" />;
+  return (
+    <PageFrame kicker="Risultati" title="Report mensili" description="Come sono andati i tuoi servizi ogni mese. Puoi scaricarli in PDF.">
+      <PortalReports token={token} />
+    </PageFrame>
   );
 }
