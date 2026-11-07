@@ -9,13 +9,14 @@ import { ClientOverview } from "@/components/admin/ClientOverview";
 import { DocumentsPanel } from "@/components/admin/DocumentsPanel";
 import { InvoicesPanel } from "@/components/admin/InvoicesPanel";
 import { PageBuilder } from "@/components/admin/PageBuilder";
+import { ReportsPanel } from "@/components/admin/ReportsPanel";
 import { ProjectsPanel } from "@/components/admin/ProjectsPanel";
 import { SubscriptionsPanel } from "@/components/admin/SubscriptionsPanel";
 import { PageHeader } from "@/components/dash/DashShell";
 import { Skeleton } from "@/components/ui/skeleton";
 import { clientStatusLabel } from "@/lib/labels";
 
-export type ClientSection = "overview" | "projects" | "invoices" | "subscriptions" | "documents" | "contracts" | "page" | "links";
+export type ClientSection = "overview" | "projects" | "invoices" | "subscriptions" | "documents" | "contracts" | "reports" | "page" | "links";
 
 const SECTION_TITLE: Record<ClientSection, string> = {
   overview: "Scheda cliente",
@@ -24,6 +25,7 @@ const SECTION_TITLE: Record<ClientSection, string> = {
   subscriptions: "Abbonamenti",
   documents: "Documenti",
   contracts: "Contratti da inviare",
+  reports: "Report mensili",
   page: "Pagina cliente",
   links: "Link di accesso",
 };
@@ -54,6 +56,7 @@ export function ClientSectionPage({ clientId, section, appUrl }: { clientId: Id<
         {section === "subscriptions" ? <SubscriptionsPanel clientId={clientId} /> : null}
         {section === "documents" ? <DocumentsPanel clientId={clientId} /> : null}
         {section === "contracts" ? <DraftsList clientId={clientId} /> : null}
+        {section === "reports" ? <ReportsPanel clientId={clientId} /> : null}
         {section === "page" ? <PageBuilder clientId={clientId} /> : null}
         {section === "links" ? <AccessLinksPanel clientId={clientId} appUrl={appUrl} /> : null}
       </div>

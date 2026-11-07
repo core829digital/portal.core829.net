@@ -4,6 +4,7 @@ import { useAuthActions } from "@convex-dev/auth/react";
 import { useQuery } from "convex/react";
 import {
   Activity,
+  BarChart3,
   CreditCard,
   FilePen,
   FileStack,
@@ -73,6 +74,7 @@ function Frame({ children }: { children: ReactNode }) {
         { href: `${base}/subscriptions`, label: "Abbonamenti", icon: CreditCard },
         { href: `${base}/documents`, label: "Documenti", icon: FileText },
         { href: `${base}/contracts`, label: "Contratti da inviare", icon: FilePen },
+        { href: `${base}/reports`, label: "Report mensili", icon: BarChart3 },
         { href: `${base}/page`, label: "Pagina cliente", icon: LayoutTemplate },
         { href: `${base}/links`, label: "Link di accesso", icon: Link2 },
       ],
