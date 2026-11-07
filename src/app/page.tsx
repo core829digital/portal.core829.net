@@ -1,8 +1,10 @@
 import { ArrowUpRight, KeyRound, Sparkles } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { CompanyDetails } from "@/components/brand/CompanyDetails";
 import { ContactCtas } from "@/components/brand/ContactCtas";
 import NeuralNoise from "@/components/brand/NeuralNoise";
+import { COMPANY } from "@/lib/company";
 import { PRIVACY_URL, SITE_URL } from "@/lib/contact";
 
 /**
@@ -86,10 +88,23 @@ export default function Home() {
             <ContactCtas className="mt-auto" />
           </section>
         </div>
+
+        <section
+          aria-labelledby="dati-aziendali"
+          className="reveal rounded-3xl bg-white/[0.04] p-6 ring-1 ring-white/10 backdrop-blur-md sm:p-8"
+          style={{ "--i": 6 } as React.CSSProperties}
+        >
+          <h2 id="dati-aziendali" className="mb-5 font-display text-base tracking-tight text-white">
+            CORE829 SRL
+          </h2>
+          <CompanyDetails tone="dark" />
+        </section>
       </main>
 
       <footer className="relative z-10 mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-5 py-6 text-xs text-on-ink-muted sm:px-8">
-        <span>© {new Date().getFullYear()} CORE829 SRL</span>
+        <span>
+          © {new Date().getFullYear()} {COMPANY.name} — Reg. Com. {COMPANY.regCom} · CUI/CIF {COMPANY.cui}
+        </span>
         <nav aria-label="Link utili" className="flex flex-wrap items-center gap-x-5 gap-y-2">
           <a href={PRIVACY_URL} className="underline-offset-4 hover:text-on-ink hover:underline">
             Privacy

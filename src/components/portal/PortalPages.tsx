@@ -11,6 +11,7 @@ import {
   overdue,
 } from "@convex/lib/metrics";
 import type { Widget } from "@convex/lib/widgets";
+import { CompanyDetails } from "@/components/brand/CompanyDetails";
 import { BarChart, Ring, StackBar } from "@/components/dash/charts";
 import { CountUp } from "@/components/dash/CountUp";
 import { PageHeader } from "@/components/dash/DashShell";
@@ -168,6 +169,9 @@ export function OverviewPage() {
         }
       })}
       {blocks.length === 0 ? <PageHeader kicker="Panoramica" title={`Ciao ${data.client.contactName}`} /> : null}
+      <Panel title="CORE829 SRL" description="A chi scrivere se hai bisogno di noi." index={12}>
+        <CompanyDetails />
+      </Panel>
     </>
   );
 }

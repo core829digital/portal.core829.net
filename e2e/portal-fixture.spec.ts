@@ -48,6 +48,12 @@ test("la panoramica mostra le metriche calcolate dai dati del cliente", async ({
   await expect(kpis).toContainText("Progetti in corso");
 });
 
+test("la panoramica del cliente mostra i dati aziendali di CORE829 SRL", async ({ page }) => {
+  await page.goto("/c/fixture");
+  await expect(page.getByText("CUI/CIF 54616345")).toBeVisible();
+  await expect(page.getByRole("link", { name: "projects@core829.net" })).toBeVisible();
+});
+
 test("il menu a scomparsa su telefono si apre e si chiude con Esc", async ({ page, isMobile }) => {
   test.skip(!isMobile, "solo schermi piccoli");
   await page.goto("/c/fixture");

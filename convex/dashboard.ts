@@ -80,9 +80,11 @@ export const overview = query({
     // Fatture per stato (conteggio e importo).
     const byStatus = { paid: { count: 0, cents: 0 }, sent: { count: 0, cents: 0 }, overdue: { count: 0, cents: 0 }, draft: { count: 0, cents: 0 } };
     for (const i of invoices) {
-      if (i.status === "cancelled") continue;
-      byStatus[i.status].count++;
-      byStatus[i.status].cents += i.amountCents;
+      // Difesa: uno stato imprevisto (dati vecchi o importati) non deve far fallire tutta la dashboard.
+      const bucket = (byStatus as Record<string, { count: number; cents: number } | undefined>)[i.status];
+      if (!bucket) continue;
+      bucket.count++;
+      bucket.cents += i.amountCents;
     }
 
     // Prossime scadenze: fatture da incassare e rinnovi, in ordine di data.

@@ -28,7 +28,7 @@ test.describe("pagine pubbliche", () => {
     const form = page.getByRole("link", { name: /Scrivici dal modulo contatti/ });
     await expect(form).toHaveAttribute("href", "https://core829.net/it/contatti");
     await expect(form).toHaveAttribute("rel", "noopener noreferrer");
-    await expect(page.getByRole("link", { name: "hello@core829.net" })).toHaveAttribute("href", "mailto:hello@core829.net");
+    await expect(page.getByRole("link", { name: "hello@core829.net" }).first()).toHaveAttribute("href", "mailto:hello@core829.net");
     await expect(page.getByRole("link", { name: "Accesso amministratore" })).toHaveAttribute("href", "/admin/login");
   });
 
@@ -37,6 +37,27 @@ test.describe("pagine pubbliche", () => {
     const bg = page.locator("canvas").locator("xpath=ancestor::div[@aria-hidden='true'][1]");
     await expect(bg).toHaveCount(1);
     expect(await bg.evaluate((el) => getComputedStyle(el).pointerEvents)).toBe("none");
+  });
+
+  test("home: icona del browser, anteprima dei link (Open Graph) e dati aziendali", async ({ page, request }) => {
+    await page.goto("/");
+    await expect(page.locator('link[rel="icon"]').first()).toHaveAttribute("href", /icon/);
+    await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveCount(1);
+    await expect(page.locator('link[rel="manifest"]')).toHaveAttribute("href", /manifest/);
+    const og = await page.locator('meta[property="og:image"]').getAttribute("content");
+    expect(og).toMatch(/\/opengraph-image/);
+    await expect(page.locator('meta[property="og:title"]')).toHaveAttribute("content", "Portale clienti CORE829");
+    await expect(page.locator('meta[name="twitter:card"]')).toHaveAttribute("content", "summary_large_image");
+    const img = await request.get(new URL(og!).pathname);
+    expect(img.status()).toBe(200);
+    expect(img.headers()["content-type"]).toContain("image/png");
+    expect((await request.get("/manifest.webmanifest")).status()).toBe(200);
+    expect((await request.get("/favicon.ico")).status()).toBe(200);
+    // Dati societari pubblicati su core829.net.
+    await expect(page.getByText("Reg. Com. J2026029428009 · CUI/CIF 54616345").first()).toBeVisible();
+    await expect(page.getByText("Str. Mihai Eminescu, 10, Roman, Romania")).toBeVisible();
+    await expect(page.getByRole("link", { name: "projects@core829.net" })).toHaveAttribute("href", "mailto:projects@core829.net");
+    await expect(page.getByRole("link", { name: "+39 375 946 8881" })).toHaveAttribute("href", "tel:+393759468881");
   });
 
   test("/c senza link: invita ad aprire il link personale e propone i contatti", async ({ page }) => {

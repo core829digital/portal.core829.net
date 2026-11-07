@@ -21,6 +21,8 @@ import type { ReactNode } from "react";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 import { AdminGate } from "@/components/admin/AdminGate";
+import { ErrorBoundary } from "@/components/portal/ErrorBoundary";
+import { errorCode } from "@/lib/errors";
 import { DashShell, type NavGroup } from "@/components/dash/DashShell";
 import { Button } from "@/components/ui/button";
 
@@ -83,7 +85,33 @@ function Frame({ children }: { children: ReactNode }) {
         </Button>
       }
     >
-      {children}
+      <ErrorBoundary
+        fallback={(error, reset) => {
+          const code = errorCode(error);
+          const expired = code === "UNAUTHENTICATED" || code === "FORBIDDEN";
+          return (
+            <div role="alert" className="rounded-2xl border border-dashed bg-card p-8 text-center">
+              <h1 className="font-display text-lg tracking-tight">{expired ? "Sessione scaduta" : "Non riesco a caricare i dati"}</h1>
+              <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+                {expired
+                  ? "Accedi di nuovo per continuare."
+                  : "Riprova tra un istante. Se l'errore continua, controlla i log di Convex con il comando npx convex logs --prod."}
+              </p>
+              <div className="mt-4 flex justify-center gap-2">
+                {expired ? (
+                  <Button onClick={() => router.replace("/admin/login")}>Vai al login</Button>
+                ) : (
+                  <Button variant="outline" onClick={reset}>
+                    Riprova
+                  </Button>
+                )}
+              </div>
+            </div>
+          );
+        }}
+      >
+        {children}
+      </ErrorBoundary>
     </DashShell>
   );
 }
