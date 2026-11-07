@@ -56,3 +56,18 @@ export function formatBytes(bytes: number): string {
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
+
+/**
+ * Nome file per il salvataggio sul computer del cliente: solo caratteri ASCII (gli accenti si tolgono).
+ * Alcuni browser, con nomi contenenti lettere accentate, propongono un nome generico senza estensione:
+ * cosi' il file si apre sempre con il programma giusto.
+ */
+export function downloadFileName(name: string): string {
+  const plain = name
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .replace(/[^\x20-\x7e]/g, "_")
+    .replace(/[\\/:*?"<>|]/g, "_")
+    .trim();
+  return plain === "" ? "documento" : plain;
+}

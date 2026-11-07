@@ -27,6 +27,8 @@ Dalla dashboard di Convex: **Settings → Environment Variables** (cosi' la chia
 | `ADMIN_EMAILS` | `tua-email@dominio.it` | Elenco separato da virgole. Solo questi indirizzi ricevono il codice. |
 | `AUTH_EMAIL_FROM` | `CORE829 Portale <portal@core829.net>` | Il dominio deve essere verificato su Resend. Serve sia per il login admin sia per i codici ai clienti. |
 | `RESEND_API_KEY` | chiave API di Resend | **Segreta.** Si crea su resend.com con permesso "Sending access". |
+| `SITE_URL` | `http://localhost:3000` (poi `https://portal.core829.net`) | Lo imposta gia' `npx @convex-dev/auth`. Serve al CORS dei download. In produzione va aggiornato. |
+| `VIRUSTOTAL_API_KEY` | chiave API di VirusTotal | **Facoltativa e segreta.** Attiva il confronto dell'impronta dei file con malware noto (non invia i file). |
 
 ## 4. Variabili di Next.js (`.env.local`, non committato)
 ```
@@ -35,6 +37,10 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 Le variabili `NEXT_PUBLIC_*` vengono incorporate nel codice **durante la build**: su Vercel vanno impostate prima
 del deploy, non dopo.
+
+## 4b. Solo con dominio personalizzato per Convex
+I download usano l'indirizzo `https://NOME.convex.site`, che si ricava da solo da `NEXT_PUBLIC_CONVEX_URL`. Se il deployment ha un
+dominio personalizzato, imposta anche `NEXT_PUBLIC_CONVEX_SITE_URL` (prima della build).
 
 ## 5. Primo amministratore
 ```bash

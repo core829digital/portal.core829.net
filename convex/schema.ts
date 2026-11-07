@@ -83,8 +83,15 @@ export default defineSchema({
     mimeType: v.string(),
     sizeBytes: v.number(),
     scanStatus,
+    /** Perche' il file e' stato respinto (messaggio leggibile). */
+    rejectReason: v.optional(v.string()),
+    /** Impronta SHA-256 del contenuto, calcolata durante la scansione. */
+    sha256: v.optional(v.string()),
     visibleToClient: v.boolean(),
-  }).index("by_clientId", ["clientId"]),
+  })
+    .index("by_clientId", ["clientId"])
+    .index("by_storageId", ["storageId"])
+    .index("by_scanStatus", ["scanStatus"]),
 
   invoices: defineTable({
     clientId: v.id("clients"),

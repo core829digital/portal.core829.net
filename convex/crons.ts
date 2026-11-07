@@ -7,4 +7,6 @@ crons.interval("scadenza link di accesso", { minutes: 10 }, internal.maintenance
 crons.interval("pulizia sessioni e codici scaduti", { minutes: 10 }, internal.maintenance.expireSessions, {});
 crons.interval("fatture scadute", { hours: 1 }, internal.maintenance.markOverdueInvoices, {});
 
+crons.interval("controlli dei file rimasti in sospeso", { minutes: 15 }, internal.maintenance.expirePendingScans, {});
+
 export default crons;

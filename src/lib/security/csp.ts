@@ -1,3 +1,5 @@
+import { deriveConvexSiteUrl } from "@/lib/convexUrls";
+
 /**
  * Costruzione della Content-Security-Policy.
  * Funzione pura (nessun accesso a process.env o a Next) cosi' e' testabile.
@@ -10,23 +12,26 @@ export type CspOptions = {
   isDev: boolean;
   /** URL del deployment Convex (es. https://xxx.convex.cloud). Se assente, si usa il dominio generico. */
   convexUrl?: string;
+  /** Indirizzo HTTP del deployment (es. https://xxx.convex.site), usato dai download. Se assente si ricava da convexUrl. */
+  convexSiteUrl?: string;
 };
 
-function convexConnectSources(convexUrl?: string): string[] {
+function convexConnectSources(convexUrl?: string, convexSiteUrl?: string): string[] {
+  const site = deriveConvexSiteUrl(convexUrl, convexSiteUrl);
   if (convexUrl) {
     try {
       const u = new URL(convexUrl);
       const wsScheme = u.protocol === "https:" ? "wss:" : "ws:";
-      return [u.origin, `${wsScheme}//${u.host}`];
+      return [u.origin, `${wsScheme}//${u.host}`, ...(site ? [site] : [])];
     } catch {
       // URL non valido: ricade sul dominio generico qui sotto.
     }
   }
-  return ["https://*.convex.cloud", "wss://*.convex.cloud"];
+  return ["https://*.convex.cloud", "wss://*.convex.cloud", "https://*.convex.site"];
 }
 
-export function buildCsp({ nonce, isDev, convexUrl }: CspOptions): string {
-  const convex = convexConnectSources(convexUrl);
+export function buildCsp({ nonce, isDev, convexUrl, convexSiteUrl }: CspOptions): string {
+  const convex = convexConnectSources(convexUrl, convexSiteUrl);
   const devConnect = isDev ? ["http://localhost:*", "ws://localhost:*", "http://127.0.0.1:*", "ws://127.0.0.1:*"] : [];
 
   const directives: Array<[string, string[]]> = [

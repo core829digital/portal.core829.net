@@ -18,6 +18,8 @@ const httpsOrLocalhost = z
 const clientEnvSchema = z.object({
   NEXT_PUBLIC_CONVEX_URL: httpsOrLocalhost,
   NEXT_PUBLIC_APP_URL: httpsOrLocalhost,
+  /** Solo con un dominio personalizzato per le richieste HTTP di Convex. */
+  NEXT_PUBLIC_CONVEX_SITE_URL: httpsOrLocalhost.optional(),
 });
 
 export type ClientEnv = z.infer<typeof clientEnvSchema>;
@@ -30,6 +32,7 @@ export function getClientEnv(): ClientEnv {
   const parsed = clientEnvSchema.safeParse({
     NEXT_PUBLIC_CONVEX_URL: process.env.NEXT_PUBLIC_CONVEX_URL,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+    NEXT_PUBLIC_CONVEX_SITE_URL: process.env.NEXT_PUBLIC_CONVEX_SITE_URL || undefined,
   });
   if (!parsed.success) {
     const fields = parsed.error.issues.map((i) => i.path.join(".")).join(", ");

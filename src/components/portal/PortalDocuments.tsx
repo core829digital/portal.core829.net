@@ -1,36 +1,83 @@
 "use client";
 
 import { useMutation, useQuery } from "convex/react";
-import { FileText, Lock } from "lucide-react";
+import { Download, FileText, Lock } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { api } from "@convex/_generated/api";
 import { ErrorBoundary } from "@/components/portal/ErrorBoundary";
+import { useConvexSiteUrl } from "@/components/portal/PortalProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { formatBytes, formatDate } from "@/lib/format";
+import { downloadFileName, formatBytes, formatDate } from "@/lib/format";
 import { documentKindLabel } from "@/lib/labels";
 
 type Phase = "locked" | "code" | "unlocked";
 
 function DocumentList({ token, unlockToken }: { token: string; unlockToken: string }) {
   const documents = useQuery(api.portal.documents, { token, unlockToken });
+  const siteUrl = useConvexSiteUrl();
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  /** Il segreto viaggia nel corpo di una richiesta POST (mai nell'indirizzo) e il file si scarica come blob. */
+  async function download(doc: { id: string; fileName: string }) {
+    if (!siteUrl) {
+      setError("Il download non è disponibile al momento. Scrivici e ti inviamo il file.");
+      return;
+    }
+    setBusyId(doc.id);
+    setError(null);
+    try {
+      const response = await fetch(`${siteUrl}/portal/download`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, unlockToken, documentId: doc.id }),
+        credentials: "omit",
+        referrerPolicy: "no-referrer",
+      });
+      if (!response.ok) throw new Error("download");
+      const url = URL.createObjectURL(await response.blob());
+      const link = window.document.createElement("a");
+      link.href = url;
+      link.download = downloadFileName(doc.fileName);
+      window.document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+    } catch {
+      setError("Non siamo riusciti a scaricare il file. Se il problema continua, richiedi un nuovo codice.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   if (documents === undefined) return <p className="text-sm text-muted-foreground">Caricamento…</p>;
   if (documents.length === 0) return <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">Non ci sono ancora documenti.</p>;
   return (
-    <ul className="divide-y rounded-lg border">
-      {documents.map((d) => (
-        <li key={d.id} className="flex items-center gap-3 p-4">
-          <FileText className="size-5 shrink-0 text-muted-foreground" aria-hidden />
-          <div className="min-w-0">
-            <p className="truncate font-medium">{d.title}</p>
-            <p className="truncate text-sm text-muted-foreground">
-              {documentKindLabel[d.kind]} · {d.fileName} · {formatBytes(d.sizeBytes)} · {formatDate(d.createdAt)}
-            </p>
-          </div>
-        </li>
-      ))}
-    </ul>
+    <div className="space-y-3">
+      <ul className="divide-y rounded-lg border">
+        {documents.map((d) => (
+          <li key={d.id} className="flex flex-wrap items-center gap-3 p-4">
+            <FileText className="size-5 shrink-0 text-muted-foreground" aria-hidden />
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-medium">{d.title}</p>
+              <p className="truncate text-sm text-muted-foreground">
+                {documentKindLabel[d.kind]} · {d.fileName} · {formatBytes(d.sizeBytes)} · {formatDate(d.createdAt)}
+              </p>
+            </div>
+            <Button variant="outline" size="sm" disabled={busyId === d.id} onClick={() => void download(d)}>
+              <Download aria-hidden /> {busyId === d.id ? "Scarico…" : "Scarica"}
+            </Button>
+          </li>
+        ))}
+      </ul>
+      {error ? (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      ) : null}
+    </div>
   );
 }
 

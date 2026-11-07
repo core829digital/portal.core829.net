@@ -33,6 +33,8 @@ type Env = {
   readonly ADMIN_EMAILS?: string;
   readonly RESEND_API_KEY?: string;
   readonly AUTH_EMAIL_FROM?: string;
+  readonly SITE_URL?: string;
+  readonly VIRUSTOTAL_API_KEY?: string;
 };
 
 /**

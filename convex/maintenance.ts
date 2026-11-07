@@ -82,3 +82,27 @@ export const markOverdueInvoices = internalMutation({
     return { processed: due.length };
   },
 });
+
+/** Respinge i documenti rimasti "in controllo" troppo a lungo (azione fallita o interrotta). */
+export const expirePendingScans = internalMutation({
+  args: {},
+  handler: async (ctx): Promise<{ processed: number }> => {
+    const cutoff = Date.now() - 15 * 60 * 1000;
+    const pending = await ctx.db
+      .query("documents")
+      .withIndex("by_scanStatus", (q) => q.eq("scanStatus", "pending"))
+      .take(BATCH);
+    let processed = 0;
+    for (const document of pending) {
+      if (document._creationTime > cutoff) continue;
+      await ctx.storage.delete(document.storageId);
+      await ctx.db.patch("documents", document._id, {
+        scanStatus: "rejected",
+        rejectReason: "Il controllo non si è completato. Riprova il caricamento.",
+        visibleToClient: false,
+      });
+      processed++;
+    }
+    return { processed };
+  },
+});

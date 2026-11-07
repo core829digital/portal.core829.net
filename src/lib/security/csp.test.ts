@@ -33,7 +33,10 @@ describe("buildCsp (produzione)", () => {
     const connect = directive(csp, "connect-src");
     expect(connect).toContain("https://happy-otter-123.convex.cloud");
     expect(connect).toContain("wss://happy-otter-123.convex.cloud");
+    // L'endpoint HTTP dei download (stesso deployment, dominio .convex.site).
+    expect(connect).toContain("https://happy-otter-123.convex.site");
     expect(connect).not.toContain("localhost");
+    expect(connect).not.toContain("*");
   });
 
   it("in produzione gli stili inline NON sono ammessi: solo nonce", () => {
@@ -59,6 +62,10 @@ describe("buildCsp (sviluppo)", () => {
   });
   it("senza URL Convex usa il dominio generico convex.cloud", () => {
     expect(directive(csp, "connect-src")).toContain("https://*.convex.cloud");
+  });
+  it("con un dominio personalizzato usa l'indirizzo HTTP esplicito", () => {
+    const custom = buildCsp({ nonce: "N", isDev: false, convexUrl: "https://db.core829.net", convexSiteUrl: "https://api.core829.net" });
+    expect(directive(custom, "connect-src")).toContain("https://api.core829.net");
   });
 });
 

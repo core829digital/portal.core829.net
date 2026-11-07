@@ -54,6 +54,33 @@ La CSP e' generata per richiesta in `src/proxy.ts` con nonce nuovo a ogni rispos
 - Limite onesto: chi ha il link vede stato, importi e abbonamenti senza altri controlli. E' una scelta di semplicita';
   se il link viene inoltrato per errore si **revoca** e se ne crea uno nuovo.
 
+## Caricamento e download dei documenti
+**Percorso di un file:** caricamento -> registrazione (controlli rapidi) -> scansione -> `pulito` oppure `respinto`.
+Fino alla fine della scansione il file e' `in controllo` e **non e' scaricabile da nessuno**.
+
+**Controlli sul contenuto** (sul server, senza fidarsi di nome o tipo dichiarati dal browser):
+1. solo PDF, PNG, JPEG, DOCX, XLSX; massimo 15 MB; file vuoti rifiutati;
+2. si leggono i **primi byte** per capire cosa e' davvero il file;
+3. gli **eseguibili** (Windows, Linux, macOS, script) sono rifiutati anche se rinominati `.pdf`;
+4. l'estensione deve corrispondere al contenuto (una `.png` con dentro un PDF e' rifiutata);
+5. PDF con `/JavaScript`, `/JS`, `/Launch`, `/EmbeddedFile`, `/RichMedia` (anche con nomi offuscati `#xx`) sono rifiutati;
+   DOCX/XLSX con macro (`vbaProject`) o senza la struttura Office sono rifiutati;
+6. **opzionale**: l'impronta SHA-256 si confronta con VirusTotal (`VIRUSTOTAL_API_KEY`). Si invia **solo l'impronta, mai il file**.
+
+**Download del cliente:** endpoint `POST /portal/download` (segreti nel corpo, mai nell'URL). Ogni richiesta e' autorizzata
+da capo: link valido + sessione di sblocco (codice via email) + documento del cliente, visibile e `pulito`. **Un solo errore
+(404) per qualunque rifiuto.** Il file e' sempre servito come `attachment` con `nosniff` e `CSP sandbox`; CORS limitato al sito
+del portale; ogni download finisce nel registro di audit. Provato: tre protezioni rimosse una alla volta, un test ha fallito per ognuna.
+
+**Limiti onesti**
+- Sono controlli **euristici**, non un antivirus. Un PDF con codice nascosto in flussi compressi (ObjStm) o un file Office
+  costruito ad arte potrebbero non essere riconosciuti. Mitigazioni: tipi ammessi pochissimi, file mai aperti nel sito, scaricati
+  solo con link + codice, e (se attivo) controllo dell'impronta contro malware noto. Un file "sconosciuto" a VirusTotal non e' "sicuro".
+- Se VirusTotal non risponde si va avanti (gli altri controlli sono gia' passati); l'impronta resta salvata per verifiche successive.
+- Se l'amministratore carica un file ma chiude la pagina prima di registrarlo, resta un file **non referenziato** nello storage:
+  non e' raggiungibile da nessun cliente, ma occupa spazio. Pulizia automatica da valutare in Fase 9.
+- Per alcuni browser un nome file con lettere accentate puo' diventare generico: il nome di salvataggio e' sempre ASCII.
+
 ## Pagina componibile (widget)
 - L'amministratore sceglie per ogni cliente quali blocchi mostrare e in che ordine. I blocchi liberi (avviso, link utili,
   contatti) contengono **solo testo**: validato sul server (lunghezze, caratteri invisibili, massimo 20 blocchi e 10 link),

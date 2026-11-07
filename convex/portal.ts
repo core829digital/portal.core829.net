@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
 import { audit } from "./lib/audit";
 import { fail, INVALID_LINK_MESSAGE } from "./lib/errors";
 import { requireUnlock, resolveLink } from "./lib/links";
@@ -70,5 +70,30 @@ export const touch = mutation({
       resourceId: link._id,
     });
     return null;
+  },
+});
+
+/**
+ * Verifica che QUESTO cliente possa scaricare QUESTO documento (link valido + sessione di sblocco + documento
+ * suo, visibile e pulito) e registra lo scaricamento. Interna: la chiama solo l'endpoint /portal/download.
+ * Ogni motivo di rifiuto e' un errore: chi chiama risponde sempre allo stesso modo.
+ */
+export const prepareDownload = internalMutation({
+  args: { token: v.string(), unlockToken: v.string(), documentId: v.id("documents") },
+  handler: async (ctx, args) => {
+    const link = await resolveLink(ctx, args.token);
+    await requireUnlock(ctx, link, args.unlockToken);
+    const document = await ctx.db.get("documents", args.documentId);
+    if (!document || document.clientId !== link.clientId || !document.visibleToClient || document.scanStatus !== "clean") {
+      return fail("NOT_FOUND", "Documento non trovato.");
+    }
+    await audit(ctx, {
+      actorType: "client",
+      clientId: link.clientId,
+      action: "document.downloaded",
+      resourceType: "document",
+      resourceId: args.documentId,
+    });
+    return { storageId: document.storageId, fileName: document.fileName, mimeType: document.mimeType };
   },
 });

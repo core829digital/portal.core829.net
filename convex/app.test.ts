@@ -136,6 +136,10 @@ describe("autorizzazione amministratore", () => {
       "accessLinks.listByClient": (c) => c.query(api.accessLinks.listByClient, { clientId }),
       "documents.listByClient": (c) => c.query(api.documents.listByClient, { clientId }),
       "documents.setVisibility": (c) => c.mutation(api.documents.setVisibility, { documentId, visibleToClient: false }),
+      "documents.generateUploadUrl": (c) => c.mutation(api.documents.generateUploadUrl, {}),
+      "documents.finalize": (c) => c.mutation(api.documents.finalize, { clientId, storageId, fileName: "a.pdf", title: "t", kind: "other", visibleToClient: true }),
+      "documents.remove": (c) => c.mutation(api.documents.remove, { documentId }),
+      "documents.adminUrl": (c) => c.query(api.documents.adminUrl, { documentId }),
       "pages.get": (c) => c.query(api.pages.get, { clientId }),
       "pages.save": (c) => c.mutation(api.pages.save, { clientId, widgets: [] }),
       "pages.reset": (c) => c.mutation(api.pages.reset, { clientId }),
@@ -772,5 +776,222 @@ describe("pagina del cliente (widget)", () => {
     await h.admin.mutation(api.pages.save, { clientId: a, widgets: [core("summary")] as never });
     const logs = await h.t.run(async (ctx) => ctx.db.query("auditLogs").collect());
     expect(logs.map((l) => l.action)).toContain("page.saved");
+  });
+});
+
+describe("documenti: caricamento, controllo e download", () => {
+  const enc = (str: string) => Uint8Array.from(str, (c) => c.charCodeAt(0) & 0xff);
+  const PDF = "%PDF-1.7\n1 0 obj\n<< /Type /Catalog >>\nendobj\n";
+  const BASE = "https://portal.test";
+
+  async function docsSetup() {
+    process.env.SITE_URL = BASE;
+    const h = await setup();
+    const a = await newClient(h, "A");
+    const b = await newClient(h, "B");
+    const linkA = await newLink(h, a);
+    const linkB = await newLink(h, b);
+    return { h, a, b, linkA, linkB };
+  }
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    delete process.env.SITE_URL;
+    delete process.env.VIRUSTOTAL_API_KEY;
+  });
+
+  async function upload(h: Harness, clientId: Id<"clients">, fileName: string, content: Uint8Array | string, visible = true) {
+    const bytes = typeof content === "string" ? enc(content) : content;
+    const storageId = await h.t.run(async (ctx) => ctx.storage.store(new Blob([bytes as BlobPart])));
+    const result = await h.admin.mutation(api.documents.finalize, { clientId, storageId, fileName, title: "Documento", kind: "contract", visibleToClient: visible });
+    await new Promise((r) => setTimeout(r, 20));
+    await h.t.finishInProgressScheduledFunctions();
+    return { result, storageId };
+  }
+  const docOf = (h: Harness, id: string) => h.t.run(async (ctx) => ctx.db.get("documents", id as Id<"documents">));
+  const stored = (h: Harness, id: Id<"_storage">) => h.t.run(async (ctx) => ctx.storage.get(id));
+
+  async function unlocked(h: Harness, link: { linkId: Id<"accessLinks">; token: string }) {
+    const { code } = await issue(h, link.linkId);
+    const r = await h.t.mutation(api.otp.verifyCode, { token: link.token, code });
+    if (!r.ok) throw new Error("atteso sblocco");
+    return r.unlockToken;
+  }
+  const download = (h: Harness, body: unknown, origin = BASE) =>
+    h.t.fetch("/portal/download", { method: "POST", headers: { "Content-Type": "application/json", Origin: origin }, body: typeof body === "string" ? body : JSON.stringify(body) });
+
+  it("un PDF valido passa da 'in controllo' a 'pulito' e si calcola la sua impronta", async () => {
+    const { h, a } = await docsSetup();
+    const { result } = await upload(h, a, "contratto.pdf", PDF);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const doc = await docOf(h, result.documentId);
+    expect(doc?.scanStatus).toBe("clean");
+    expect(doc?.sha256).toMatch(/^[0-9a-f]{64}$/);
+    expect(doc?.mimeType).toBe("application/pdf");
+    expect(await h.admin.query(api.documents.adminUrl, { documentId: doc!._id })).toEqual(expect.any(String));
+  });
+
+  it("un file 'in controllo' non e' scaricabile ne' elencato al cliente", async () => {
+    const { h, a, linkA } = await docsSetup();
+    // Documento inserito direttamente in stato "pending", senza far partire nessuna scansione.
+    const storageId = await h.t.run(async (ctx) => ctx.storage.store(new Blob([enc(PDF) as BlobPart])));
+    const documentId = await h.t.run(async (ctx) =>
+      ctx.db.insert("documents", {
+        clientId: a, kind: "contract", title: "In attesa", storageId, fileName: "x.pdf", mimeType: "application/pdf",
+        sizeBytes: PDF.length, scanStatus: "pending", visibleToClient: true,
+      }),
+    );
+    const unlockToken = await unlocked(h, linkA);
+    expect(await h.t.query(api.portal.documents, { token: linkA.token, unlockToken })).toEqual([]);
+    expect((await download(h, { token: linkA.token, unlockToken, documentId })).status).toBe(404);
+    // Appena risulta pulito, invece, si scarica.
+    await h.t.run(async (ctx) => ctx.db.patch("documents", documentId, { scanStatus: "clean" }));
+    expect((await download(h, { token: linkA.token, unlockToken, documentId })).status).toBe(200);
+  });
+
+  it("un eseguibile rinominato .pdf viene respinto e cancellato dal server", async () => {
+    const { h, a } = await docsSetup();
+    const { result, storageId } = await upload(h, a, "fattura.pdf", "MZ\x90\x00\x03 programma eseguibile");
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const doc = await docOf(h, result.documentId);
+    expect(doc).toMatchObject({ scanStatus: "rejected", visibleToClient: false });
+    expect(doc?.rejectReason).toMatch(/eseguibile/);
+    expect(await stored(h, storageId)).toBeNull();
+    expect(await h.admin.query(api.documents.adminUrl, { documentId: doc!._id })).toBeNull();
+  });
+
+  it("PDF con JavaScript e file di tipo non ammesso", async () => {
+    const { h, a } = await docsSetup();
+    const js = await upload(h, a, "a.pdf", `${PDF}3 0 obj\n<< /S /JavaScript /JS (app.alert(1)) >>\nendobj\n`);
+    expect((await docOf(h, js.result.ok ? js.result.documentId : ""))?.scanStatus).toBe("rejected");
+
+    const exe = await upload(h, a, "programma.exe", "MZ");
+    expect(exe.result).toMatchObject({ ok: false });
+    expect(await stored(h, exe.storageId)).toBeNull();
+
+    const empty = await upload(h, a, "vuoto.pdf", new Uint8Array(0));
+    expect(empty.result).toMatchObject({ ok: false });
+  });
+
+  it("il file segnalato come malware da VirusTotal viene respinto, e al servizio va solo l'impronta", async () => {
+    process.env.VIRUSTOTAL_API_KEY = "vt_chiave";
+    const f = vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: { attributes: { last_analysis_stats: { malicious: 5 } } } }), { status: 200 }));
+    vi.stubGlobal("fetch", f);
+    const { h, a } = await docsSetup();
+    const { result } = await upload(h, a, "a.pdf", PDF);
+    const doc = await docOf(h, result.ok ? result.documentId : "");
+    expect(doc).toMatchObject({ scanStatus: "rejected" });
+    expect(doc?.rejectReason).toMatch(/malware/);
+    const [url, init] = f.mock.calls[0] as [string, RequestInit];
+    expect(url).toMatch(/\/files\/[0-9a-f]{64}$/);
+    expect(init.body).toBeUndefined();
+  });
+
+  it("registrare due volte lo stesso file, o con un progetto di un altro cliente, e' rifiutato", async () => {
+    const { h, a, b } = await docsSetup();
+    const { result, storageId } = await upload(h, a, "a.pdf", PDF);
+    expect(result.ok).toBe(true);
+    expect(await codeOf(h.admin.mutation(api.documents.finalize, { clientId: a, storageId, fileName: "a.pdf", title: "x", kind: "other", visibleToClient: true }))).toBe("CONFLICT");
+    const projectB = await h.admin.mutation(api.projects.create, { clientId: b, name: "Sito B" });
+    const s2 = await h.t.run(async (ctx) => ctx.storage.store(new Blob([enc(PDF) as BlobPart])));
+    expect(await codeOf(h.admin.mutation(api.documents.finalize, { clientId: a, storageId: s2, projectId: projectB, fileName: "b.pdf", title: "x", kind: "other", visibleToClient: true }))).toBe("NOT_FOUND");
+  });
+
+  it("DOWNLOAD: con link e codice il cliente riceve il suo file, con le intestazioni di sicurezza", async () => {
+    const { h, a, linkA } = await docsSetup();
+    const { result } = await upload(h, a, "Preventivo città.pdf", PDF);
+    const documentId = result.ok ? result.documentId : "";
+    const unlockToken = await unlocked(h, linkA);
+    const res = await download(h, { token: linkA.token, unlockToken, documentId });
+    expect(res.status).toBe(200);
+    expect(new Uint8Array(await res.arrayBuffer())).toEqual(enc(PDF));
+    expect(res.headers.get("Content-Type")).toBe("application/pdf");
+    expect(res.headers.get("Content-Disposition")).toMatch(/^attachment;/);
+    expect(res.headers.get("Content-Disposition")).toContain("filename*=UTF-8''Preventivo%20citt%C3%A0.pdf");
+    expect(res.headers.get("X-Content-Type-Options")).toBe("nosniff");
+    expect(res.headers.get("Content-Security-Policy")).toBe("default-src 'none'; sandbox");
+    expect(res.headers.get("Cache-Control")).toBe("private, no-store");
+    expect(res.headers.get("Access-Control-Allow-Origin")).toBe(BASE);
+    const logs = await h.t.run(async (ctx) => ctx.db.query("auditLogs").collect());
+    expect(logs.map((l) => l.action)).toContain("document.downloaded");
+  });
+
+  it("DOWNLOAD negato: ogni motivo di rifiuto da' la stessa identica risposta 404", async () => {
+    const { h, a, b, linkA, linkB } = await docsSetup();
+    const mine = await upload(h, a, "mio.pdf", PDF);
+    const hidden = await upload(h, a, "nascosto.pdf", PDF, false);
+    const other = await upload(h, b, "altrui.pdf", PDF);
+    const rejected = await upload(h, a, "cattivo.pdf", "MZ");
+    const id = (r: { result: { ok: boolean; documentId?: string } }) => (r.result.ok ? (r.result.documentId as string) : "");
+    const unlockA = await unlocked(h, linkA);
+    const unlockB = await unlocked(h, linkB);
+
+    const attempts: [string, unknown][] = [
+      ["senza codice di sblocco", { token: linkA.token, unlockToken: "x".repeat(43), documentId: id(mine) }],
+      ["token sbagliato", { token: "y".repeat(43), unlockToken: unlockA, documentId: id(mine) }],
+      ["sblocco di un altro cliente", { token: linkA.token, unlockToken: unlockB, documentId: id(mine) }],
+      ["documento di un altro cliente", { token: linkA.token, unlockToken: unlockA, documentId: id(other) }],
+      ["documento nascosto", { token: linkA.token, unlockToken: unlockA, documentId: id(hidden) }],
+      ["documento respinto", { token: linkA.token, unlockToken: unlockA, documentId: id(rejected) }],
+      ["identificativo non valido", { token: linkA.token, unlockToken: unlockA, documentId: "non-un-id" }],
+      ["campi mancanti", { token: linkA.token }],
+      ["JSON non valido", "{non json"],
+      ["corpo enorme", "x".repeat(10_000)],
+    ];
+    for (const [name, body] of attempts) {
+      const res = await download(h, body);
+      expect(res.status, name).toBe(404);
+      expect(await res.text(), name).toBe(JSON.stringify({ error: "not_found" }));
+    }
+    // E il suo documento valido, con le stesse credenziali, funziona.
+    expect((await download(h, { token: linkA.token, unlockToken: unlockA, documentId: id(mine) })).status).toBe(200);
+  });
+
+  it("CORS: l'origine del portale e' ammessa, quella di un altro sito no", async () => {
+    const { h, linkA } = await docsSetup();
+    const ok = await h.t.fetch("/portal/download", { method: "OPTIONS", headers: { Origin: BASE } });
+    expect(ok.status).toBe(204);
+    expect(ok.headers.get("Access-Control-Allow-Origin")).toBe(BASE);
+    const bad = await h.t.fetch("/portal/download", { method: "OPTIONS", headers: { Origin: "https://evil.com" } });
+    expect(bad.headers.get("Access-Control-Allow-Origin")).toBeNull();
+    const res = await download(h, { token: linkA.token, unlockToken: "x".repeat(43), documentId: "y" }, "https://evil.com");
+    expect(res.headers.get("Access-Control-Allow-Origin")).toBeNull();
+  });
+
+  it("revocare il link blocca subito anche i download", async () => {
+    const { h, a, linkA } = await docsSetup();
+    const { result } = await upload(h, a, "a.pdf", PDF);
+    const unlockToken = await unlocked(h, linkA);
+    await h.admin.mutation(api.accessLinks.revoke, { linkId: linkA.linkId });
+    expect((await download(h, { token: linkA.token, unlockToken, documentId: result.ok ? result.documentId : "" })).status).toBe(404);
+  });
+
+  it("i controlli rimasti in sospeso vengono chiusi e il file cancellato", async () => {
+    const { h, a } = await docsSetup();
+    const storageId = await h.t.run(async (ctx) => ctx.storage.store(new Blob([enc(PDF) as BlobPart])));
+    const result = await h.admin.mutation(api.documents.finalize, { clientId: a, storageId, fileName: "a.pdf", title: "x", kind: "other", visibleToClient: true });
+    // Si simula che la scansione non sia mai finita (annullando l'esito in corso) e passino 20 minuti.
+    await new Promise((r) => setTimeout(r, 20));
+    await h.t.finishInProgressScheduledFunctions();
+    const id = result.ok ? (result.documentId as Id<"documents">) : ("" as Id<"documents">);
+    await h.t.run(async (ctx) => ctx.db.patch("documents", id, { scanStatus: "pending", sha256: undefined }));
+    vi.setSystemTime(NOW + 20 * 60 * 1000);
+    await h.t.mutation(internal.maintenance.expirePendingScans, {});
+    expect(await docOf(h, id)).toMatchObject({ scanStatus: "rejected", visibleToClient: false });
+    expect(await stored(h, storageId)).toBeNull();
+  });
+
+  it("eliminare un documento cancella il file e scollega la fattura", async () => {
+    const { h, a } = await docsSetup();
+    const { result, storageId } = await upload(h, a, "fattura.pdf", PDF);
+    const documentId = (result.ok ? result.documentId : "") as Id<"documents">;
+    const invoiceId = await h.admin.mutation(api.invoices.create, { clientId: a, number: "D1", issuedAt: NOW, dueAt: NOW + DAY, amountCents: 100 });
+    await h.admin.mutation(api.invoices.update, { invoiceId, documentId });
+    await h.admin.mutation(api.documents.remove, { documentId });
+    expect(await docOf(h, documentId)).toBeNull();
+    expect(await stored(h, storageId)).toBeNull();
+    const invoices = await h.admin.query(api.invoices.listByClient, { clientId: a });
+    expect(invoices[0].documentId).toBeUndefined();
   });
 });

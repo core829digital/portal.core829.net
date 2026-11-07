@@ -44,6 +44,7 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
     nonce,
     isDev: process.env.NODE_ENV === "development",
     convexUrl: process.env.NEXT_PUBLIC_CONVEX_URL,
+    convexSiteUrl: process.env.NEXT_PUBLIC_CONVEX_SITE_URL,
   });
 
   // Next.js legge il nonce dall'header CSP della richiesta e lo applica ai propri script.

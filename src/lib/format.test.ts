@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dateInputToTimestamp, formatCents, formatDate, formatBytes, parseEuroToCents, timestampToDateInput } from "./format";
+import { dateInputToTimestamp, downloadFileName, formatCents, formatDate, formatBytes, parseEuroToCents, timestampToDateInput } from "./format";
 
 describe("parseEuroToCents", () => {
   it.each([
@@ -59,5 +59,19 @@ describe("formatBytes", () => {
     expect(formatBytes(500)).toBe("500 B");
     expect(formatBytes(2048)).toBe("2 KB");
     expect(formatBytes(5 * 1024 * 1024)).toBe("5.0 MB");
+  });
+});
+
+describe("downloadFileName", () => {
+  it("toglie gli accenti e mantiene l'estensione", () => {
+    expect(downloadFileName("Preventivo città.pdf")).toBe("Preventivo citta.pdf");
+    expect(downloadFileName("Più è meglio.docx")).toBe("Piu e meglio.docx");
+  });
+  it("sostituisce caratteri non ASCII e separatori di percorso", () => {
+    expect(downloadFileName("日本語.pdf")).toBe("___.pdf");
+    expect(downloadFileName("a/b\\c:d.pdf")).toBe("a_b_c_d.pdf");
+  });
+  it("non restituisce mai un nome vuoto", () => {
+    expect(downloadFileName("   ")).toBe("documento");
   });
 });
