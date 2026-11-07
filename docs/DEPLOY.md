@@ -20,6 +20,13 @@ Da fare **dopo** i passi di `docs/SETUP.md` (chiavi Convex Auth, variabili, prim
 4. Vercel > Firewall: limite di richieste per IP su `/c` e `/admin/login`; blocco del metodo TRACE.
 5. Webhook Resend (facoltativo): endpoint `https://<deployment>.convex.site/webhooks/resend`, segreto in `RESEND_WEBHOOK_SECRET`.
 
+## 2b. Dominio portal.core829.net (dopo che il DNS si e' propagato)
+
+1. Vercel: `NEXT_PUBLIC_APP_URL` = `https://portal.core829.net`, poi **Redeploy senza cache**.
+2. Convex (produzione): `SITE_URL` = `https://portal.core829.net`. Serve al download dei documenti (CORS).
+3. Il vecchio indirizzo `*.vercel.app` puo' restare attivo o essere reindirizzato.
+4. Sito core829.net: il pulsante "Area clienti" nell'header punta a `https://portal.core829.net` (variabile facoltativa `NEXT_PUBLIC_PORTAL_URL`).
+
 ## 3. Controllo dopo la pubblicazione
 
 - `https://portal.core829.net/c` mostra l'invito ad aprire il link personale; `/admin` porta al login.
@@ -47,3 +54,14 @@ Da fare **dopo** i passi di `docs/SETUP.md` (chiavi Convex Auth, variabili, prim
 - Controlla le richieste di aggiornamento di Dependabot e il risultato di CI (verde = ok).
 - Ruota le chiavi (Resend, VirusTotal, segreto webhook) almeno una volta l'anno o dopo ogni sospetto di fuga.
 - Leggi il registro di audit per accessi insoliti.
+
+## 7. Dashboard e brand
+
+- **Area admin** (`/admin`): menu laterale con pagine (Panoramica, Clienti, Fatture, Abbonamenti, Progetti, Attivita'); dentro un cliente
+  compaiono le sue sezioni (Scheda, Progetti, Fatture, Abbonamenti, Documenti, Pagina cliente, Link di accesso). Niente schede (tabs).
+- **Portale cliente** (`/c`): stesso schema, con le pagine attive scelte dall'admin nella "Pagina cliente" (un blocco disattivato nasconde la pagina).
+- **Metriche** (definizioni in `convex/lib/metrics.ts`, uguali per admin e cliente): incassato = fatture pagate (per data di pagamento);
+  da incassare = inviate + scadute (mai bozze o annullate); MRR = abbonamenti attivi, gli annuali divisi per 12.
+- **Brand**: font Unbounded / Space Grotesk / JetBrains Mono, rosso `#dd1a2b`, logo e sfondo "neural" della hero di core829.net
+  (`src/components/brand/NeuralNoise.tsx` e' una copia di `components/ui/neural-noise.tsx` del repo `core829.net-new`: tenerli allineati).
+- **Pagina iniziale** (`/`): accesso per i clienti (link personale) e contatti per chi non lo e' (modulo `core829.net/it/contatti` ed email).

@@ -17,15 +17,32 @@ test.describe("pagine pubbliche", () => {
   test("home: ben disegnata, nessuna violazione di sicurezza", async ({ page }) => {
     const csp = watchCsp(page);
     await page.goto("/");
-    await expect(page.getByRole("heading", { name: "Portale clienti" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Il tuo spazio con CORE829" })).toBeVisible();
     const font = await page.locator("h1").evaluate((el) => getComputedStyle(el).fontFamily);
     expect(font, "deve usare il font del brand (Unbounded), non quello di sistema").toContain("Unbounded");
     expect(csp).toEqual([]);
   });
 
-  test("/c senza link: invita ad aprire il link personale", async ({ page }) => {
+  test("home: chi non e' cliente trova il modulo contatti del sito e l'email", async ({ page }) => {
+    await page.goto("/");
+    const form = page.getByRole("link", { name: /Scrivici dal modulo contatti/ });
+    await expect(form).toHaveAttribute("href", "https://core829.net/it/contatti");
+    await expect(form).toHaveAttribute("rel", "noopener noreferrer");
+    await expect(page.getByRole("link", { name: "hello@core829.net" })).toHaveAttribute("href", "mailto:hello@core829.net");
+    await expect(page.getByRole("link", { name: "Accesso amministratore" })).toHaveAttribute("href", "/admin/login");
+  });
+
+  test("home: lo sfondo animato non e' un contenuto (nascosto agli screen reader) e non blocca i clic", async ({ page }) => {
+    await page.goto("/");
+    const bg = page.locator("canvas").locator("xpath=ancestor::div[@aria-hidden='true'][1]");
+    await expect(bg).toHaveCount(1);
+    expect(await bg.evaluate((el) => getComputedStyle(el).pointerEvents)).toBe("none");
+  });
+
+  test("/c senza link: invita ad aprire il link personale e propone i contatti", async ({ page }) => {
     await page.goto("/c");
     await expect(page.getByRole("heading", { name: "Apri il tuo link personale" })).toBeVisible();
+    await expect(page.getByRole("link", { name: /Scrivici dal modulo contatti/ })).toHaveAttribute("href", "https://core829.net/it/contatti");
   });
 
   test("/c con link: il segreto viene tolto dall'indirizzo e tenuto solo nella scheda", async ({ page }) => {

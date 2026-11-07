@@ -3,6 +3,7 @@
 import { useMutation, useQuery } from "convex/react";
 import { useEffect, useSyncExternalStore, type ReactNode } from "react";
 import { api } from "@convex/_generated/api";
+import { ContactCtas } from "@/components/brand/ContactCtas";
 import { ErrorBoundary } from "@/components/portal/ErrorBoundary";
 import { PortalChrome } from "@/components/portal/PortalChrome";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -15,7 +16,7 @@ function Message({ title, children }: { title: string; children: ReactNode }) {
       <div className="max-w-md text-center">
         <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-brand-deep">CORE829</p>
         <h1 className="mt-3 font-display text-2xl tracking-tight">{title}</h1>
-        <p className="mt-3 text-base leading-7 text-muted-foreground">{children}</p>
+        <div className="mt-3 text-base leading-7 text-muted-foreground">{children}</div>
       </div>
     </main>
   );
@@ -63,7 +64,10 @@ export function PortalFrame({ children }: { children: ReactNode }) {
   if (token === null) {
     return (
       <Message title="Apri il tuo link personale">
-        Per vedere il tuo spazio apri il link che ti abbiamo inviato via email o WhatsApp. Se non lo trovi, scrivici e te ne invieremo uno nuovo.
+        Per vedere il tuo spazio apri il link che ti abbiamo inviato via email o WhatsApp. Se non lo trovi, o non sei ancora cliente, scrivici.
+        <span className="mt-6 flex justify-center">
+          <ContactCtas />
+        </span>
       </Message>
     );
   }

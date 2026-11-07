@@ -16,6 +16,9 @@
   --color-brand-deep: var(--brand-red-deep);
   --color-brand-tint: var(--brand-tint);
   --color-surface: var(--surface);
+  --color-ink: #0b0b0c;
+  --color-on-ink: #f5f5f5;
+  --color-on-ink-muted: #a1a1a6;
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);

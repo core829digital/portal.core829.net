@@ -24,3 +24,7 @@ Vedi `.env.example`. Non committare mai segreti.
 ## Stato
 Fase 0 (fondamenta) in corso. Le fasi successive sono: sicurezza, modello dati, area admin,
 portale cliente, widget-as-a-page, upload sicuri, webhook, performance, revisione e deploy.
+
+## Dashboard
+
+Area admin e portale cliente sono dashboard a pagine con menu laterale e brand CORE829. Dettagli (metriche, brand, dominio) in [`docs/DEPLOY.md`](docs/DEPLOY.md), sezione 7.
