@@ -62,6 +62,6 @@ Da fare **dopo** i passi di `docs/SETUP.md` (chiavi Convex Auth, variabili, prim
 - **Portale cliente** (`/c`): stesso schema, con le pagine attive scelte dall'admin nella "Pagina cliente" (un blocco disattivato nasconde la pagina).
 - **Metriche** (definizioni in `convex/lib/metrics.ts`, uguali per admin e cliente): incassato = fatture pagate (per data di pagamento);
   da incassare = inviate + scadute (mai bozze o annullate); MRR = abbonamenti attivi, gli annuali divisi per 12.
-- **Brand**: font Unbounded / Space Grotesk / JetBrains Mono, rosso `#dd1a2b`, logo e sfondo "neural" della hero di core829.net
+- **Brand**: font identici ad Andromedia Web e al sito (Saans se installato sul dispositivo, altrimenti Inter self-hosted; JetBrains Mono per le etichette; titoli a peso 560), rosso `#dd1a2b`, logo e sfondo "neural" della hero di core829.net
   (`src/components/brand/NeuralNoise.tsx` e' una copia di `components/ui/neural-noise.tsx` del repo `core829.net-new`: tenerli allineati).
 - **Pagina iniziale** (`/`): accesso per i clienti (link personale) e contatti per chi non lo e' (modulo `core829.net/it/contatti` ed email).

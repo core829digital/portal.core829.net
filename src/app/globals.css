@@ -4,13 +4,37 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Saans (Displaay) e' un font commerciale: se e' installato sul dispositivo viene usato direttamente,
+   altrimenti si usa Inter (self-hosted da next/font). Configurazione identica ad Andromedia Web. */
+@font-face {
+  font-family: "Saans";
+  src: local("Saans"), local("Saans Regular"), local("Saans-Regular");
+  font-weight: 300 800;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Saans Display";
+  src: local("Saans Display"), local("SaansDisplay-Regular"), local("Saans Display Regular"), local("Saans");
+  font-weight: 300 800;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Saans Text";
+  src: local("Saans Text"), local("SaansText-Regular"), local("Saans Text Regular"), local("Saans");
+  font-weight: 300 800;
+  font-style: normal;
+  font-display: swap;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  /* Brand CORE829: Space Grotesk (testo), Unbounded (titoli), JetBrains Mono (etichette tecniche). */
-  --font-sans: var(--font-space), system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-display: var(--font-unbounded), var(--font-space), system-ui, sans-serif;
-  --font-mono: var(--font-jetbrains), ui-monospace, "SFMono-Regular", monospace;
+  /* Stack identico ad Andromedia Web: Saans (se installato) -> Inter -> sistema; JetBrains Mono per i dettagli tecnici. */
+  --font-sans: "Saans Text", "Saans", var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Saans Display", "Saans", var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
   --font-heading: var(--font-display);
   --color-brand: var(--brand-red);
   --color-brand-deep: var(--brand-red-deep);
@@ -150,8 +174,8 @@
   h3,
   h4 {
     font-family: var(--font-display);
-    font-weight: 500;
-    letter-spacing: -0.025em;
+    font-weight: 560; /* come Andromedia Web */
+    letter-spacing: -0.03em;
     overflow-wrap: break-word;
     text-wrap: balance;
   }
@@ -165,13 +189,13 @@
   }
 }
 
-/* Tipografia del sito core829.net: titoli sempre Unbounded peso 500 (anche dove un componente chiede "semibold"),
+/* Tipografia Andromedia Web / core829.net: titoli sempre a peso 560 (anche dove un componente chiede "semibold"),
    testo con interlinea 1.6. Fuori da @layer di proposito: prevale sulle classi di utilita'. */
 h1,
 h2,
 h3,
 h4 {
-  font-weight: 500;
+  font-weight: 560;
 }
 body {
   line-height: 1.6;

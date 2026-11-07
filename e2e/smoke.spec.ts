@@ -18,8 +18,20 @@ test.describe("pagine pubbliche", () => {
     const csp = watchCsp(page);
     await page.goto("/");
     await expect(page.getByRole("heading", { level: 1, name: "Il tuo spazio con CORE829" })).toBeVisible();
-    const font = await page.locator("h1").evaluate((el) => getComputedStyle(el).fontFamily);
-    expect(font, "deve usare il font del brand (Unbounded), non quello di sistema").toContain("Unbounded");
+    // Stack di Andromedia Web: Saans (se installato) -> Inter. Mai il font di sistema (Times New Roman).
+    const fonts = await page.evaluate(async () => {
+      await document.fonts.ready;
+      return {
+        h1: getComputedStyle(document.querySelector("h1")!).fontFamily,
+        body: getComputedStyle(document.body).fontFamily,
+        weight: getComputedStyle(document.querySelector("h1")!).fontWeight,
+        loaded: [...document.fonts].filter((f) => f.status === "loaded").map((f) => f.family),
+      };
+    });
+    expect(fonts.h1).toContain("Inter");
+    expect(fonts.body).toContain("Inter");
+    expect(fonts.weight, "titoli a peso 560 come Andromedia Web").toBe("560");
+    expect(fonts.loaded, "Inter deve essere stato caricato davvero").toContain("Inter");
     expect(csp).toEqual([]);
   });
 

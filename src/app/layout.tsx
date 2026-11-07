@@ -1,12 +1,22 @@
 import type { Metadata, Viewport } from "next";
-import { JetBrains_Mono, Space_Grotesk, Unbounded } from "next/font/google";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import { canonicalAppUrl } from "@/lib/appUrl";
 import "./globals.css";
 
-// Font del brand CORE829 (gli stessi di core829.net), serviti dal nostro dominio da next/font.
-const spaceGrotesk = Space_Grotesk({ variable: "--font-space", subsets: ["latin"] });
-const unbounded = Unbounded({ variable: "--font-unbounded", subsets: ["latin"] });
-const jetbrainsMono = JetBrains_Mono({ variable: "--font-jetbrains", subsets: ["latin"] });
+// Stesso stack di Andromedia Web (repo andromediaweb.it) e del sito core829.net: "Saans" se installato sul
+// dispositivo, altrimenti Inter self-hosted da next/font (font variabile: normale, bold e ogni peso intermedio),
+// piu' JetBrains Mono per i dettagli tecnici. I token --font-* sono in globals.css.
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin"],
+  display: "swap",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains-mono",
+  subsets: ["latin"],
+  weight: ["400", "500"],
+});
 
 // Ogni risposta ha un nonce CSP diverso, quindi nessuna pagina puo' essere pre-generata
 // e messa in cache: tutto viene renderizzato a ogni richiesta. Il portale mostra comunque
@@ -45,7 +55,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang="it"
-      className={`${spaceGrotesk.variable} ${unbounded.variable} ${jetbrainsMono.variable} h-full antialiased`}
+      className={`${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
