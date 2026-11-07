@@ -352,5 +352,8 @@ test("editor PDF: l'invio e' solo PDF (nessuna scelta del Word)", async ({ page 
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByLabel("Destinatario")).toHaveValue("mario@caffe.it");
   await expect(dialog.getByText("In allegato: il PDF con i testi che hai aggiunto.")).toBeVisible();
-  await expect(dialog.getByRole("checkbox")).toHaveCount(0);
+  // Nessuna scelta di formato: l'unica casella e' "firma e timbro", attiva di default.
+  await expect(dialog.getByRole("checkbox")).toHaveCount(1);
+  await expect(dialog.getByRole("checkbox", { name: /firma e timbro/i })).toBeChecked();
+  await expect(dialog.getByRole("checkbox", { name: /Word/ })).toHaveCount(0);
 });

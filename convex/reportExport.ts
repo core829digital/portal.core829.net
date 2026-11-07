@@ -3,6 +3,7 @@
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { action } from "./_generated/server";
+import { loadBrand } from "./brandActions";
 import { COMPANY } from "./lib/autofill";
 import type { ModelBlock } from "./lib/docx";
 import { renderPdf } from "./lib/docPdf";
@@ -52,7 +53,7 @@ export const exportPdf = action({
     if (report.nextSteps) blocks.push(para("Prossimi passi", { style: "Heading1" }), ...report.nextSteps.split(/\n{2,}/).map((t) => para(t)));
     blocks.push(para(`Report riservato a ${clientName}. Per dubbi scrivi a ${COMPANY.email}.`, { size: 9 }));
 
-    const bytes = await renderPdf(blocks, { title: `Report ${label} — ${clientName}` });
+    const bytes = await renderPdf(blocks, { title: `Report ${label} — ${clientName}`, brand: await loadBrand(ctx) });
     await ctx.runMutation(internal.reports.logExport, { clientId: data.clientId, month: report.month });
     const slug = clientName.normalize("NFD").replace(/\p{M}/gu, "").replace(/[^A-Za-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || "cliente";
     return { fileName: `Report-${slug}-${new Date(report.month).getUTCFullYear()}-${String(new Date(report.month).getUTCMonth() + 1).padStart(2, "0")}.pdf`, base64: Buffer.from(bytes).toString("base64") };

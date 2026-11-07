@@ -16,6 +16,7 @@ import {
   LogOut,
   Receipt,
   Repeat,
+  Stamp,
   UserRound,
   Users,
 } from "lucide-react";
@@ -59,6 +60,7 @@ function Frame({ children }: { children: ReactNode }) {
       items: [
         { href: "/admin/templates", label: "Modelli", icon: FileStack },
         { href: "/admin/drafts", label: "Bozze e invii", icon: FilePen },
+        { href: "/admin/brand", label: "Firma e timbro", icon: Stamp },
       ],
     },
   ];

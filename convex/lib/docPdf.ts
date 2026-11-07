@@ -1,6 +1,6 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
 import type { ModelBlock } from "./docx";
-import { LOGO_ASPECT, LOGO_PNG_BASE64 } from "./logoPng";
+import { drawLetterhead, drawSeal, embedLogos, embedSeal, hasSeal, SEAL_HEIGHT, type Brand } from "./brandSeal";
 
 /**
  * Generatore PDF dai blocchi di un documento (testo e tabelle). Pagina A4, Helvetica (font standard).
@@ -82,7 +82,7 @@ function headingLevel(style: string | null): 0 | 1 | 2 | 3 {
   return 0;
 }
 
-export async function renderPdf(blocks: ModelBlock[], opts: { title: string }): Promise<Uint8Array> {
+export async function renderPdf(blocks: ModelBlock[], opts: { title: string; brand?: Brand }): Promise<Uint8Array> {
   const pdf = await PDFDocument.create();
   pdf.setTitle(opts.title.slice(0, 200));
   pdf.setProducer("CORE829 Portale");
@@ -90,7 +90,8 @@ export async function renderPdf(blocks: ModelBlock[], opts: { title: string }): 
   const regular = await pdf.embedFont(StandardFonts.Helvetica);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
   const supported = new Set<number>(regular.getCharacterSet());
-  const logo = await pdf.embedPng(Uint8Array.from(atob(LOGO_PNG_BASE64), (c) => c.charCodeAt(0)));
+  const logos = await embedLogos(pdf);
+  const seal = await embedSeal(pdf, opts.brand);
 
   const contentW = PAGE_W - MARGIN_X * 2;
   let page: PDFPage = pdf.addPage([PAGE_W, PAGE_H]);
@@ -165,13 +166,16 @@ export async function renderPdf(blocks: ModelBlock[], opts: { title: string }): 
     }
   }
 
-  // Intestazione (logo + ragione sociale) e piè di pagina (numero di pagina) su ogni pagina.
+  // Firma e timbro CORE829 in fondo al documento (se configurati nell'archivio privato).
+  if (hasSeal(opts.brand)) {
+    ensure(SEAL_HEIGHT + 16);
+    drawSeal(page, seal, { regular, bold }, MARGIN_X, y - 12);
+  }
+
+  // Intestazione (due loghi + ragione sociale) e piè di pagina (numero di pagina) su ogni pagina.
   const pages = pdf.getPages();
-  const logoH = 22;
   pages.forEach((pg, i) => {
-    pg.drawImage(logo, { x: MARGIN_X, y: PAGE_H - 42 - logoH, width: logoH / LOGO_ASPECT, height: logoH });
-    pg.drawText("CORE829 SRL", { x: PAGE_W - MARGIN_X - bold.widthOfTextAtSize("CORE829 SRL", 8), y: PAGE_H - 52, size: 8, font: bold, color: rgb(0.86, 0.1, 0.17) });
-    pg.drawLine({ start: { x: MARGIN_X, y: PAGE_H - 68 }, end: { x: PAGE_W - MARGIN_X, y: PAGE_H - 68 }, thickness: 0.5, color: rgb(0.85, 0.85, 0.85) });
+    drawLetterhead(pg, logos, bold, MARGIN_X);
     const label = `Pagina ${i + 1} di ${pages.length}`;
     pg.drawText(label, { x: PAGE_W - MARGIN_X - regular.widthOfTextAtSize(label, 8), y: 34, size: 8, font: regular, color: rgb(0.45, 0.45, 0.45) });
     pg.drawText("CORE829 SRL · Str. Mihai Eminescu 10, Roman, Romania · CUI/CIF 54616345", { x: MARGIN_X, y: 34, size: 8, font: regular, color: rgb(0.45, 0.45, 0.45) });

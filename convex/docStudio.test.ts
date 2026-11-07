@@ -6,6 +6,8 @@ import type { Id } from "./_generated/dataModel";
 import { PDFDocument, degrees } from "pdf-lib";
 import * as pdfjs from "pdfjs-dist/legacy/build/pdf.mjs";
 import { createBlankDocx, detectFields, listParagraphs, readDocx } from "./lib/docx";
+import { makePng } from "./lib/testPng";
+import { strFromU8 } from "fflate";
 import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
@@ -285,6 +287,109 @@ async function pdfTexts(bytes: Uint8Array, pageNumber: number): Promise<string[]
 }
 
 const note = (extra: Record<string, unknown> = {}) => ({ page: 0, x: 0.3, y: 0.4, text: "Mario Rossi", size: 12, color: "black" as const, bold: false, ...extra });
+
+describe("firma, timbro e loghi su ogni documento", () => {
+  const STAMP = makePng(40, 40, [0, 0, 200, 255]);
+  const SIGN = makePng(60, 20, [20, 20, 120, 255]);
+  async function withBrand() {
+    const h = await setup();
+    const stamp = await store(h.t, STAMP, "image/png");
+    const sign = await store(h.t, SIGN, "image/png");
+    await h.admin.action(api.brandActions.register, { kind: "stamp", storageId: stamp });
+    await h.admin.action(api.brandActions.register, { kind: "signature", storageId: sign });
+    return { h, stamp, sign };
+  }
+  const pdfImages = async (bytes: Uint8Array) => {
+    const doc = await PDFDocument.load(bytes);
+    let n = 0;
+    for (const [, o] of doc.context.enumerateIndirectObjects()) {
+      const dict = (o as { dict?: { get: (k: unknown) => unknown } }).dict;
+      const w = dict?.get((await import("pdf-lib")).PDFName.of("Width")) as { asNumber?: () => number } | undefined;
+      if (w?.asNumber && (w.asNumber() === 40 || w.asNumber() === 60)) n++;
+    }
+    return n;
+  };
+
+  it("carica firma e timbro nell'archivio privato: solo PNG validi, solo l'admin, sostituzione e cancellazione pulite", async () => {
+    const { h, stamp } = await withBrand();
+    const status = await h.admin.query(api.brand.status, {});
+    expect(status.stamp).toMatchObject({ width: 40, height: 40 });
+    expect(status.signature).toMatchObject({ width: 60, height: 20 });
+    // Chi non e' admin non vede nulla e non puo' ne' caricare ne' cancellare.
+    await expect(h.other.query(api.brand.status, {})).rejects.toThrow();
+    const mine = await store(h.t, STAMP, "image/png");
+    await expect(h.other.action(api.brandActions.register, { kind: "stamp", storageId: mine })).rejects.toThrow();
+    expect(await exists(h.t, mine)).toBe(true);
+    await expect(h.other.mutation(api.brand.remove, { kind: "stamp" })).rejects.toThrow();
+    // File non PNG: rifiutato e non resta in archivio.
+    const bad = await store(h.t, new TextEncoder().encode("<svg onload=alert(1)></svg>".padEnd(60)), "image/svg+xml");
+    await expect(h.admin.action(api.brandActions.register, { kind: "stamp", storageId: bad })).rejects.toThrow();
+    expect(await exists(h.t, bad)).toBe(false);
+    // Troppo grande.
+    const big = await store(h.t, new Uint8Array(3 * 1024 * 1024), "image/png");
+    await expect(h.admin.action(api.brandActions.register, { kind: "stamp", storageId: big })).rejects.toThrow();
+    // Sostituzione: il vecchio file sparisce.
+    const next = await store(h.t, makePng(50, 50), "image/png");
+    await h.admin.action(api.brandActions.register, { kind: "stamp", storageId: next });
+    expect(await exists(h.t, stamp)).toBe(false);
+    expect((await h.admin.query(api.brand.status, {})).stamp).toMatchObject({ width: 50 });
+    await h.admin.mutation(api.brand.remove, { kind: "stamp" });
+    expect((await h.admin.query(api.brand.status, {})).stamp).toBeNull();
+    expect(await exists(h.t, next)).toBe(false);
+  });
+
+  it("anteprima PDF di un Word: loghi + firma e timbro; anche l'anteprima Word li contiene", async () => {
+    const { h } = await withBrand();
+    const { templateId } = await template(h);
+    const { draftId } = await h.admin.action(api.docStudioActions.createDraft, { clientId: h.clientId, templateId });
+    const pdf = await h.admin.action(api.docStudioActions.previewDraft, { draftId, format: "pdf" });
+    const pdfBytes = await bytesOf(h.t, (await h.t.run((ctx) => ctx.db.get("docDrafts", draftId)))!.previewStorageId!);
+    expect(await pdfImages(pdfBytes)).toBeGreaterThanOrEqual(2);
+    expect(pdf.fileName).toMatch(/\.pdf$/);
+    await h.admin.action(api.docStudioActions.previewDraft, { draftId, format: "docx" });
+    const docx = readDocx(await bytesOf(h.t, (await h.t.run((ctx) => ctx.db.get("docDrafts", draftId)))!.previewStorageId!));
+    expect(Object.keys(docx).filter((k) => k.startsWith("word/media/brand-")).sort()).toEqual(["word/media/brand-core.png", "word/media/brand-server.png", "word/media/brand-signature.png", "word/media/brand-stamp.png"]);
+    // La bozza modificabile resta pulita.
+    const draftFile = readDocx(await bytesOf(h.t, (await h.t.run((ctx) => ctx.db.get("docDrafts", draftId)))!.storageId));
+    expect(Object.keys(draftFile).some((k) => k.includes("brand-"))).toBe(false);
+  });
+
+  it("PDF caricato: in uscita ha la pagina finale con firma e timbro, l'originale e la copia di lavoro restano intatti", async () => {
+    const { h } = await withBrand();
+    const upload = await store(h.t, await pdfBytes(), "application/pdf");
+    const { draftId } = await h.admin.action(api.docStudioActions.createPdfDraft, { clientId: h.clientId, uploadStorageId: upload, name: "PDF esterno", category: "other" });
+    await h.admin.action(api.docStudioActions.previewDraft, { draftId, format: "pdf" });
+    const row = (await h.t.run((ctx) => ctx.db.get("docDrafts", draftId)))!;
+    const out = await PDFDocument.load(await bytesOf(h.t, row.previewStorageId!));
+    expect(out.getPageCount()).toBe(3);
+    expect((await PDFDocument.load(await bytesOf(h.t, row.storageId))).getPageCount()).toBe(2);
+    expect((await PDFDocument.load(await bytesOf(h.t, upload))).getPageCount()).toBe(2);
+  });
+
+  it("l'invio mette firma e timbro su ogni allegato e li archivia nel fascicolo; si puo' escludere solo la firma", async () => {
+    process.env.RESEND_API_KEY = "re_x";
+    process.env.AUTH_EMAIL_FROM = "CORE829 <portal@core829.net>";
+    const { h } = await withBrand();
+    const { templateId } = await template(h);
+    const mk = async () => (await h.admin.action(api.docStudioActions.createDraft, { clientId: h.clientId, templateId })).draftId;
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: "m1" }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const base = { to: "mario@caffe.it", subject: "Contratto", message: "Ecco", formats: ["pdf", "docx"] as ("pdf" | "docx")[] };
+    await h.admin.action(api.docStudioActions.sendDraft, { draftId: await mk(), ...base });
+    const sent = JSON.parse(String(fetchMock.mock.calls[0][1].body)) as { attachments: { filename: string; content: string }[] };
+    const docxAtt = sent.attachments.find((a) => a.filename.endsWith(".docx"))!;
+    const docx = readDocx(new Uint8Array(Buffer.from(docxAtt.content, "base64")));
+    expect(docx["word/media/brand-stamp.png"]).toBeDefined();
+    expect(await pdfImages(new Uint8Array(Buffer.from(sent.attachments.find((a) => a.filename.endsWith(".pdf"))!.content, "base64")))).toBeGreaterThanOrEqual(2);
+    // Senza firma e timbro (scelta esplicita): restano i loghi.
+    await h.admin.action(api.docStudioActions.sendDraft, { draftId: await mk(), ...base, withSeal: false });
+    const noSeal = JSON.parse(String(fetchMock.mock.calls[1][1].body)) as { attachments: { filename: string; content: string }[] };
+    const d2 = readDocx(new Uint8Array(Buffer.from(noSeal.attachments.find((a) => a.filename.endsWith(".docx"))!.content, "base64")));
+    expect(d2["word/media/brand-stamp.png"]).toBeUndefined();
+    expect(d2["word/media/brand-core.png"]).toBeDefined();
+    expect(strFromU8(d2["word/document.xml"])).toContain("Logo CORE829");
+  });
+});
 
 describe("modelli CORE829 inclusi", () => {
   it("si installano una volta sola, compaiono nell'elenco e si usano per un cliente con i dati gia' compilati", async () => {

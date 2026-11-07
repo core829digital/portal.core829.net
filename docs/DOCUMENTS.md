@@ -63,3 +63,11 @@ In *Documenti → Modelli → Installa i modelli CORE829*: Preventivo, Modulo d'
 
 - Le bozze si eliminano dall'elenco (con conferma); i documenti **già inviati** non si eliminano dalle bozze.
 - Un documento inviato al cliente (es. contratto) richiede una **seconda conferma** esplicita per essere cancellato dal fascicolo; l'evento è nel registro con `wasSent`.
+
+## Loghi, firma e timbro su ogni documento
+
+- **Due loghi** (CORE829 + «829 Servers department», lo stesso della pagina Server personalizzati di core829.net) compaiono su ogni documento che esce: in intestazione su ogni pagina dei PDF, in cima ai file Word.
+- **Firma e timbro** di CORE829 SRL si aggiungono in fondo: nei PDF generati dal Word, nei Word, nei report del cliente e, per i **PDF caricati**, in una pagina finale «Firma e timbro» (le pagine originali non si toccano, il timbro non copre mai il testo).
+- Si applicano al file *in uscita* (anteprima, download, invio, fascicolo del cliente); la bozza modificabile resta pulita. Nell'invio c'è la casella «Aggiungi firma e timbro» (attiva di default).
+- **Dove stanno firma e timbro:** nell'archivio privato di Convex, non nel codice (il repository GitHub è pubblico: chiunque potrebbe copiarli e falsificare documenti). Si caricano da **Documenti → Firma e timbro** (PNG trasparenti, max 2 MB). Solo l'amministratore li vede; ogni cambio è nel registro. Se mancano, un avviso nell'editor lo segnala e i documenti escono solo con i loghi.
+- Se la firma/timbro dovessero finire in mani sbagliate: elimina e ricarica da quel pannello e valuta una nuova firma/timbro ufficiali.

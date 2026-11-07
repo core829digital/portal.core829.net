@@ -4,6 +4,9 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { action, env, type ActionCtx } from "./_generated/server";
+import { loadBrand } from "./brandActions";
+import { sealPdf } from "./lib/brandSeal";
+import { decorateDocx } from "./lib/docxBrand";
 import { renderPdf } from "./lib/docPdf";
 import { BUILTIN_TEMPLATES } from "./lib/templates";
 import { autofillFields, buildVariables, documentNumber, formatDateRome, type ClientData, type DocCategory } from "./lib/autofill";
@@ -283,6 +286,25 @@ export const saveDraft = action({
   },
 });
 
+type DraftForOutput = { name: string; format: "docx" | "pdf"; storageId: Id<"_storage"> };
+
+/**
+ * Il file che esce dal portale (anteprima, invio, fascicolo del cliente): in tutti i formati porta i due loghi CORE829
+ * e la firma+timbro CORE829 (se caricati nell'archivio privato). La bozza modificabile resta pulita.
+ *  - Word -> PDF: intestazione con loghi su ogni pagina, firma e timbro in fondo
+ *  - Word: loghi in cima, firma e timbro in fondo
+ *  - PDF caricato: pagina finale "Firma e timbro" (le pagine del file originale non si toccano)
+ */
+async function produceFile(ctx: Parameters<typeof loadBrand>[0], draft: DraftForOutput, format: "pdf" | "docx", withSeal: boolean): Promise<{ bytes: Uint8Array; mimeType: string }> {
+  const brand = withSeal ? await loadBrand(ctx) : undefined;
+  if (draft.format === "pdf") {
+    return { bytes: await sealPdf(await loadPdfBytes(ctx, draft.storageId), brand), mimeType: PDF_MIME };
+  }
+  const files = open(await loadBytes(ctx, draft.storageId));
+  if (format === "pdf") return { bytes: await renderPdf(toModel(files), { title: draft.name, brand }), mimeType: PDF_MIME };
+  return { bytes: writeDocx(decorateDocx(files, brand)), mimeType: DOCX_MIME };
+}
+
 /** Genera l'anteprima PDF e restituisce il suo indirizzo (valido per l'amministratore, si sovrascrive alla successiva). */
 export const previewDraft = action({
   args: { draftId: v.id("docDrafts"), format: v.union(v.literal("pdf"), v.literal("docx")) },
@@ -290,23 +312,14 @@ export const previewDraft = action({
     const { actorId } = await admin(ctx);
     const draft = await ctx.runQuery(internal.docStudio.draftForAction, { draftId: args.draftId });
     if (!draft) return invalid("bozza", "Bozza non trovata.");
-    if (draft.format === "pdf") {
-      if (args.format !== "pdf") return invalid("formato", "Un PDF caricato si scarica solo in PDF.");
-      const url = await ctx.storage.getUrl(draft.storageId);
-      if (!url) return invalid("file", "File non disponibile.");
-      return { url, fileName: `${safeName(draft.name)}.pdf` };
-    }
-    if (args.format === "docx") {
-      const url = await ctx.storage.getUrl(draft.storageId);
-      if (!url) return invalid("file", "File non disponibile.");
-      return { url, fileName: `${safeName(draft.name)}.docx` };
-    }
-    const pdf = await renderPdf(toModel(open(await loadBytes(ctx, draft.storageId))), { title: draft.name });
-    const previewStorageId = await storeBlob(ctx, pdf, PDF_MIME);
+    if (draft.format === "pdf" && args.format !== "pdf") return invalid("formato", "Un PDF caricato si scarica solo in PDF.");
+    // Anteprima = esattamente il file che uscirebbe: con i due loghi e con firma e timbro CORE829.
+    const out = await produceFile(ctx, draft, args.format, true);
+    const previewStorageId = await storeBlob(ctx, out.bytes, out.mimeType);
     await ctx.runMutation(internal.docStudio.patchDraftFile, { draftId: args.draftId, previewStorageId, actorId });
     const url = await ctx.storage.getUrl(previewStorageId);
     if (!url) return invalid("file", "File non disponibile.");
-    return { url, fileName: `${safeName(draft.name)}.pdf` };
+    return { url, fileName: `${safeName(draft.name)}.${args.format}` };
   },
 });
 
@@ -318,6 +331,8 @@ export const sendDraft = action({
     subject: v.string(),
     message: v.string(),
     formats: v.array(v.union(v.literal("pdf"), v.literal("docx"))),
+    /** Firma e timbro CORE829 sul file (predefinito: si). I due loghi ci sono sempre. */
+    withSeal: v.optional(v.boolean()),
   },
   handler: async (ctx, args): Promise<{ sentTo: string; attachments: number }> => {
     const { actorId } = await admin(ctx);
@@ -334,13 +349,13 @@ export const sendDraft = action({
     const base = safeName(draft.name);
 
     const generated: { fileName: string; mimeType: string; bytes: Uint8Array }[] = [];
+    const withSeal = args.withSeal !== false;
     if (draft.format === "pdf") {
       // PDF caricato: si invia il file con i testi gia' applicati (non esiste una versione Word).
-      generated.push({ fileName: `${base}.pdf`, mimeType: PDF_MIME, bytes: await loadPdfBytes(ctx, draft.storageId) });
+      generated.push({ fileName: `${base}.pdf`, ...(await produceFile(ctx, draft, "pdf", withSeal)) });
     } else {
-      const docx = await loadBytes(ctx, draft.storageId);
-      if (formats.includes("pdf")) generated.push({ fileName: `${base}.pdf`, mimeType: PDF_MIME, bytes: await renderPdf(toModel(open(docx)), { title: draft.name }) });
-      if (formats.includes("docx")) generated.push({ fileName: `${base}.docx`, mimeType: DOCX_MIME, bytes: docx });
+      if (formats.includes("pdf")) generated.push({ fileName: `${base}.pdf`, ...(await produceFile(ctx, draft, "pdf", withSeal)) });
+      if (formats.includes("docx")) generated.push({ fileName: `${base}.docx`, ...(await produceFile(ctx, draft, "docx", withSeal)) });
     }
     if (generated.reduce((n, g) => n + g.bytes.length, 0) > MAX_ATTACH_TOTAL) return invalid("allegati", "Gli allegati superano i 30 MB.");
 

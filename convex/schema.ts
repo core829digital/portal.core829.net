@@ -254,6 +254,17 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index("by_clientId_and_month", ["clientId", "month"]),
 
+  /** Firma e timbro di CORE829 (PNG trasparenti). Archivio PRIVATO: mai nel codice, perche' il repository e' pubblico. */
+  brandAssets: defineTable({
+    kind: v.union(v.literal("stamp"), v.literal("signature")),
+    storageId: v.id("_storage"),
+    sizeBytes: v.number(),
+    width: v.number(),
+    height: v.number(),
+    updatedAt: v.number(),
+    updatedBy: v.string(),
+  }).index("by_kind", ["kind"]),
+
   auditLogs: defineTable({
     actorType: v.union(v.literal("admin"), v.literal("client"), v.literal("system")),
     actorId: v.optional(v.string()),

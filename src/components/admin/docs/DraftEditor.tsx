@@ -26,7 +26,7 @@ const PAGE_SIZE = 40;
 
 type Content = { paragraphs: DocParagraph[]; fields: DocField[] };
 
-export type SendInput = { to: string; subject: string; message: string; formats: ("pdf" | "docx")[] };
+export type SendInput = { to: string; subject: string; message: string; formats: ("pdf" | "docx")[]; withSeal: boolean };
 
 export function SendDialog({
   pdfOnly = false,
@@ -61,6 +61,7 @@ export function SendDialog({
         subject: String(form.get("subject") ?? ""),
         message: String(form.get("message") ?? ""),
         formats,
+        withSeal: form.get("withSeal") === "on",
       });
       onClose();
     } catch (error) {
@@ -104,6 +105,13 @@ export function SendDialog({
               </label>
             </fieldset>
           )}
+          <label className="flex items-start gap-2 text-sm">
+            <input type="checkbox" name="withSeal" defaultChecked className="mt-0.5 size-4" />
+            <span>
+              Aggiungi firma e timbro di CORE829 SRL
+              <span className="block text-xs text-muted-foreground">I due loghi CORE829 ci sono sempre. Firma e timbro vengono dall&apos;archivio privato (menu Documenti → Firma e timbro).</span>
+            </span>
+          </label>
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={onClose} disabled={pending}>
               Annulla
@@ -225,7 +233,10 @@ export function DraftEditorView({
   onSave,
   onOpen,
   onSend,
+  sealMissing = false,
 }: {
+  /** Firma e timbro non ancora caricati nell'archivio privato: il documento uscirebbe senza. */
+  sealMissing?: boolean;
   draft: DraftMeta;
   content: Content;
   onSave: (payload: SavePayload) => Promise<boolean>;
@@ -345,6 +356,11 @@ export function DraftEditorView({
         actions={
           <>
             {dirty ? <Badge variant="secondary">Modifiche non salvate</Badge> : null}
+            {!locked && sealMissing ? (
+              <Link href="/admin/brand" className="inline-flex">
+                <Badge variant="outline">Firma e timbro non caricati</Badge>
+              </Link>
+            ) : null}
             {!locked && missing > 0 ? <Badge variant="outline">{missing} {missing === 1 ? "campo vuoto" : "campi vuoti"}</Badge> : null}
             {!locked ? (
               <Button variant="outline" onClick={() => void save()} disabled={busy !== null || !dirty}>
@@ -601,6 +617,7 @@ export function DraftEditor({ draftId }: { draftId: Id<"docDrafts"> }) {
   const saveDraft = useAction(api.docStudioActions.saveDraft);
   const previewDraft = useAction(api.docStudioActions.previewDraft);
   const sendDraft = useAction(api.docStudioActions.sendDraft);
+  const brand = useQuery(api.brand.status, {});
 
   const [content, setContent] = useState<Content | null>(null);
   const [version, setVersion] = useState(0);
@@ -667,5 +684,5 @@ export function DraftEditor({ draftId }: { draftId: Id<"docDrafts"> }) {
   }
   if (draft === null) return <p className="rounded-2xl border border-dashed bg-card p-8 text-center text-sm text-muted-foreground">Documento non trovato.</p>;
 
-  return <DraftEditorView key={version} draft={draft} content={content} onSave={onSave} onOpen={onOpen} onSend={onSend} />;
+  return <DraftEditorView key={version} sealMissing={brand !== undefined && !brand.stamp && !brand.signature} draft={draft} content={content} onSave={onSave} onOpen={onOpen} onSend={onSend} />;
 }
