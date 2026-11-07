@@ -36,3 +36,14 @@ Tutto dall'area admin, menu **Documenti**. Solo l'amministratore vede e usa ques
 Funzioni riservate all'admin (controllo sul server in ogni funzione). Il file caricato è dato non fidato: si controllano firma ZIP,
 struttura e dimensione decompressa (anti *zip bomb*); i testi inseriti entrano nel documento solo come testo, mai come markup;
 il messaggio dell'email è mostrato con l'escape. L'invio non salva nulla se Resend rifiuta il messaggio.
+
+## Compilazione automatica
+
+Alla creazione di una bozza (Word o PDF, qualunque categoria) il portale compila da solo:
+
+- i segnaposto `{{...}}` (cliente: `client.name|contact|email|phone|vat|address|pec|legalRep|website`; azienda: `company.name|address|vat|cui|regCom|phone|email|officeEmail|rep|repRole`; documento: `contract.number|date|place`, `date.today`, `date.year`, `place.date`);
+- i campi vuoti il cui nome/etichetta e' inequivocabile (Sede legale, P. IVA, PEC, Email, Telefono, Rappresentante legale, Referente, Sito web, Luogo e data, Riferimento MSA n.). I campi ambigui (Forma giuridica, Codice fiscale, SDI, Paese...) restano da compilare a mano: meglio vuoto che sbagliato;
+- nei PDF con campi modulo, i campi di testo riconosciuti ricevono il testo come sovrapposizione modificabile (il PDF originale non cambia).
+
+Numerazione automatica per categoria e anno: CTR-2026-001 (contratti), PRV (preventivi), LEG (legali), DOC (altri).
+I dati del cliente mancanti non vengono scritti: il campo resta da compilare. Completa la scheda cliente per ottenere documenti pronti.
