@@ -52,6 +52,7 @@ import type * as lib_pdfStamp from "../lib/pdfStamp.js";
 import type * as lib_reminders from "../lib/reminders.js";
 import type * as lib_resend from "../lib/resend.js";
 import type * as lib_sheets from "../lib/sheets.js";
+import type * as lib_templates from "../lib/templates.js";
 import type * as lib_text from "../lib/text.js";
 import type * as lib_validators from "../lib/validators.js";
 import type * as lib_webhookSignature from "../lib/webhookSignature.js";
@@ -106,6 +107,7 @@ declare const fullApi: ApiFromModules<{
   "lib/reminders": typeof lib_reminders;
   "lib/resend": typeof lib_resend;
   "lib/sheets": typeof lib_sheets;
+  "lib/templates": typeof lib_templates;
   "lib/text": typeof lib_text;
   "lib/validators": typeof lib_validators;
   "lib/webhookSignature": typeof lib_webhookSignature;

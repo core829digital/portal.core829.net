@@ -5,10 +5,12 @@ import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { action, env, type ActionCtx } from "./_generated/server";
 import { renderPdf } from "./lib/docPdf";
+import { BUILTIN_TEMPLATES } from "./lib/templates";
 import { autofillFields, buildVariables, documentNumber, formatDateRome, type ClientData, type DocCategory } from "./lib/autofill";
 import { autofillPdf } from "./lib/pdfAutofill";
 import {
   applyChanges,
+  createBlankDocx,
   detectFields,
   DocxError,
   listParagraphs,
@@ -122,6 +124,43 @@ export const importTemplate = action({
       await ctx.storage.delete(args.storageId); // un file non valido non resta in archivio
       throw error;
     }
+  },
+});
+
+/**
+ * Installa i modelli CORE829 inclusi nell'app (preventivo, modulo d'ordine, DPA, NDA, liberatoria, verbale).
+ * Sicuro da ripetere: quelli gia' presenti si saltano. Se ne archivi uno, si puo' reinstallare.
+ */
+export const installBuiltinTemplates = action({
+  args: {},
+  handler: async (ctx): Promise<{ installed: string[]; skipped: string[] }> => {
+    const { actorId } = await admin(ctx);
+    const present = new Set(await ctx.runQuery(internal.docStudio.installedBuiltinKeys, {}));
+    const installed: string[] = [];
+    const skipped: string[] = [];
+    for (const t of BUILTIN_TEMPLATES) {
+      if (present.has(t.key)) {
+        skipped.push(t.name);
+        continue;
+      }
+      const bytes = createBlankDocx(t.blocks);
+      const storageId = await storeBlob(ctx, bytes, DOCX_MIME);
+      const files = open(bytes);
+      const paragraphs = listParagraphs(files);
+      await ctx.runMutation(internal.docStudio.insertTemplate, {
+        name: t.name,
+        category: t.category,
+        storageId,
+        sizeBytes: bytes.length,
+        paragraphCount: paragraphs.length,
+        fieldCount: detectFields(paragraphs).length,
+        createdBy: actorId,
+        builtinKey: t.key,
+        description: t.description,
+      });
+      installed.push(t.name);
+    }
+    return { installed, skipped };
   },
 });
 

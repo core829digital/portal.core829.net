@@ -48,6 +48,8 @@ export const listTemplates = query({
       paragraphCount: t.paragraphCount,
       fieldCount: t.fieldCount,
       createdAt: t._creationTime,
+      builtinKey: t.builtinKey ?? null,
+      description: t.description ?? null,
     }));
   },
 });
@@ -147,6 +149,18 @@ export const deleteDraft = mutation({
 
 // ---- Funzioni interne usate dalle azioni (docStudioActions.ts) ----
 
+/** Chiavi dei modelli CORE829 gia' installati (non archiviati). */
+export const installedBuiltinKeys = internalQuery({
+  args: {},
+  handler: async (ctx): Promise<string[]> => {
+    const rows = await ctx.db
+      .query("docTemplates")
+      .withIndex("by_archived", (q) => q.eq("archived", false))
+      .take(500);
+    return rows.flatMap((t) => (t.builtinKey ? [t.builtinKey] : []));
+  },
+});
+
 export const insertTemplate = internalMutation({
   args: {
     name: v.string(),
@@ -156,9 +170,13 @@ export const insertTemplate = internalMutation({
     paragraphCount: v.number(),
     fieldCount: v.number(),
     createdBy: v.string(),
+    builtinKey: v.optional(v.string()),
+    description: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<Id<"docTemplates">> => {
     const id = await ctx.db.insert("docTemplates", {
+      builtinKey: args.builtinKey,
+      description: args.description === undefined ? undefined : cleanText(args.description, { field: "descrizione", max: 400 }),
       name: cleanText(args.name, { field: "nome", min: 1, max: 120 }),
       category: args.category,
       storageId: args.storageId,

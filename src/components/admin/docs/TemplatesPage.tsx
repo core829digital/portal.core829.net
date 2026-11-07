@@ -1,7 +1,7 @@
 "use client";
 
 import { useAction, useMutation, useQuery } from "convex/react";
-import { FilePlus2, FileText, Upload } from "lucide-react";
+import { FilePlus2, FileText, Sparkles, Upload } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { api } from "@convex/_generated/api";
@@ -214,6 +214,8 @@ export function NewDraftDialog({ onClose, clientId, templateId }: { onClose: () 
 export function TemplatesPage() {
   const templates = useQuery(api.docStudio.listTemplates, {});
   const archive = useMutation(api.docStudio.archiveTemplate);
+  const installBuiltin = useAction(api.docStudioActions.installBuiltinTemplates);
+  const [installing, setInstalling] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [useFor, setUseFor] = useState<Id<"docTemplates"> | null>(null);
   const [toArchive, setToArchive] = useState<{ id: Id<"docTemplates">; name: string } | null>(null);
@@ -225,9 +227,30 @@ export function TemplatesPage() {
         title="Modelli"
         description="Contratti, preventivi e documenti legali da personalizzare per ogni cliente e inviare via email. Visibili solo a te."
         actions={
-          <Button onClick={() => setUploading(true)}>
-            <Upload aria-hidden /> Importa un modello
-          </Button>
+          <>
+            <Button
+              variant="outline"
+              disabled={installing}
+              onClick={() => {
+                setInstalling(true);
+                installBuiltin({})
+                  .then((r) =>
+                    toast.success(
+                      r.installed.length > 0
+                        ? `Installati ${r.installed.length} modelli CORE829: ${r.installed.join(", ")}.`
+                        : "Tutti i modelli CORE829 sono già installati.",
+                    ),
+                  )
+                  .catch((e: unknown) => toast.error(errorMessage(e, "Installazione non riuscita.")))
+                  .finally(() => setInstalling(false));
+              }}
+            >
+              <Sparkles aria-hidden /> {installing ? "Installo…" : "Installa i modelli CORE829"}
+            </Button>
+            <Button onClick={() => setUploading(true)}>
+              <Upload aria-hidden /> Importa un modello
+            </Button>
+          </>
         }
       />
 
@@ -238,7 +261,7 @@ export function TemplatesPage() {
         </div>
       ) : templates.length === 0 ? (
         <p className="rounded-2xl border border-dashed bg-card p-8 text-center text-sm text-muted-foreground">
-          Nessun modello. Importa il primo file Word (per esempio il Master Services Agreement) con «Importa un modello».
+          Nessun modello. Con «Installa i modelli CORE829» ottieni preventivo, modulo d&apos;ordine, DPA, NDA, liberatoria e verbale; il Master Services Agreement lo importi dal tuo file Word con «Importa un modello».
         </p>
       ) : (
         <ul className="grid gap-3 md:grid-cols-2">
@@ -248,6 +271,7 @@ export function TemplatesPage() {
                 <FileText aria-hidden className="mt-0.5 size-5 shrink-0 text-brand" />
                 <div className="min-w-0">
                   <h2 className="font-display text-base tracking-tight">{t.name}</h2>
+                  {t.description ? <p className="mt-1 text-xs text-muted-foreground">{t.description}</p> : null}
                   <p className="mt-1 text-xs text-muted-foreground">
                     {t.paragraphCount} paragrafi · {t.fieldCount} campi da compilare · {formatBytes(t.sizeBytes)} · importato il {formatDate(t.createdAt)}
                   </p>

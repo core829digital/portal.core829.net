@@ -286,6 +286,39 @@ async function pdfTexts(bytes: Uint8Array, pageNumber: number): Promise<string[]
 
 const note = (extra: Record<string, unknown> = {}) => ({ page: 0, x: 0.3, y: 0.4, text: "Mario Rossi", size: 12, color: "black" as const, bold: false, ...extra });
 
+describe("modelli CORE829 inclusi", () => {
+  it("si installano una volta sola, compaiono nell'elenco e si usano per un cliente con i dati gia' compilati", async () => {
+    const h = await setup();
+    await h.t.run((ctx) => ctx.db.patch("clients", h.clientId, { vatId: "IT01234567890", address: "Via Roma 1, Milano", pec: "caffe@pec.it", legalRep: "Mario Rossi" }));
+    const first = await h.admin.action(api.docStudioActions.installBuiltinTemplates, {});
+    expect(first.installed).toHaveLength(6);
+    const again = await h.admin.action(api.docStudioActions.installBuiltinTemplates, {});
+    expect(again.installed).toEqual([]);
+    expect(again.skipped).toHaveLength(6);
+    const list = await h.admin.query(api.docStudio.listTemplates, {});
+    expect(list).toHaveLength(6);
+    const quote = list.find((t) => t.builtinKey === "preventivo")!;
+    expect(quote).toMatchObject({ category: "quote" });
+    expect(quote.description).toMatch(/Revisione/);
+    const { draftId, number } = await h.admin.action(api.docStudioActions.createDraft, { clientId: h.clientId, templateId: quote.id });
+    expect(number).toMatch(/^PRV-\d{4}-001$/);
+    const { paragraphs } = await h.admin.action(api.docStudioActions.inspectDraft, { draftId });
+    const text = paragraphs.map((p) => p.text).join("\n");
+    expect(text).toContain("Caffè Rosso Srl");
+    expect(text).toContain("IT01234567890");
+    expect(text).toContain("caffe@pec.it");
+    expect(text).not.toMatch(/\{\{/);
+  });
+  it("un modello archiviato si puo' reinstallare; solo l'admin installa", async () => {
+    const h = await setup();
+    await h.admin.action(api.docStudioActions.installBuiltinTemplates, {});
+    const nda = (await h.admin.query(api.docStudio.listTemplates, {})).find((t) => t.builtinKey === "nda")!;
+    await h.admin.mutation(api.docStudio.archiveTemplate, { templateId: nda.id });
+    expect((await h.admin.action(api.docStudioActions.installBuiltinTemplates, {})).installed).toHaveLength(1);
+    await expect(h.other.action(api.docStudioActions.installBuiltinTemplates, {})).rejects.toThrow();
+  });
+});
+
 describe("fogli Excel", () => {
   const csv = (text: string) => new TextEncoder().encode(text);
 

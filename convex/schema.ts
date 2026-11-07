@@ -210,6 +210,9 @@ export default defineSchema({
     fieldCount: v.number(),
     archived: v.boolean(),
     createdBy: v.string(),
+    /** Solo per i modelli CORE829 inclusi nell'app: chiave stabile (es. "preventivo") e breve descrizione. */
+    builtinKey: v.optional(v.string()),
+    description: v.optional(v.string()),
   }).index("by_archived", ["archived"]),
 
   /** Bozza di un documento per un cliente (copia personalizzata di un modello o di un file caricato). */
