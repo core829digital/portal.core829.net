@@ -16,3 +16,15 @@ export function errorMessage(error: unknown, fallback = "Operazione non riuscita
   }
   return fallback;
 }
+
+/** Codice dell'errore applicativo di Convex (es. "INVALID_LINK"), oppure null se non e' uno di quelli. */
+export function errorCode(error: unknown): string | null {
+  if (error instanceof ConvexError) {
+    const data: unknown = error.data;
+    if (typeof data === "object" && data !== null && "code" in data) {
+      const code = (data as { code: unknown }).code;
+      if (typeof code === "string") return code;
+    }
+  }
+  return null;
+}

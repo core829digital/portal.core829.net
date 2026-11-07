@@ -1,25 +1,11 @@
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
 import { internalMutation, mutation } from "./_generated/server";
 import { audit } from "./lib/audit";
 import { randomDigits, randomToken, timingSafeEqual } from "./lib/crypto";
 import { fail, INVALID_LINK_MESSAGE } from "./lib/errors";
 import { hashOtp, hashUnlockToken, resolveLink } from "./lib/links";
-
-/**
- * Codice a 6 cifre per sbloccare contratti e fatture.
- *
- * Limiti (insieme impediscono di indovinare il codice):
- *  - ogni codice vale 10 minuti e ammette 5 tentativi errati;
- *  - massimo 3 codici ogni 15 minuti e 10 al giorno per link;
- *  - quindi al massimo ~50 tentativi al giorno su 1.000.000 di combinazioni.
- */
-export const CODE_TTL_MS = 10 * 60 * 1000;
-export const MAX_ATTEMPTS = 5;
-export const UNLOCK_TTL_MS = 30 * 60 * 1000;
-const WINDOW_MS = 15 * 60 * 1000;
-const DAY_MS = 24 * 60 * 60 * 1000;
-const MAX_CODES_PER_WINDOW = 3;
-const MAX_CODES_PER_DAY = 10;
+import { CODE_TTL_MS, MAX_ATTEMPTS, UNLOCK_TTL_MS, recentCodes } from "./lib/otpLimits";
 
 /**
  * Genera un nuovo codice per il link. Funzione INTERNA: restituisce il codice in chiaro solo a chi
@@ -34,16 +20,8 @@ export const issueCode = internalMutation({
     if (!client) return fail("INVALID_LINK", INVALID_LINK_MESSAGE);
 
     const now = Date.now();
-    const recent = await ctx.db
-      .query("otpCodes")
-      .withIndex("by_linkId", (q) => q.eq("linkId", args.linkId))
-      .order("desc")
-      .take(MAX_CODES_PER_DAY + 1);
-    const inWindow = recent.filter((c) => c._creationTime > now - WINDOW_MS).length;
-    const inDay = recent.filter((c) => c._creationTime > now - DAY_MS).length;
-    if (inWindow >= MAX_CODES_PER_WINDOW || inDay >= MAX_CODES_PER_DAY) {
-      return fail("RATE_LIMITED", "Troppi codici richiesti. Riprova più tardi.");
-    }
+    const { recent, limited } = await recentCodes(ctx, args.linkId, now);
+    if (limited) return fail("RATE_LIMITED", "Troppi codici richiesti. Riprova più tardi.");
 
     // Un nuovo codice invalida i precedenti.
     for (const old of recent) {
@@ -66,6 +44,24 @@ export const issueCode = internalMutation({
       resourceId: args.linkId,
     });
     return { code, expiresAt, email: client.email, displayName: client.displayName };
+  },
+});
+
+export type RequestResult = { status: "REQUESTED" } | { status: "RATE_LIMITED" };
+
+/**
+ * Il cliente chiede un codice per sbloccare i documenti. Funzione pubblica ma priva di segreti:
+ * la risposta e' sempre la stessa (non rivela l'email) e il codice viene creato e spedito da
+ * un'azione separata, cosi' non compare mai negli argomenti di una funzione pianificata.
+ */
+export const requestCode = mutation({
+  args: { token: v.string() },
+  handler: async (ctx, args): Promise<RequestResult> => {
+    const link = await resolveLink(ctx, args.token);
+    const { limited } = await recentCodes(ctx, link._id, Date.now());
+    if (limited) return { status: "RATE_LIMITED" };
+    await ctx.scheduler.runAfter(0, internal.otpDelivery.deliver, { linkId: link._id });
+    return { status: "REQUESTED" };
   },
 });
 

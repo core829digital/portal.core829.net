@@ -22,6 +22,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { errorMessage } from "@/lib/errors";
 import { formatDate, formatDateTime } from "@/lib/format";
+import { buildPortalLink } from "@/lib/portalLink";
 
 const TTL_OPTIONS = [
   { days: 7, label: "7 giorni" },
@@ -53,7 +54,7 @@ export function AccessLinksPanel({ clientId, appUrl }: { clientId: Id<"clients">
       setCreateOpen(false);
       setCopied(false);
       // Il token esiste solo qui: dopo questa schermata non e' piu' recuperabile.
-      setCreated({ url: `${appUrl.replace(/\/$/, "")}/c/${result.token}`, expiresAt: result.expiresAt });
+      setCreated({ url: buildPortalLink(appUrl, result.token), expiresAt: result.expiresAt });
     } catch (error) {
       toast.error(errorMessage(error));
     } finally {

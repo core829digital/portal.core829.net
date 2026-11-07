@@ -42,6 +42,18 @@ La CSP e' generata per richiesta in `src/proxy.ts` con nonce nuovo a ogni rispos
 - Il metodo HTTP `TRACE` produce una risposta 500 invece di 405 (nessuna fuga di dati). Da bloccare con una
   regola del firewall di Vercel in Fase 9.
 
+## Il link del cliente
+- Formato `https://portale/c#<token>`: il segreto sta **dopo il `#`**, che i browser non inviano mai al server. Non finisce
+  quindi nei log di Vercel, nelle intestazioni Referer ne' nelle richieste dei programmi che scansionano i link nelle email.
+- Appena letto, il token viene **tolto dall'indirizzo** (`history.replaceState`) e conservato solo in `sessionStorage`
+  (muore con la scheda). Mai in `localStorage` o nei cookie. Verificato in Chromium.
+- Token da 256 bit, salvato sul server solo come hash; scade (default 90 giorni) e si revoca subito dall'area admin.
+- Contratti e fatture richiedono in piu' un **codice a 6 cifre via email** (5 tentativi per codice, 3 codici ogni 15 minuti,
+  10 al giorno). Il codice in chiaro esiste solo in memoria nell'azione che spedisce l'email: non e' salvato ne' passato
+  come argomento di una funzione pianificata (c'e' un test che lo verifica).
+- Limite onesto: chi ha il link vede stato, importi e abbonamenti senza altri controlli. E' una scelta di semplicita';
+  se il link viene inoltrato per errore si **revoca** e se ne crea uno nuovo.
+
 ## Accesso dell'amministratore
 - **Codice a 8 cifre via email** (Resend), valido 10 minuti, nessuna password da rubare o riutilizzare.
 - Il codice parte **solo** verso gli indirizzi in `ADMIN_EMAILS`: per gli altri la risposta e' identica e non succede nulla

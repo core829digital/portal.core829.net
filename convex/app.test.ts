@@ -580,3 +580,96 @@ describe("amministratore iniziale", () => {
     expect(admins.map((a) => a.email)).toEqual(["nuovo@esempio.it"]);
   });
 });
+
+describe("invio del codice al cliente (richiesta -> email -> sblocco)", () => {
+  async function ready() {
+    process.env.RESEND_API_KEY = "re_chiave_di_prova";
+    process.env.AUTH_EMAIL_FROM = "CORE829 <portal@core829.net>";
+    const fetchMock = vi.fn().mockResolvedValue(new Response("{}", { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const h = await setup();
+    const clientId = await newClient(h, "A");
+    const link = await newLink(h, clientId);
+    return { h, link, fetchMock };
+  }
+  async function flush(h: Harness) {
+    await new Promise((r) => setTimeout(r, 20));
+    await h.t.finishInProgressScheduledFunctions();
+  }
+  const sentBody = (fetchMock: ReturnType<typeof vi.fn>, n = 0) =>
+    JSON.parse((fetchMock.mock.calls[n] as [string, RequestInit])[1].body as string) as { to: string[]; text: string; html: string; subject: string };
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    delete process.env.RESEND_API_KEY;
+    delete process.env.AUTH_EMAIL_FROM;
+  });
+
+  it("il cliente chiede il codice, riceve l'email e con quel codice sblocca i documenti", async () => {
+    const { h, link, fetchMock } = await ready();
+    expect(await h.t.mutation(api.otp.requestCode, { token: link.token })).toEqual({ status: "REQUESTED" });
+    await flush(h);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const mail = sentBody(fetchMock);
+    expect(mail.to).toEqual(["a@esempio.it"]);
+    const code = /\b(\d{6})\b/.exec(mail.text)?.[1];
+    expect(code).toBeDefined();
+    // L'email non contiene il link del cliente ne' altri segreti.
+    expect(JSON.stringify(mail)).not.toContain(link.token);
+
+    const result = await h.t.mutation(api.otp.verifyCode, { token: link.token, code: code! });
+    expect(result.ok).toBe(true);
+  });
+
+  it("il codice in chiaro non resta salvato da nessuna parte (ne' nei dati ne' negli argomenti pianificati)", async () => {
+    const { h, link, fetchMock } = await ready();
+    await h.t.mutation(api.otp.requestCode, { token: link.token });
+    await flush(h);
+    const code = /\b(\d{6})\b/.exec(sentBody(fetchMock).text)![1];
+    const everything = await h.t.run(async (ctx) => ({
+      otp: await ctx.db.query("otpCodes").collect(),
+      audit: await ctx.db.query("auditLogs").collect(),
+      scheduled: await ctx.db.system.query("_scheduled_functions").collect(),
+    }));
+    expect(JSON.stringify(everything)).not.toContain(`"${code}"`);
+    expect(JSON.stringify(everything.scheduled)).not.toContain(code);
+  });
+
+  it("oltre il limite non parte nessuna email e la risposta lo dice", async () => {
+    const { h, link, fetchMock } = await ready();
+    for (let i = 0; i < 3; i++) {
+      expect(await h.t.mutation(api.otp.requestCode, { token: link.token })).toEqual({ status: "REQUESTED" });
+      await flush(h);
+    }
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(await h.t.mutation(api.otp.requestCode, { token: link.token })).toEqual({ status: "RATE_LIMITED" });
+    await flush(h);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it("un link non valido viene rifiutato prima di spedire qualsiasi cosa", async () => {
+    const { h, fetchMock } = await ready();
+    expect(await codeOf(h.t.mutation(api.otp.requestCode, { token: "x".repeat(43) }))).toBe("INVALID_LINK");
+    await flush(h);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("senza configurazione email non invia nulla e non rivela l'errore al cliente", async () => {
+    const { h, link, fetchMock } = await ready();
+    delete process.env.RESEND_API_KEY;
+    expect(await h.t.mutation(api.otp.requestCode, { token: link.token })).toEqual({ status: "REQUESTED" });
+    await flush(h);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("se Resend rifiuta l'invio, il cliente puo' riprovare (il tentativo conta nel limite)", async () => {
+    const { h, link, fetchMock } = await ready();
+    fetchMock.mockResolvedValueOnce(new Response("{}", { status: 500 }));
+    await h.t.mutation(api.otp.requestCode, { token: link.token });
+    await flush(h);
+    await h.t.mutation(api.otp.requestCode, { token: link.token });
+    await flush(h);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+});

@@ -9,17 +9,11 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { errorMessage } from "@/lib/errors";
-import { formatDate } from "@/lib/format";
+import { formatBytes, formatDate } from "@/lib/format";
 import { documentKindLabel } from "@/lib/labels";
 import { toast } from "@/lib/toast";
 
 const scanLabel = { pending: "In controllo", clean: "Pulito", rejected: "Respinto" } as const;
-
-function formatSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
 
 export function DocumentsPanel({ clientId }: { clientId: Id<"clients"> }) {
   const documents = useQuery(api.documents.listByClient, { clientId });
@@ -58,7 +52,7 @@ export function DocumentsPanel({ clientId }: { clientId: Id<"clients"> }) {
                   <TableCell>
                     <div className="font-medium">{d.title}</div>
                     <div className="text-xs text-muted-foreground">
-                      {d.fileName} · {formatSize(d.sizeBytes)}
+                      {d.fileName} · {formatBytes(d.sizeBytes)}
                     </div>
                   </TableCell>
                   <TableCell>{documentKindLabel[d.kind]}</TableCell>

@@ -25,7 +25,7 @@ Dalla dashboard di Convex: **Settings → Environment Variables** (cosi' la chia
 | Nome | Valore | Note |
 |---|---|---|
 | `ADMIN_EMAILS` | `tua-email@dominio.it` | Elenco separato da virgole. Solo questi indirizzi ricevono il codice. |
-| `AUTH_EMAIL_FROM` | `CORE829 Portale <portal@core829.net>` | Il dominio deve essere verificato su Resend. |
+| `AUTH_EMAIL_FROM` | `CORE829 Portale <portal@core829.net>` | Il dominio deve essere verificato su Resend. Serve sia per il login admin sia per i codici ai clienti. |
 | `RESEND_API_KEY` | chiave API di Resend | **Segreta.** Si crea su resend.com con permesso "Sending access". |
 
 ## 4. Variabili di Next.js (`.env.local`, non committato)

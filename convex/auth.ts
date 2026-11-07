@@ -1,9 +1,9 @@
 import { Email } from "@convex-dev/auth/providers/Email";
 import { convexAuth } from "@convex-dev/auth/server";
-import { Resend } from "resend";
 import { env } from "./_generated/server";
 import { isAllowedAdminEmail } from "./lib/adminEmails";
 import { randomDigits } from "./lib/crypto";
+import { sendEmail } from "./lib/resend";
 import { escapeHtml } from "./lib/text";
 
 /**
@@ -29,11 +29,10 @@ const ResendOtp = Email({
     if (!env.RESEND_API_KEY || !env.AUTH_EMAIL_FROM) {
       throw new Error("Configurazione email mancante (RESEND_API_KEY, AUTH_EMAIL_FROM).");
     }
-    const resend = new Resend(env.RESEND_API_KEY);
     const code = escapeHtml(token);
-    const { error } = await resend.emails.send({
+    await sendEmail(env.RESEND_API_KEY, {
       from: env.AUTH_EMAIL_FROM,
-      to: [email],
+      to: email,
       subject: `Il tuo codice di accesso CORE829: ${token}`,
       text: `Il tuo codice di accesso al portale CORE829 è ${token}.\n\nVale 10 minuti. Se non l'hai richiesto tu, ignora questa email.`,
       html:
@@ -44,8 +43,6 @@ const ResendOtp = Email({
         `<p style="font-size:14px;line-height:21px;color:#6b7280">Vale 10 minuti. Se non l'hai richiesto tu, ignora questa email.</p>` +
         `</div>`,
     });
-    // Il messaggio d'errore non contiene dettagli: finisce nei log del server, non al browser.
-    if (error) throw new Error("Invio dell'email non riuscito.");
   },
 });
 

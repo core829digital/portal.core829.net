@@ -46,7 +46,7 @@ const nextConfig: NextConfig = {
       { source: "/:path*", headers: securityHeaders },
       {
         // Le pagine cliente contengono dati personali: mai in cache (browser, CDN, proxy).
-        source: "/c/:path*",
+        source: "/c",
         headers: [
           { key: "Cache-Control", value: "private, no-store, max-age=0" },
           { key: "Pragma", value: "no-cache" },

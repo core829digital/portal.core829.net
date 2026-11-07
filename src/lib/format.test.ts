@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dateInputToTimestamp, formatCents, formatDate, parseEuroToCents, timestampToDateInput } from "./format";
+import { dateInputToTimestamp, formatCents, formatDate, formatBytes, parseEuroToCents, timestampToDateInput } from "./format";
 
 describe("parseEuroToCents", () => {
   it.each([
@@ -51,5 +51,13 @@ describe("timestampToDateInput", () => {
   it("e' vuoto se manca il valore", () => {
     expect(timestampToDateInput(null)).toBe("");
     expect(timestampToDateInput(undefined)).toBe("");
+  });
+});
+
+describe("formatBytes", () => {
+  it("sceglie l'unita' giusta", () => {
+    expect(formatBytes(500)).toBe("500 B");
+    expect(formatBytes(2048)).toBe("2 KB");
+    expect(formatBytes(5 * 1024 * 1024)).toBe("5.0 MB");
   });
 });

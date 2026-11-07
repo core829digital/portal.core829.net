@@ -7,6 +7,7 @@ import { api } from "@convex/_generated/api";
 import type { Doc, Id } from "@convex/_generated/dataModel";
 import { Field, NativeSelect, TextField } from "@/components/admin/Field";
 import { Badge } from "@/components/ui/badge";
+import { ProgressBar } from "@/components/ProgressBar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -22,24 +23,6 @@ type ProjectStatus = Project["status"];
 
 function isProjectStatus(v: unknown): v is ProjectStatus {
   return typeof v === "string" && v in projectStatusLabel;
-}
-
-function ProgressBar({ value }: { value: number }) {
-  return (
-    <div className="flex items-center gap-3">
-      <div
-        role="progressbar"
-        aria-valuenow={value}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-label="Avanzamento del progetto"
-        className="h-2 flex-1 overflow-hidden rounded-full bg-muted"
-      >
-        <div className="h-full rounded-full bg-primary" style={{ width: `${value}%` }} />
-      </div>
-      <span className="w-10 text-right text-sm tabular-nums">{value}%</span>
-    </div>
-  );
 }
 
 function ProjectDialog({
