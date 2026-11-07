@@ -18,7 +18,7 @@ const securityHeaders = [
   {
     key: "Permissions-Policy",
     value:
-      "camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), bluetooth=(), interest-cohort=()",
+      "camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), interest-cohort=()",
   },
   // Isolamento del contesto di navigazione.
   { key: "Cross-Origin-Opener-Policy", value: "same-origin" },

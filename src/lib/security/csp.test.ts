@@ -36,6 +36,12 @@ describe("buildCsp (produzione)", () => {
     expect(connect).not.toContain("localhost");
   });
 
+  it("in produzione gli stili inline NON sono ammessi: solo nonce", () => {
+    const style = directive(csp, "style-src");
+    expect(style).toContain("'nonce-NONCE123'");
+    expect(style).not.toContain("'unsafe-inline'");
+  });
+
   it("forza HTTPS", () => {
     expect(csp).toContain("upgrade-insecure-requests");
   });
@@ -47,6 +53,9 @@ describe("buildCsp (sviluppo)", () => {
     expect(directive(csp, "script-src")).toContain("'unsafe-eval'");
     expect(directive(csp, "connect-src")).toContain("localhost");
     expect(csp).not.toContain("upgrade-insecure-requests");
+  });
+  it("in sviluppo gli stili inline sono ammessi (strumenti di Next.js)", () => {
+    expect(directive(csp, "style-src")).toContain("'unsafe-inline'");
   });
   it("senza URL Convex usa il dominio generico convex.cloud", () => {
     expect(directive(csp, "connect-src")).toContain("https://*.convex.cloud");

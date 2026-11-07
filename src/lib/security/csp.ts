@@ -36,7 +36,10 @@ export function buildCsp({ nonce, isDev, convexUrl }: CspOptions): string {
     ["script-src", ["'self'", `'nonce-${nonce}'`, "'strict-dynamic'", ...(isDev ? ["'unsafe-eval'"] : [])]],
     // Gli elementi <style> richiedono il nonce. Gli attributi style="" inline (usati dai componenti UI)
     // sono consentiti separatamente: non eseguono codice.
-    ["style-src", ["'self'", `'nonce-${nonce}'`]],
+    // In sviluppo il pulsante degli strumenti di Next.js inietta stili inline senza nonce: servono
+    // `unsafe-inline` solo li'. Il nonce va tolto in quel caso, perche' con un nonce presente il
+    // browser ignorerebbe `unsafe-inline`. In produzione resta il solo nonce.
+    ["style-src", isDev ? ["'self'", "'unsafe-inline'"] : ["'self'", `'nonce-${nonce}'`]],
     ["style-src-attr", ["'unsafe-inline'"]],
     ["img-src", ["'self'", "blob:", "data:"]],
     ["font-src", ["'self'"]],
