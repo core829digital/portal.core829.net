@@ -42,6 +42,14 @@ del deploy, non dopo.
 I download usano l'indirizzo `https://NOME.convex.site`, che si ricava da solo da `NEXT_PUBLIC_CONVEX_URL`. Se il deployment ha un
 dominio personalizzato, imposta anche `NEXT_PUBLIC_CONVEX_SITE_URL` (prima della build).
 
+## 4c. Webhook di Resend (facoltativo, consigliato)
+Serve a sapere se un codice o un'email non e' stata recapitata (indirizzo sbagliato, spam).
+1. Resend → **Webhooks** → aggiungi l'endpoint `https://NOME.convex.site/webhooks/resend` (stesso NOME del deployment).
+2. Scegli gli eventi di recapito (respinta, segnalata come spam, in ritardo, fallita; controlla i nomi nel pannello).
+3. Copia il **Signing Secret** (inizia con `whsec_`) e salvalo su Convex come `RESEND_WEBHOOK_SECRET` (dalla dashboard).
+4. Invia l'evento di prova dal pannello di Resend: deve risultare consegnato (200).
+Facoltativo: `WEBHOOK_IP_ALLOWLIST`. Leggi prima i limiti in `docs/SECURITY.md` (sezione Webhook).
+
 ## 5. Primo amministratore
 ```bash
 npx convex run admins:bootstrap '{"email":"tua-email@dominio.it"}'

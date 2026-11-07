@@ -9,4 +9,6 @@ crons.interval("fatture scadute", { hours: 1 }, internal.maintenance.markOverdue
 
 crons.interval("controlli dei file rimasti in sospeso", { minutes: 15 }, internal.maintenance.expirePendingScans, {});
 
+crons.interval("pulizia eventi webhook", { hours: 6 }, internal.maintenance.expireWebhookEvents, {});
+
 export default crons;

@@ -17,6 +17,10 @@ const app = defineApp({
     SITE_URL: v.optional(v.string()),
     /** Facoltativa: chiave API di VirusTotal per confrontare l'impronta (SHA-256) dei file con malware noti. Il file non viene mai inviato. */
     VIRUSTOTAL_API_KEY: v.optional(v.string()),
+    /** Segreto di firma dei webhook di Resend (inizia con whsec_). SEGRETO. Senza, l'endpoint rifiuta tutto. */
+    RESEND_WEBHOOK_SECRET: v.optional(v.string()),
+    /** Facoltativa: indirizzi IP (o intervalli CIDR) da cui accettare i webhook, separati da virgola. Vedi docs/SECURITY.md. */
+    WEBHOOK_IP_ALLOWLIST: v.optional(v.string()),
   },
 });
 

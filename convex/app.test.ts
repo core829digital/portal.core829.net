@@ -995,3 +995,134 @@ describe("documenti: caricamento, controllo e download", () => {
     expect(invoices[0].documentId).toBeUndefined();
   });
 });
+
+describe("webhook di Resend (firma, replay, IP)", () => {
+  const SECRET = "whsec_Y2hpYXZlLWRpLXByb3ZhLXBlci1pLXRlc3QtMDEyMzQ1Njc4OQ==";
+  const key = () => crypto.subtle.importKey("raw", Uint8Array.from(atob(SECRET.slice(6)), (c) => c.charCodeAt(0)), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+
+  // Firma costruita con Web Crypto, indipendente dal codice sotto test.
+  async function signed(body: string, opts: { id?: string; ts?: number } = {}) {
+    const id = opts.id ?? `msg_${Math.random().toString(36).slice(2, 10)}`;
+    const ts = opts.ts ?? Math.floor(Date.now() / 1000);
+    const mac = await crypto.subtle.sign("HMAC", await key(), new TextEncoder().encode(`${id}.${ts}.${body}`));
+    return { id, ts, headers: { "webhook-id": id, "webhook-timestamp": String(ts), "webhook-signature": "v1," + btoa(String.fromCharCode(...new Uint8Array(mac))), "content-type": "application/json" } };
+  }
+  const event = (type: string, to: string[]) => JSON.stringify({ type, created_at: "2026-11-07T10:00:00.000Z", data: { email_id: "e1", to } });
+  const post = (h: Harness, body: string, headers: Record<string, string>) => h.t.fetch("/webhooks/resend", { method: "POST", headers, body });
+  const events = (h: Harness) => h.t.run(async (ctx) => ctx.db.query("webhookEvents").collect());
+  const auditActions = (h: Harness) => h.t.run(async (ctx) => (await ctx.db.query("auditLogs").collect()).map((l) => l.action));
+
+  async function ready() {
+    process.env.RESEND_WEBHOOK_SECRET = SECRET;
+    const h = await setup();
+    const clientId = await newClient(h, "A"); // email: a@esempio.it
+    return { h, clientId };
+  }
+  afterEach(() => {
+    delete process.env.RESEND_WEBHOOK_SECRET;
+    delete process.env.WEBHOOK_IP_ALLOWLIST;
+  });
+
+  it("evento valido: registrato, e il problema di recapito compare nel registro del cliente", async () => {
+    const { h, clientId } = await ready();
+    const body = event("email.bounced", ["A@Esempio.IT"]);
+    const s = await signed(body);
+    const res = await post(h, body, s.headers);
+    expect(res.status).toBe(200);
+    expect((await events(h)).map((e) => e.eventId)).toEqual([s.id]);
+    const logs = await h.t.run(async (ctx) => ctx.db.query("auditLogs").collect());
+    const bounced = logs.find((l) => l.action === "email.bounced");
+    expect(bounced?.clientId).toBe(clientId);
+    // L'indirizzo email non finisce nel registro.
+    expect(JSON.stringify(logs)).not.toMatch(/a@esempio\.it/i);
+  });
+
+  it("REPLAY: lo stesso messaggio ripetuto risponde 200 ma non viene rielaborato", async () => {
+    const { h } = await ready();
+    const body = event("email.bounced", ["a@esempio.it"]);
+    const s = await signed(body);
+    expect((await post(h, body, s.headers)).status).toBe(200);
+    expect((await post(h, body, s.headers)).status).toBe(200);
+    expect((await post(h, body, s.headers)).status).toBe(200);
+    expect(await events(h)).toHaveLength(1);
+    expect((await auditActions(h)).filter((a) => a === "email.bounced")).toHaveLength(1);
+  });
+
+  it("firma non valida, corpo alterato, intestazioni mancanti o timestamp vecchio: 401 e nulla viene registrato", async () => {
+    const { h } = await ready();
+    const body = event("email.bounced", ["a@esempio.it"]);
+    const s = await signed(body);
+    const altered = await post(h, body.replace("bounced", "complained"), s.headers);
+    const wrongSig = await post(h, body, { ...s.headers, "webhook-signature": "v1,AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=" });
+    const noSig = await post(h, body, { "webhook-id": s.id, "webhook-timestamp": String(s.ts) });
+    const old = await signed(body, { ts: Math.floor(Date.now() / 1000) - 600 });
+    const tooOld = await post(h, body, old.headers);
+    const future = await signed(body, { ts: Math.floor(Date.now() / 1000) + 600 });
+    const tooNew = await post(h, body, future.headers);
+    for (const [name, r] of Object.entries({ altered, wrongSig, noSig, tooOld, tooNew })) {
+      expect(r.status, name).toBe(401);
+      expect(await r.text(), name).toBe(JSON.stringify({ error: "unauthorized" }));
+    }
+    expect(await events(h)).toHaveLength(0);
+    expect(await auditActions(h)).not.toContain("email.bounced");
+  });
+
+  it("senza il segreto configurato l'endpoint rifiuta tutto", async () => {
+    const { h } = await ready();
+    delete process.env.RESEND_WEBHOOK_SECRET;
+    const body = event("email.bounced", ["a@esempio.it"]);
+    const s = await signed(body);
+    expect((await post(h, body, s.headers)).status).toBe(503);
+    expect(await events(h)).toHaveLength(0);
+  });
+
+  it("eventi di altro tipo si accettano ma non si elaborano; contenuti non JSON o troppo grandi si respingono", async () => {
+    const { h } = await ready();
+    const other = event("email.opened", ["a@esempio.it"]);
+    expect((await post(h, other, (await signed(other)).headers)).status).toBe(200);
+    expect(await events(h)).toHaveLength(0);
+
+    const notJson = "questo non e' json";
+    expect((await post(h, notJson, (await signed(notJson)).headers)).status).toBe(400);
+
+    const huge = JSON.stringify({ type: "email.bounced", data: { to: ["a@esempio.it"], padding: "x".repeat(70_000) } });
+    expect((await post(h, huge, (await signed(huge)).headers)).status).toBe(413);
+  });
+
+  it("destinatari non validi o sconosciuti non fanno fallire l'evento", async () => {
+    const { h } = await ready();
+    const body = event("email.bounced", ["non-una-email", "sconosciuto@altro.it", "<script>@x.it"]);
+    expect((await post(h, body, (await signed(body)).headers)).status).toBe(200);
+    expect(await events(h)).toHaveLength(1);
+    expect(await auditActions(h)).not.toContain("email.bounced");
+  });
+
+  it("LISTA IP attiva: serve firma valida E un IP consentito; senza IP si rifiuta (fail closed)", async () => {
+    const { h } = await ready();
+    process.env.WEBHOOK_IP_ALLOWLIST = "203.0.113.0/24, 2001:db8::/32";
+    const body = event("email.bounced", ["a@esempio.it"]);
+
+    const ok = await signed(body);
+    expect((await post(h, body, { ...ok.headers, "x-forwarded-for": "203.0.113.7" })).status).toBe(200);
+
+    const outside = await signed(body);
+    expect((await post(h, body, { ...outside.headers, "x-forwarded-for": "198.51.100.9" })).status).toBe(401);
+    const noIp = await signed(body);
+    expect((await post(h, body, noIp.headers)).status).toBe(401);
+    const v6 = await signed(body);
+    expect((await post(h, body, { ...v6.headers, "x-forwarded-for": "2001:db8:1::5" })).status).toBe(200);
+
+    // IP consentito ma firma sbagliata: respinto comunque.
+    const badSig = await signed(body);
+    expect((await post(h, body, { ...badSig.headers, "webhook-signature": "v1,AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", "x-forwarded-for": "203.0.113.7" })).status).toBe(401);
+  });
+
+  it("gli eventi vecchi vengono cancellati dopo 7 giorni", async () => {
+    const { h } = await ready();
+    const body = event("email.bounced", ["a@esempio.it"]);
+    await post(h, body, (await signed(body)).headers);
+    vi.setSystemTime(NOW + 8 * DAY);
+    await h.t.mutation(internal.maintenance.expireWebhookEvents, {});
+    expect(await events(h)).toHaveLength(0);
+  });
+});

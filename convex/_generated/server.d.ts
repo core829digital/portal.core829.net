@@ -35,6 +35,8 @@ type Env = {
   readonly AUTH_EMAIL_FROM?: string;
   readonly SITE_URL?: string;
   readonly VIRUSTOTAL_API_KEY?: string;
+  readonly RESEND_WEBHOOK_SECRET?: string;
+  readonly WEBHOOK_IP_ALLOWLIST?: string;
 };
 
 /**

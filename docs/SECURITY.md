@@ -54,6 +54,31 @@ La CSP e' generata per richiesta in `src/proxy.ts` con nonce nuovo a ogni rispos
 - Limite onesto: chi ha il link vede stato, importi e abbonamenti senza altri controlli. E' una scelta di semplicita';
   se il link viene inoltrato per errore si **revoca** e se ne crea uno nuovo.
 
+## Webhook (eventi di Resend)
+Endpoint `POST /webhooks/resend` sul dominio `.convex.site`: riceve gli esiti di recapito delle email (respinta, segnalata
+come spam, in ritardo, fallita) e li annota nel registro del cliente interessato (senza l'indirizzo email).
+
+**Difese, in quest'ordine** (ogni rifiuto e' un `401` identico, senza dire quale controllo e' fallito):
+1. dimensione massima 64 KB (`413`);
+2. *facoltativo* lista di IP consentiti;
+3. **firma HMAC-SHA256** secondo lo standard Standard Webhooks (intestazioni `webhook-id`, `webhook-timestamp`,
+   `webhook-signature` o alias `svix-*`), confronto a tempo costante. Verificata con un vettore generato da un'implementazione
+   indipendente;
+4. **timestamp entro 5 minuti** (passato e futuro): un messaggio intercettato non si puo' riusare dopo;
+5. **idempotenza**: ogni evento ha un id unico, un messaggio ripetuto risponde 200 ma non viene rielaborato;
+6. solo cinque tipi di evento vengono elaborati; gli altri si accettano e si ignorano.
+Senza `RESEND_WEBHOOK_SECRET` l'endpoint rifiuta tutto (`503`). Provato: tolte una alla volta firma, anti-replay e finestra di
+tempo, ogni volta un test ha fallito.
+
+**Lista di IP consentiti: cosa si puo' e cosa non si puo' garantire**
+- Il codice la supporta (`WEBHOOK_IP_ALLOWLIST`, indirizzi singoli e CIDR IPv4/IPv6, *fail closed*: IP assente o non valido = rifiuto),
+  ma e' **disattivata di default** e **non e' la difesa principale**: lo e' la firma.
+- L'IP arriva dall'intestazione `X-Forwarded-For`. **Non e' verificato come Convex la valorizzi.** Se la accoda, il primo
+  elemento potrebbe essere scelto dal chiamante e l'elenco non proteggerebbe; se non la imposta, con l'elenco attivo
+  verrebbero rifiutati anche i messaggi veri. Prima di attivarla, prova con un evento di test di Resend e controlla.
+- Per una vera applicazione per IP serve un firewall **davanti** al server. Gli indirizzi da consentire vanno presi dalla
+  documentazione ufficiale di Resend/Svix, non da questo documento (cambiano).
+
 ## Caricamento e download dei documenti
 **Percorso di un file:** caricamento -> registrazione (controlli rapidi) -> scansione -> `pulito` oppure `respinto`.
 Fino alla fine della scansione il file e' `in controllo` e **non e' scaricabile da nessuno**.

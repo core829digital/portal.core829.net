@@ -32,12 +32,14 @@ import type * as lib_errors from "../lib/errors.js";
 import type * as lib_files from "../lib/files.js";
 import type * as lib_hashReputation from "../lib/hashReputation.js";
 import type * as lib_invoiceFlow from "../lib/invoiceFlow.js";
+import type * as lib_ipAllowlist from "../lib/ipAllowlist.js";
 import type * as lib_links from "../lib/links.js";
 import type * as lib_otpLimits from "../lib/otpLimits.js";
 import type * as lib_overview from "../lib/overview.js";
 import type * as lib_resend from "../lib/resend.js";
 import type * as lib_text from "../lib/text.js";
 import type * as lib_validators from "../lib/validators.js";
+import type * as lib_webhookSignature from "../lib/webhookSignature.js";
 import type * as lib_widgets from "../lib/widgets.js";
 import type * as maintenance from "../maintenance.js";
 import type * as otp from "../otp.js";
@@ -46,6 +48,7 @@ import type * as pages from "../pages.js";
 import type * as portal from "../portal.js";
 import type * as projects from "../projects.js";
 import type * as subscriptions from "../subscriptions.js";
+import type * as webhooks from "../webhooks.js";
 
 declare const fullApi: ApiFromModules<{
   accessLinks: typeof accessLinks;
@@ -67,12 +70,14 @@ declare const fullApi: ApiFromModules<{
   "lib/files": typeof lib_files;
   "lib/hashReputation": typeof lib_hashReputation;
   "lib/invoiceFlow": typeof lib_invoiceFlow;
+  "lib/ipAllowlist": typeof lib_ipAllowlist;
   "lib/links": typeof lib_links;
   "lib/otpLimits": typeof lib_otpLimits;
   "lib/overview": typeof lib_overview;
   "lib/resend": typeof lib_resend;
   "lib/text": typeof lib_text;
   "lib/validators": typeof lib_validators;
+  "lib/webhookSignature": typeof lib_webhookSignature;
   "lib/widgets": typeof lib_widgets;
   maintenance: typeof maintenance;
   otp: typeof otp;
@@ -81,6 +86,7 @@ declare const fullApi: ApiFromModules<{
   portal: typeof portal;
   projects: typeof projects;
   subscriptions: typeof subscriptions;
+  webhooks: typeof webhooks;
 }>;
 
 /**

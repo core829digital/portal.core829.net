@@ -5,6 +5,9 @@ import { auth } from "./auth";
 import { env, httpAction } from "./_generated/server";
 import { corsHeaders } from "./lib/cors";
 import { contentDisposition } from "./lib/files";
+import { isIpAllowed } from "./lib/ipAllowlist";
+import { verifyWebhook } from "./lib/webhookSignature";
+import { HANDLED_EVENT_TYPES } from "./webhooks";
 
 const http = httpRouter();
 
@@ -87,6 +90,59 @@ http.route({
         ...cors,
       },
     });
+  }),
+});
+
+const MAX_WEBHOOK_BYTES = 64 * 1024;
+
+/**
+ * Webhook di Resend (esiti di recapito delle email: respinte, segnalate come spam...).
+ *
+ * Ordine dei controlli (ognuno rifiuta senza dire quale):
+ *  1. dimensione del corpo limitata;
+ *  2. facoltativo: indirizzo IP del chiamante nell'elenco consentito (WEBHOOK_IP_ALLOWLIST);
+ *  3. FIRMA valida (HMAC) con timestamp recente: e' la difesa vera;
+ *  4. solo dopo si legge il contenuto; eventi gia' visti (stesso id) non si rielaborano.
+ * Senza RESEND_WEBHOOK_SECRET l'endpoint rifiuta tutto.
+ */
+http.route({
+  path: "/webhooks/resend",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const reply = (status: number, body: Record<string, unknown> = {}) =>
+      new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } });
+    const unauthorized = () => reply(401, { error: "unauthorized" });
+
+    if (!env.RESEND_WEBHOOK_SECRET) return reply(503, { error: "not_configured" });
+
+    const declared = Number(request.headers.get("content-length") ?? "0");
+    if (Number.isFinite(declared) && declared > MAX_WEBHOOK_BYTES) return reply(413, { error: "too_large" });
+    const raw = await request.text();
+    if (raw.length > MAX_WEBHOOK_BYTES) return reply(413, { error: "too_large" });
+
+    if (env.WEBHOOK_IP_ALLOWLIST) {
+      const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+      if (!isIpAllowed(ip, env.WEBHOOK_IP_ALLOWLIST)) return unauthorized();
+    }
+
+    const verification = await verifyWebhook({ secret: env.RESEND_WEBHOOK_SECRET, headers: request.headers, body: raw, nowMs: Date.now() });
+    if (!verification.ok) return unauthorized();
+
+    let payload: unknown;
+    try {
+      payload = JSON.parse(raw);
+    } catch {
+      return reply(400, { error: "bad_request" });
+    }
+    const type = typeof payload === "object" && payload !== null ? (payload as { type?: unknown }).type : undefined;
+    if (typeof type !== "string" || !(HANDLED_EVENT_TYPES as readonly string[]).includes(type)) {
+      return reply(200, { ok: true, ignored: true });
+    }
+    const to = (payload as { data?: { to?: unknown } }).data?.to;
+    const recipients = Array.isArray(to) ? to.filter((x): x is string => typeof x === "string").slice(0, 5) : [];
+
+    await ctx.runMutation(internal.webhooks.recordResendEvent, { eventId: verification.id, type, recipients });
+    return reply(200, { ok: true });
   }),
 });
 

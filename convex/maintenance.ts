@@ -106,3 +106,18 @@ export const expirePendingScans = internalMutation({
     return { processed };
   },
 });
+
+/** Cancella gli eventi webhook vecchi: la finestra anti-replay e' di 5 minuti, ne teniamo 7 giorni. */
+export const expireWebhookEvents = internalMutation({
+  args: {},
+  handler: async (ctx): Promise<{ processed: number }> => {
+    const cutoff = Date.now() - 7 * DAY_MS;
+    const old = await ctx.db
+      .query("webhookEvents")
+      .withIndex("by_receivedAt", (q) => q.lt("receivedAt", cutoff))
+      .take(BATCH);
+    for (const event of old) await ctx.db.delete("webhookEvents", event._id);
+    if (old.length === BATCH) await ctx.scheduler.runAfter(0, internal.maintenance.expireWebhookEvents, {});
+    return { processed: old.length };
+  },
+});

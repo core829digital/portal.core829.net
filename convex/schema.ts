@@ -178,6 +178,15 @@ export default defineSchema({
     .index("by_linkId", ["linkId"])
     .index("by_expiresAt", ["expiresAt"]),
 
+  /** Eventi webhook gia' elaborati: serve a ignorare i messaggi ripetuti (ogni evento ha un id unico). Pulita dopo 7 giorni. */
+  webhookEvents: defineTable({
+    eventId: v.string(),
+    type: v.string(),
+    receivedAt: v.number(),
+  })
+    .index("by_eventId", ["eventId"])
+    .index("by_receivedAt", ["receivedAt"]),
+
   /** Registro di audit: chi ha fatto cosa e quando. Mai segreti qui dentro. */
   auditLogs: defineTable({
     actorType: v.union(v.literal("admin"), v.literal("client"), v.literal("system")),
