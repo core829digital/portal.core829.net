@@ -65,3 +65,10 @@ Da fare **dopo** i passi di `docs/SETUP.md` (chiavi Convex Auth, variabili, prim
 - **Brand**: font identici ad Andromedia Web e al sito (Saans se installato sul dispositivo, altrimenti Inter self-hosted; JetBrains Mono per le etichette; titoli a peso 560), rosso `#dd1a2b`, logo e sfondo "neural" della hero di core829.net
   (`src/components/brand/NeuralNoise.tsx` e' una copia di `components/ui/neural-noise.tsx` del repo `core829.net-new`: tenerli allineati).
 - **Pagina iniziale** (`/`): accesso per i clienti (link personale) e contatti per chi non lo e' (modulo `core829.net/it/contatti` ed email).
+
+## 8. Studio documenti e collegamento B2B (dopo il deploy di Convex)
+
+1. `git pull origin main`, poi `npx convex deploy` (nuove tabelle e funzioni per modelli, bozze e trattative B2B).
+2. Nel deployment Convex di produzione devono esserci `RESEND_API_KEY`, `AUTH_EMAIL_FROM` (dominio verificato in Resend) e `ADMIN_EMAILS`.
+3. Per il B2B: imposta `B2B_WEBHOOK_SECRET` (vedi `docs/B2B.md`).
+4. In *Documenti → Modelli → Importa un modello* carica il file del Master Services Agreement (versione con segnaposto).

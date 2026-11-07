@@ -160,7 +160,9 @@ function firstRunWithText(p: Element): Element | null {
 /** Riscrive tutto il testo di un paragrafo con una sola serie di caratteri (mantiene lo stile del paragrafo e del primo pezzo). */
 function setParagraphText(doc: Doc, p: Element, text: string) {
   const source = firstRunWithText(p);
-  const rPr = source ? children(source, "rPr")[0] : undefined;
+  const pPr = children(p, "pPr")[0];
+  // Senza testo precedente (paragrafo vuoto) si usa la formattazione del segno di paragrafo.
+  const rPr = source ? children(source, "rPr")[0] : pPr ? children(pPr, "rPr")[0] : undefined;
   for (const child of Array.from({ length: p.childNodes.length }, (_, i) => p.childNodes.item(i) as Node)) {
     const e = child as Element;
     if (e.nodeType === 1 && e.namespaceURI === W && e.localName === "pPr") continue;
@@ -198,8 +200,19 @@ function rowLabelOf(p: Element): string | null {
   const row = cell.parentNode as Element;
   const cells = children(row, "tc");
   if (cells.length < 2 || cells[0] === cell) return null;
-  const first = Array.from(cells[0].getElementsByTagNameNS(W, "p"));
-  return first.map((fp) => paragraphText(fp)).join(" ").trim().slice(0, 80) || null;
+  const textOf = (c: Element) => Array.from(c.getElementsByTagNameNS(W, "p")).map((fp) => paragraphText(fp)).join(" ").trim();
+  let label = textOf(cells[0]);
+  if (label.length <= 2) {
+    // Prima cella con un solo simbolo (es. una casella ☐): si aggiunge il primo testo successivo della riga.
+    for (const c of cells.slice(1)) {
+      const t = textOf(c);
+      if (t !== "" && c !== cell) {
+        label = `${label} ${t}`.trim();
+        break;
+      }
+    }
+  }
+  return label.slice(0, 80) || null;
 }
 
 /** Elenco dei paragrafi (testo semplice) di un DOCX. */
@@ -267,6 +280,12 @@ export function applyChanges(original: DocxFiles, changes: DocChanges): DocxFile
     if (!p || Object.prototype.hasOwnProperty.call(edits, index)) continue;
     const text = paragraphText(p);
     const matches = [...text.matchAll(FIELD_RE)];
+    if (matches.length === 0 && text.trim() === "") {
+      // Cella vuota di una tabella: il valore diventa il testo del paragrafo.
+      const value = fills.find((f) => f.occurrence === 0)?.value ?? "";
+      if (clean(value).trim() !== "") setParagraphText(doc, p, clean(value));
+      continue;
+    }
     for (const fill of fills.sort((a, b) => b.occurrence - a.occurrence)) {
       const m = matches[fill.occurrence];
       if (!m) continue;

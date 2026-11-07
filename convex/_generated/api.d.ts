@@ -16,6 +16,7 @@ import type {
 import type * as accessLinks from "../accessLinks.js";
 import type * as admins from "../admins.js";
 import type * as auth from "../auth.js";
+import type * as b2b from "../b2b.js";
 import type * as clients from "../clients.js";
 import type * as crons from "../crons.js";
 import type * as dashboard from "../dashboard.js";
@@ -31,6 +32,7 @@ import type * as lib_audit from "../lib/audit.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_cors from "../lib/cors.js";
 import type * as lib_crypto from "../lib/crypto.js";
+import type * as lib_docFields from "../lib/docFields.js";
 import type * as lib_docPdf from "../lib/docPdf.js";
 import type * as lib_docx from "../lib/docx.js";
 import type * as lib_errors from "../lib/errors.js";
@@ -63,6 +65,7 @@ declare const fullApi: ApiFromModules<{
   accessLinks: typeof accessLinks;
   admins: typeof admins;
   auth: typeof auth;
+  b2b: typeof b2b;
   clients: typeof clients;
   crons: typeof crons;
   dashboard: typeof dashboard;
@@ -78,6 +81,7 @@ declare const fullApi: ApiFromModules<{
   "lib/auth": typeof lib_auth;
   "lib/cors": typeof lib_cors;
   "lib/crypto": typeof lib_crypto;
+  "lib/docFields": typeof lib_docFields;
   "lib/docPdf": typeof lib_docPdf;
   "lib/docx": typeof lib_docx;
   "lib/errors": typeof lib_errors;

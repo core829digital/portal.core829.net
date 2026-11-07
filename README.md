@@ -28,3 +28,7 @@ portale cliente, widget-as-a-page, upload sicuri, webhook, performance, revision
 ## Dashboard
 
 Area admin e portale cliente sono dashboard a pagine con menu laterale e brand CORE829. Dettagli (metriche, brand, dominio) in [`docs/DEPLOY.md`](docs/DEPLOY.md), sezione 7.
+
+## Documenti e integrazione B2B
+
+Contratti e documenti dai modelli Word con invio via email: [`docs/DOCUMENTS.md`](docs/DOCUMENTS.md). Passaggio delle trattative da b2b.core829.net: [`docs/B2B.md`](docs/B2B.md).

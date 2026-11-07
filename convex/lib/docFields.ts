@@ -32,6 +32,20 @@ export const FIELD_RE = /\{\{\s*([A-Za-z0-9_.]+)\s*\}\}|_{3,}|\[[^\]\n]{1,120}\]
 export function detectFields(paragraphs: DocParagraph[]): DocField[] {
   const out: DocField[] = [];
   for (const para of paragraphs) {
+    // Cella vuota di una tabella con un'etichetta nella riga (tipico dei moduli): e' un campo da compilare.
+    if (para.inTable && para.rowLabel && para.text.trim() === "") {
+      out.push({
+        id: `p${para.index}.0`,
+        paragraph: para.index,
+        occurrence: 0,
+        kind: "blank",
+        token: "",
+        key: null,
+        label: para.rowLabel,
+        context: `${para.rowLabel}: (cella vuota)`,
+      });
+      continue;
+    }
     let occurrence = 0;
     for (const m of para.text.matchAll(FIELD_RE)) {
       const token = m[0];

@@ -37,6 +37,7 @@ type Env = {
   readonly VIRUSTOTAL_API_KEY?: string;
   readonly RESEND_WEBHOOK_SECRET?: string;
   readonly WEBHOOK_IP_ALLOWLIST?: string;
+  readonly B2B_WEBHOOK_SECRET?: string;
 };
 
 /**

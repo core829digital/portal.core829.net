@@ -146,4 +146,67 @@ http.route({
   }),
 });
 
+const MAX_B2B_BYTES = 16 * 1024;
+const PACKAGES = ["standard", "advanced", "custom"] as const;
+
+/**
+ * Trattativa chiusa su b2b.core829.net: crea (o riconosce) il cliente nel portale.
+ *
+ * Stesse difese dell'endpoint di Resend: dimensione limitata, FIRMA (Standard Webhooks, HMAC-SHA256) con timestamp
+ * recente, risposta identica per ogni difetto, nessun dettaglio dell'errore. Senza B2B_WEBHOOK_SECRET rifiuta tutto.
+ * Corpo JSON: { dealId, client: { displayName, contactName, email, phone?, vatId?, packageType? }, notes?, salesAgent? }.
+ */
+http.route({
+  path: "/integrations/b2b/deals",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const reply = (status: number, body: Record<string, unknown> = {}) =>
+      new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } });
+    if (!env.B2B_WEBHOOK_SECRET) return reply(503, { error: "not_configured" });
+
+    const declared = Number(request.headers.get("content-length") ?? "0");
+    if (Number.isFinite(declared) && declared > MAX_B2B_BYTES) return reply(413, { error: "too_large" });
+    const raw = await request.text();
+    if (raw.length > MAX_B2B_BYTES) return reply(413, { error: "too_large" });
+
+    const verification = await verifyWebhook({ secret: env.B2B_WEBHOOK_SECRET, headers: request.headers, body: raw, nowMs: Date.now() });
+    if (!verification.ok) return reply(401, { error: "unauthorized" });
+
+    let payload: unknown;
+    try {
+      payload = JSON.parse(raw);
+    } catch {
+      return reply(400, { error: "bad_request" });
+    }
+    const str = (x: unknown): string | undefined => (typeof x === "string" && x.trim() !== "" ? x : undefined);
+    const body = typeof payload === "object" && payload !== null ? (payload as Record<string, unknown>) : {};
+    const client = typeof body.client === "object" && body.client !== null ? (body.client as Record<string, unknown>) : {};
+    const dealId = str(body.dealId);
+    const displayName = str(client.displayName);
+    const contactName = str(client.contactName);
+    const email = str(client.email);
+    if (!dealId || !displayName || !contactName || !email) return reply(400, { error: "bad_request" });
+    const pkg = PACKAGES.find((p) => p === client.packageType);
+
+    try {
+      const result = await ctx.runMutation(internal.b2b.receiveDeal, {
+        eventId: verification.id,
+        dealId,
+        displayName,
+        contactName,
+        email,
+        phone: str(client.phone),
+        vatId: str(client.vatId),
+        packageType: pkg,
+        notes: str(body.notes),
+        salesAgent: str(body.salesAgent),
+      });
+      return reply(200, { ok: true, status: result.status });
+    } catch {
+      // Dati non validi (email, partita IVA...): 400 generico, senza dire quale campo.
+      return reply(400, { error: "bad_request" });
+    }
+  }),
+});
+
 export default http;

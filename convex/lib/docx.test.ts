@@ -94,6 +94,25 @@ describe("campi da compilare", () => {
   });
 });
 
+describe("celle vuote dei moduli", () => {
+  const form = () => readDocx(createBlankDocx([{ type: "table", rows: [["Cliente", ""], ["☐", "", "Sviluppo software"], ["Sede", ""], ["Titolo tutto pieno", "gia' scritto"]] }]));
+
+  it("una cella vuota con etichetta nella riga e' un campo; la casella usa il testo accanto", () => {
+    const fields = detectFields(listParagraphs(form()));
+    // La casella ☐ nella prima cella e' a sua volta un campo (da spuntare); la cella vuota accanto usa il suo testo come etichetta.
+    expect(fields.map((f) => f.label)).toEqual(["Cliente", "Casella", "☐ Sviluppo software", "Sede"]);
+  });
+
+  it("compilare la cella ne scrive il testo; le celle lasciate vuote restano vuote", () => {
+    const files = form();
+    const fields = detectFields(listParagraphs(files));
+    const out = applyChanges(files, { fills: { [fields[0].id]: "Caffè Rosso Srl", [fields[2].id]: "" } });
+    const texts = listParagraphs(out).map((p) => p.text);
+    expect(texts).toContain("Caffè Rosso Srl");
+    expect(detectFields(listParagraphs(out)).map((f) => f.label)).toEqual(["Casella", "☐ Sviluppo software", "Sede"]);
+  });
+});
+
 describe("modifiche al testo", () => {
   it("riscrive, aggiunge ed elimina paragrafi; in una cella l'ultimo paragrafo si svuota ma non sparisce", () => {
     const files = sample();
