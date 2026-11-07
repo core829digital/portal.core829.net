@@ -24,7 +24,7 @@ Da fare **dopo** i passi di `docs/SETUP.md` (chiavi Convex Auth, variabili, prim
 
 1. Vercel: `NEXT_PUBLIC_APP_URL` = `https://portal.core829.net`, poi **Redeploy senza cache**.
 2. Convex (produzione): `SITE_URL` = `https://portal.core829.net`. Serve al download dei documenti (CORS).
-3. Il vecchio indirizzo `*.vercel.app` puo' restare attivo o essere reindirizzato.
+3. Il vecchio indirizzo `*.vercel.app` puo' restare attivo. I link creati per i clienti usano **sempre** `https://portal.core829.net` (se la configurazione punta ancora a `*.vercel.app` il portale usa comunque il dominio ufficiale). Nel passaggio si puo' mettere in `SITE_URL` anche entrambi gli indirizzi separati da virgola, per non rompere i download dei link gia' inviati.
 4. Sito core829.net: il pulsante "Area clienti" nell'header punta a `https://portal.core829.net` (variabile facoltativa `NEXT_PUBLIC_PORTAL_URL`).
 
 ## 3. Controllo dopo la pubblicazione

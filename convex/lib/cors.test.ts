@@ -13,6 +13,12 @@ describe("corsHeaders", () => {
       expect(corsHeaders(origin, "https://portal.core829.net")).toEqual({});
     }
   });
+  it("accetta piu' indirizzi separati da virgola (passaggio di dominio), ignorando le voci non valide", () => {
+    const site = "https://portal.core829.net, non un url ,https://portal-core829-net.vercel.app/";
+    expect(corsHeaders("https://portal.core829.net", site)).toHaveProperty("Access-Control-Allow-Origin");
+    expect(corsHeaders("https://portal-core829-net.vercel.app", site)).toHaveProperty("Access-Control-Allow-Origin");
+    expect(corsHeaders("https://evil.com", site)).toEqual({});
+  });
   it("senza origine o senza configurazione non apre nulla", () => {
     expect(corsHeaders(null, "https://portal.core829.net")).toEqual({});
     expect(corsHeaders("https://portal.core829.net", undefined)).toEqual({});

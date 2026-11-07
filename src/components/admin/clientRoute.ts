@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import type { Id } from "@convex/_generated/dataModel";
+import { canonicalAppUrl } from "@/lib/appUrl";
 import { getClientEnv } from "@/lib/env";
 
 // Forma di un ID Convex. Un valore diverso non puo' essere un cliente: 404 senza interrogare il server.
@@ -10,5 +11,5 @@ export async function clientRouteParams(params: Promise<{ clientId: string }>): 
   const { clientId } = await params;
   if (!CONVEX_ID.test(clientId)) notFound();
   const { NEXT_PUBLIC_APP_URL } = getClientEnv();
-  return { clientId: clientId as Id<"clients">, appUrl: NEXT_PUBLIC_APP_URL };
+  return { clientId: clientId as Id<"clients">, appUrl: canonicalAppUrl(NEXT_PUBLIC_APP_URL) };
 }

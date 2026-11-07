@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { JetBrains_Mono, Space_Grotesk, Unbounded } from "next/font/google";
+import { canonicalAppUrl } from "@/lib/appUrl";
 import "./globals.css";
 
 // Font del brand CORE829 (gli stessi di core829.net), serviti dal nostro dominio da next/font.
@@ -16,7 +17,7 @@ const DESCRIPTION = "Area riservata ai clienti di CORE829 SRL: progetti, fatture
 
 export const metadata: Metadata = {
   // Base per gli indirizzi assoluti di icone e immagini di anteprima (WhatsApp, email, social).
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "https://portal.core829.net"),
+  metadataBase: new URL(canonicalAppUrl(process.env.NEXT_PUBLIC_APP_URL ?? "")),
   title: { default: "Portale clienti CORE829", template: "%s · CORE829" },
   description: DESCRIPTION,
   applicationName: "CORE829 · Portale clienti",
