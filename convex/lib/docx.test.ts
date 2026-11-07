@@ -194,3 +194,43 @@ describe.skipIf(!existsSync(REAL))("contratto MSA reale (solo in locale)", () =>
     console.log(`MSA: ${paragraphs.length} paragrafi, ${fields.length} campi, ${pdf.getPageCount()} pagine PDF`);
   });
 });
+
+describe("tabelle aggiunte (da fogli Excel)", () => {
+  it("inserisce una tabella dopo il paragrafo, con intestazione, e il PDF la mostra", async () => {
+    const files = sample();
+    const before = listParagraphs(files).length;
+    const out = applyChanges(files, { tables: { 0: [{ header: true, rows: [["Metrica", "Valore"], ["Visite sito", "1520"], ["Follower", "1200"]] }] } });
+    const model = toModel(out);
+    const tables = model.filter((b) => b.type === "table");
+    expect(tables.length).toBe(2); // quella del modello + la nuova
+    expect(tables[0]).toMatchObject({ rows: [["Metrica", "Valore"], ["Visite sito", "1520"], ["Follower", "1200"]] });
+    expect(listParagraphs(out).length).toBe(before + 6 + 1); // 6 celle + 1 paragrafo vuoto di separazione
+    const pdf = await PDFDocument.load(await renderPdf(model, { title: "T" }));
+    expect(pdf.getPageCount()).toBeGreaterThan(0);
+    // riscrivibile e rileggibile
+    expect(() => readDocx(writeDocx(out))).not.toThrow();
+  });
+  it("il contenuto delle celle e' solo testo: markup e formule non diventano XML", () => {
+    const evil = '<w:p><w:r><w:t>x</w:t></w:r></w:p>]]></w:t><script>=HYPERLINK("http://x")';
+    const out = applyChanges(sample(), { tables: { 0: [{ header: false, rows: [[evil]] }] } });
+    const xml = strFromU8(out["word/document.xml"]);
+    expect(xml).not.toContain("<script>");
+    expect(listParagraphs(out).some((p) => p.text.includes("<script>"))).toBe(true);
+  });
+  it("se il riferimento e' dentro una tabella, la nuova va dopo quella tabella (mai dentro una cella)", () => {
+    const files = sample();
+    const inside = listParagraphs(files).find((p) => p.inTable)!;
+    const out = applyChanges(files, { tables: { [inside.index]: [{ header: false, rows: [["A", "B"]] }] } });
+    const tables = toModel(out).filter((b) => b.type === "table");
+    expect(tables).toHaveLength(2);
+    expect(tables[1]).toMatchObject({ rows: [["A", "B"]] });
+  });
+  it("limita righe e colonne", () => {
+    const rowsOut = applyChanges(sample(), { tables: { 0: [{ header: false, rows: Array.from({ length: 2100 }, () => ["x"]) }] } });
+    const t = toModel(rowsOut).filter((b) => b.type === "table")[0];
+    expect(t.type === "table" && t.rows.length).toBe(2000);
+    const colsOut = applyChanges(sample(), { tables: { 0: [{ header: false, rows: [Array.from({ length: 60 }, () => "x")] }] } });
+    const c = toModel(colsOut).filter((b) => b.type === "table")[0];
+    expect(c.type === "table" && c.rows[0].length).toBe(50);
+  });
+});

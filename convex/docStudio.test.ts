@@ -286,6 +286,34 @@ async function pdfTexts(bytes: Uint8Array, pageNumber: number): Promise<string[]
 
 const note = (extra: Record<string, unknown> = {}) => ({ page: 0, x: 0.3, y: 0.4, text: "Mario Rossi", size: 12, color: "black" as const, bold: false, ...extra });
 
+describe("fogli Excel", () => {
+  const csv = (text: string) => new TextEncoder().encode(text);
+
+  it("legge un CSV, cancella sempre il file caricato e inserisce la tabella nel documento", async () => {
+    const h = await setup();
+    const { templateId } = await template(h);
+    const { draftId } = await h.admin.action(api.docStudioActions.createDraft, { clientId: h.clientId, templateId });
+    const upload = await store(h.t, csv("Metrica;Valore\nVisite;1520\nFollower;1200"), "text/csv");
+    const { sheets } = await h.admin.action(api.docStudioActions.readSpreadsheet, { storageId: upload, fileName: "report.csv" });
+    expect(sheets[0].rows).toEqual([["Metrica", "Valore"], ["Visite", "1520"], ["Follower", "1200"]]);
+    expect(await exists(h.t, upload)).toBe(false);
+    await h.admin.action(api.docStudioActions.saveDraft, { draftId, edits: [], deletes: [], inserts: [], fills: [], tables: [{ after: 0, header: true, rows: sheets[0].rows }] });
+    const after = (await h.t.run((ctx) => ctx.db.get("docDrafts", draftId)))!.storageId;
+    const texts = listParagraphs(readDocx(await bytesOf(h.t, after))).map((p) => p.text);
+    expect(texts).toEqual(expect.arrayContaining(["Metrica", "Valore", "Visite", "1520"]));
+  });
+
+  it("file non valido o .xls: errore chiaro e file comunque cancellato; chi non e' admin non cancella nulla", async () => {
+    const h = await setup();
+    const bad = await store(h.t, new Uint8Array([1, 2, 3, 4]), "application/octet-stream");
+    await expect(h.admin.action(api.docStudioActions.readSpreadsheet, { storageId: bad, fileName: "vecchio.xls" })).rejects.toThrow();
+    expect(await exists(h.t, bad)).toBe(false);
+    const mine = await store(h.t, csv("a;b"), "text/csv");
+    await expect(h.other.action(api.docStudioActions.readSpreadsheet, { storageId: mine, fileName: "a.csv" })).rejects.toThrow();
+    expect(await exists(h.t, mine)).toBe(true);
+  });
+});
+
 describe("compilazione automatica", () => {
   const year = new Date().getUTCFullYear();
 

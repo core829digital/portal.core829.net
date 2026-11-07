@@ -238,6 +238,11 @@ export function listParagraphs(files: DocxFiles): DocParagraph[] {
   });
 }
 
+export type DocTable = { rows: string[][]; header: boolean };
+
+export const MAX_TABLE_ROWS = 2000;
+export const MAX_TABLE_COLS = 50;
+
 export type DocChanges = {
   /** Nuovo testo completo di un paragrafo (indice del paragrafo -> testo). */
   edits?: Record<number, string>;
@@ -247,6 +252,8 @@ export type DocChanges = {
   inserts?: Record<number, string[]>;
   /** Valori dei campi da compilare (id del campo -> valore). Per le caselle: "true"/"false". */
   fills?: Record<string, string>;
+  /** Tabelle da aggiungere subito dopo un paragrafo (indice del paragrafo -> tabelle). Il testo delle celle entra solo come testo. */
+  tables?: Record<number, DocTable[]>;
   /** Valori dei segnaposto {{chiave}}, applicati in tutto il documento (anche intestazioni e piè di pagina). */
   vars?: Record<string, string>;
 };
@@ -326,6 +333,23 @@ export function applyChanges(original: DocxFiles, changes: DocChanges): DocxFile
     }
   }
 
+  // 3b. Tabelle aggiunte (anche da fogli Excel). Se il riferimento sta dentro una tabella, si inseriscono dopo quella.
+  for (const [index, tables] of Object.entries(changes.tables ?? {})) {
+    const ref = ps[Number(index)];
+    if (!ref || !ref.parentNode) continue;
+    let top: Node = ref;
+    for (let a: Node | null = ref.parentNode; a; a = a.parentNode) if ((a as Element).localName === "tbl" && (a as Element).namespaceURI === W) top = a;
+    let anchor: Node = top;
+    for (const table of tables) {
+      const tbl = buildTable(doc, table);
+      const gap = doc.createElementNS(W, "w:p");
+      const parent = top.parentNode as Node;
+      parent.insertBefore(tbl, anchor.nextSibling);
+      parent.insertBefore(gap, tbl.nextSibling);
+      anchor = gap;
+    }
+  }
+
   // 4. Paragrafi eliminati (l'ultimo paragrafo di una cella di tabella non si toglie: si svuota).
   for (const index of changes.deletes ?? []) {
     const p = ps[index];
@@ -349,6 +373,55 @@ export function applyChanges(original: DocxFiles, changes: DocChanges): DocxFile
 
   files["word/document.xml"] = serialize(doc);
   return files;
+}
+
+/** Tabella Word con bordi sottili; la prima riga puo' essere l'intestazione (grassetto, sfondo grigio). Solo nodi di testo. */
+function buildTable(doc: Doc, table: DocTable): Element {
+  const rows = table.rows.slice(0, MAX_TABLE_ROWS).map((r) => r.slice(0, MAX_TABLE_COLS));
+  const width = Math.max(1, ...rows.map((r) => r.length));
+  const el = (name: string, attrs: Record<string, string> = {}): Element => {
+    const e = doc.createElementNS(W, `w:${name}`);
+    for (const [k, v] of Object.entries(attrs)) e.setAttributeNS(W, `w:${k}`, v);
+    return e;
+  };
+  const tbl = el("tbl");
+  const pr = el("tblPr");
+  pr.appendChild(el("tblW", { w: "5000", type: "pct" }));
+  const borders = el("tblBorders");
+  for (const side of ["top", "left", "bottom", "right", "insideH", "insideV"]) borders.appendChild(el(side, { val: "single", sz: "4", space: "0", color: "BFBFBF" }));
+  pr.appendChild(borders);
+  pr.appendChild(el("tblLayout", { type: "fixed" }));
+  tbl.appendChild(pr);
+  const grid = el("tblGrid");
+  for (let i = 0; i < width; i++) grid.appendChild(el("gridCol", { w: String(Math.floor(9000 / width)) }));
+  tbl.appendChild(grid);
+  rows.forEach((cells, ri) => {
+    const tr = el("tr");
+    const head = table.header && ri === 0;
+    for (let ci = 0; ci < width; ci++) {
+      const tc = el("tc");
+      const tcPr = el("tcPr");
+      tcPr.appendChild(el("tcW", { w: String(Math.floor(5000 / width)), type: "pct" }));
+      if (head) tcPr.appendChild(el("shd", { val: "clear", color: "auto", fill: "F2F2F2" }));
+      tc.appendChild(tcPr);
+      const p = el("p");
+      const r = el("r");
+      if (head) {
+        const rPr = el("rPr");
+        rPr.appendChild(el("b"));
+        r.appendChild(rPr);
+      }
+      const t = el("t");
+      t.setAttributeNS(XML_NS, "xml:space", "preserve");
+      t.appendChild(doc.createTextNode(clean(cells[ci] ?? "")));
+      r.appendChild(t);
+      p.appendChild(r);
+      tc.appendChild(p);
+      tr.appendChild(tc);
+    }
+    tbl.appendChild(tr);
+  });
+  return tbl;
 }
 
 // ---------------------------------------------------------------------------------------------

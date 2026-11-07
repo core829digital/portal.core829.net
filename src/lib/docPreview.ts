@@ -14,13 +14,18 @@ export type PreviewBlock = {
   rowLabel: string | null;
   edited: boolean;
   segments: PreviewSegment[];
+  /** Tabella aggiunta (da Excel): in questo caso `segments` e' vuoto. */
+  table?: { rows: string[][]; header: boolean };
 };
+
+export type PreviewTable = { after: number; header: boolean; rows: string[][] };
 
 export type PreviewState = {
   edits: Record<number, string>;
   deletes: ReadonlySet<number>;
   inserts: Record<number, string[]>;
   fills: Record<string, string>;
+  tables?: PreviewTable[];
 };
 
 /**
@@ -43,6 +48,9 @@ export function composePreview(paragraphs: DocParagraph[], fields: DocField[], s
         edited: rewritten,
         segments: rewritten ? textSegments(state.edits[p.index]) : fieldSegments(p, byParagraph.get(p.index) ?? [], state.fills),
       });
+    }
+    for (const t of (state.tables ?? []).filter((x) => x.after === p.index)) {
+      out.push({ index: null, insertedAfter: p.index, style: null, inTable: false, rowLabel: null, edited: true, segments: [], table: { rows: t.rows, header: t.header } });
     }
     for (const text of state.inserts[p.index] ?? []) {
       if (text.trim() === "") continue;

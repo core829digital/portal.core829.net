@@ -21,6 +21,7 @@ import {
 } from "./lib/docx";
 import { cleanAnnotations, inspectPdf, MAX_PDF_BYTES, PdfError, stampPdf, type PdfInfo } from "./lib/pdfStamp";
 import { sendEmail } from "./lib/resend";
+import { readSheets, SheetError, type Sheet } from "./lib/sheets";
 import { cleanEmail, cleanText, escapeHtml, invalid } from "./lib/text";
 import { docCategory, pdfAnnotation } from "./lib/validators";
 
@@ -180,6 +181,36 @@ export const inspectDraft = action({
 
 const MAX_OPS = 3000;
 
+function tablesByParagraph(tables: { after: number; header: boolean; rows: string[][] }[]): Record<number, { header: boolean; rows: string[][] }[]> {
+  const out: Record<number, { header: boolean; rows: string[][] }[]> = {};
+  for (const t of tables.slice(0, 20)) (out[t.after] ??= []).push({ header: t.header, rows: t.rows });
+  return out;
+}
+
+/**
+ * Legge un foglio di calcolo caricato (xlsx, xlsm, ods, csv) e ne restituisce i fogli per l'anteprima.
+ * Il file caricato viene sempre cancellato: serve solo a leggere i dati.
+ */
+export const readSpreadsheet = action({
+  args: { storageId: v.id("_storage"), fileName: v.string() },
+  handler: async (ctx, args): Promise<{ sheets: Sheet[] }> => {
+    await admin(ctx); // prima di tutto: chi non e' amministratore non deve poter cancellare nulla
+    try {
+      const blob = await ctx.storage.get(args.storageId);
+      if (!blob) return invalid("file", "File non trovato.");
+      if (blob.size > 5 * 1024 * 1024) return invalid("file", "Il file supera i 5 MB.");
+      try {
+        return { sheets: readSheets(new Uint8Array(await blob.arrayBuffer()), args.fileName.slice(0, 200)) };
+      } catch (error) {
+        if (error instanceof SheetError) return invalid("file", error.message);
+        throw error;
+      }
+    } finally {
+      await ctx.storage.delete(args.storageId).catch(() => undefined);
+    }
+  },
+});
+
 /** Salva le modifiche fatte nell'editor (testo, campi, paragrafi aggiunti/eliminati). */
 export const saveDraft = action({
   args: {
@@ -188,10 +219,12 @@ export const saveDraft = action({
     deletes: v.array(v.number()),
     inserts: v.array(v.object({ after: v.number(), texts: v.array(v.string()) })),
     fills: v.array(v.object({ id: v.string(), value: v.string() })),
+    /** Tabelle da inserire dopo un paragrafo (es. da un foglio Excel). */
+    tables: v.optional(v.array(v.object({ after: v.number(), header: v.boolean(), rows: v.array(v.array(v.string())) }))),
   },
   handler: async (ctx, args): Promise<{ paragraphs: number }> => {
     const { actorId } = await admin(ctx);
-    if (args.edits.length + args.deletes.length + args.inserts.length + args.fills.length > MAX_OPS) return invalid("modifiche", "Troppe modifiche in un solo salvataggio.");
+    if (args.edits.length + args.deletes.length + args.inserts.length + args.fills.length + (args.tables?.length ?? 0) > MAX_OPS) return invalid("modifiche", "Troppe modifiche in un solo salvataggio.");
     const draft = await ctx.runQuery(internal.docStudio.draftForAction, { draftId: args.draftId });
     if (!draft) return invalid("bozza", "Bozza non trovata.");
     if (draft.status === "sent") return invalid("bozza", "Il documento è già stato inviato: crea una nuova bozza per modificarlo.");
@@ -202,6 +235,7 @@ export const saveDraft = action({
       deletes: args.deletes,
       inserts: Object.fromEntries(args.inserts.map((i) => [i.after, i.texts])),
       fills: Object.fromEntries(args.fills.map((f) => [f.id, f.value])),
+      tables: tablesByParagraph(args.tables ?? []),
     });
     const bytes = writeDocx(updated);
     const storageId = await storeBlob(ctx, bytes, DOCX_MIME);

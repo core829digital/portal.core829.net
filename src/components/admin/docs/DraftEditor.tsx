@@ -1,7 +1,7 @@
 "use client";
 
 import { useAction, useQuery } from "convex/react";
-import { CheckSquare, Download, Eye, FileText, Pencil, Plus, RotateCcw, Save, Send, Square, Trash2 } from "lucide-react";
+import { CheckSquare, Download, Eye, FileSpreadsheet, FileText, Pencil, Plus, RotateCcw, Save, Send, Square, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { api } from "@convex/_generated/api";
@@ -17,7 +17,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { errorMessage } from "@/lib/errors";
 import { formatDateTime } from "@/lib/format";
-import { composePreview, remainingFields, type PreviewBlock } from "@/lib/docPreview";
+import { SpreadsheetDialog } from "@/components/admin/docs/SpreadsheetDialog";
+import { composePreview, remainingFields, type PreviewBlock, type PreviewTable } from "@/lib/docPreview";
 import { toast } from "@/lib/toast";
 import { cn } from "cn";
 
@@ -141,9 +142,30 @@ export type SavePayload = {
   deletes: number[];
   inserts: { after: number; texts: string[] }[];
   fills: { id: string; value: string }[];
+  tables: PreviewTable[];
 };
 
 /** Vista dell'editor: tutto lo stato delle modifiche sta qui; i dati e le azioni arrivano dal contenitore. */
+function SheetPreviewFull({ rows, header }: { rows: string[][]; header: boolean }) {
+  return (
+    <div className="my-2 max-w-full overflow-x-auto" data-testid="preview-table">
+      <table className="w-full border-collapse text-xs">
+        <tbody>
+          {rows.map((r, i) => (
+            <tr key={i} className={header && i === 0 ? "bg-neutral-100 font-semibold" : undefined}>
+              {r.map((c, j) => (
+                <td key={j} className="border border-neutral-300 px-2 py-1 align-top">
+                  {c}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 /** Il documento come sara' dopo il salvataggio, aggiornato a ogni tasto. Clic su un campo = si va a compilarlo; clic su un testo = si modifica. */
 function PreviewPane({ blocks, locked, onField, onParagraph }: { blocks: PreviewBlock[]; locked: boolean; onField: (fieldId: string) => void; onParagraph: (index: number) => void }) {
   return (
@@ -162,7 +184,8 @@ function PreviewPane({ blocks, locked, onField, onParagraph }: { blocks: Preview
               b.edited && "bg-amber-50/70",
             )}
           >
-            {b.segments.length === 0 ? <span className="select-none">&nbsp;</span> : null}
+            {b.table ? <SheetPreviewFull rows={b.table.rows} header={b.table.header} /> : null}
+            {!b.table && b.segments.length === 0 ? <span className="select-none">&nbsp;</span> : null}
             {b.segments.map((s, j) =>
               s.type === "text" ? (
                 <span
@@ -220,9 +243,12 @@ export function DraftEditorView({
   const [busy, setBusy] = useState<"save" | "pdf" | "docx" | null>(null);
   const [sending, setSending] = useState(false);
   const [view, setView] = useState<"preview" | "text">("preview");
+  const [tables, setTables] = useState<PreviewTable[]>([]);
+  const [importing, setImporting] = useState(false);
+  const [lastParagraph, setLastParagraph] = useState(0);
 
   const locked = draft.status === "sent";
-  const dirty = Object.keys(edits).length + deletes.size + Object.keys(inserts).length + Object.values(fills).filter((v) => v !== "").length > 0;
+  const dirty = Object.keys(edits).length + deletes.size + Object.keys(inserts).length + Object.values(fills).filter((v) => v !== "").length + tables.length > 0;
 
   const fieldsByParagraph = useMemo(() => {
     const m = new Map<number, number>();
@@ -242,7 +268,7 @@ export function DraftEditorView({
     const q = fieldSearch.trim().toLowerCase();
     return (content?.fields ?? []).filter((f) => q === "" || `${f.label} ${f.token} ${f.context}`.toLowerCase().includes(q));
   }, [content, fieldSearch]);
-  const state = useMemo(() => ({ edits, deletes, inserts, fills }), [edits, deletes, inserts, fills]);
+  const state = useMemo(() => ({ edits, deletes, inserts, fills, tables }), [edits, deletes, inserts, fills, tables]);
   const blocks = useMemo(() => composePreview(content.paragraphs, content.fields, state), [content, state]);
   const missing = useMemo(() => remainingFields(content.fields, state).length, [content, state]);
 
@@ -255,6 +281,7 @@ export function DraftEditorView({
     });
   }
   function goToParagraph(index: number) {
+    setLastParagraph(index);
     setView("text");
     setSearch("");
     setOnlyFields(false);
@@ -276,6 +303,7 @@ export function DraftEditorView({
         deletes: [...deletes],
         inserts: Object.entries(inserts).map(([after, texts]) => ({ after: Number(after), texts: texts.filter((t) => t.trim() !== "") })),
         fills: Object.entries(fills).filter(([, value]) => value !== "").map(([id, value]) => ({ id, value })),
+        tables,
       });
     } finally {
       setBusy(null);
@@ -389,6 +417,21 @@ export function DraftEditorView({
               <Pencil aria-hidden className="size-4" /> Modifica il testo
             </button>
           </div>
+          {!locked ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => setImporting(true)}>
+                <FileSpreadsheet aria-hidden /> Inserisci tabella da Excel
+              </Button>
+              {tables.length > 0 ? (
+                <span className="text-xs text-muted-foreground">
+                  {tables.length} {tables.length === 1 ? "tabella aggiunta" : "tabelle aggiunte"} ·{" "}
+                  <button type="button" className="underline underline-offset-4" onClick={() => setTables([])}>
+                    togli
+                  </button>
+                </span>
+              ) : null}
+            </div>
+          ) : null}
           {view === "preview" ? (
             <>
               <p className="text-xs text-muted-foreground">
@@ -528,6 +571,14 @@ export function DraftEditorView({
         </section>
       </div>
 
+      {importing ? (
+        <SpreadsheetDialog
+          paragraphCount={content.paragraphs.length}
+          defaultAfter={lastParagraph}
+          onClose={() => setImporting(false)}
+          onInsert={(t) => setTables((list) => [...list, t])}
+        />
+      ) : null}
       {sending && draft.client ? (
         <SendDialog
           defaultTo={draft.client.email}

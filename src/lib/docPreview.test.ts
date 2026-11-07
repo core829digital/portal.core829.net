@@ -29,4 +29,10 @@ describe("anteprima live", () => {
     expect(remainingFields(fields, { ...empty, fills: { "p1.0": "x" }, deletes: new Set([3]) })).toHaveLength(1);
     expect(remainingFields(fields, { ...empty, edits: { 1: "x" } })).toHaveLength(1);
   });
+  it("mostra le tabelle aggiunte subito dopo il paragrafo scelto", () => {
+    const b = composePreview(ps, fields, { ...empty, tables: [{ after: 0, header: true, rows: [["A", "B"], ["1", "2"]] }] });
+    expect(b[1].table).toEqual({ header: true, rows: [["A", "B"], ["1", "2"]] });
+    expect(b[0].index).toBe(0);
+    expect(b).toHaveLength(5);
+  });
 });
