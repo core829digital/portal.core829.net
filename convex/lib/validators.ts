@@ -48,3 +48,27 @@ export const auditMetadata = v.record(
   v.string(),
   v.union(v.string(), v.number(), v.boolean(), v.null()),
 );
+
+/** Widget della pagina cliente. Deve restare allineato ai tipi in lib/widgets.ts. */
+const coreWidgetType = v.union(
+  v.literal("welcome"),
+  v.literal("onboarding"),
+  v.literal("summary"),
+  v.literal("projects"),
+  v.literal("billing"),
+  v.literal("subscriptions"),
+  v.literal("documents"),
+);
+
+export const widgetValidator = v.union(
+  v.object({ id: v.string(), type: coreWidgetType, enabled: v.boolean() }),
+  v.object({ id: v.string(), type: v.literal("notice"), enabled: v.boolean(), title: v.string(), body: v.string() }),
+  v.object({
+    id: v.string(),
+    type: v.literal("links"),
+    enabled: v.boolean(),
+    title: v.string(),
+    items: v.array(v.object({ label: v.string(), url: v.string() })),
+  }),
+  v.object({ id: v.string(), type: v.literal("contact"), enabled: v.boolean(), title: v.string(), body: v.string() }),
+);

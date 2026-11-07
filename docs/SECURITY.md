@@ -54,6 +54,15 @@ La CSP e' generata per richiesta in `src/proxy.ts` con nonce nuovo a ogni rispos
 - Limite onesto: chi ha il link vede stato, importi e abbonamenti senza altri controlli. E' una scelta di semplicita';
   se il link viene inoltrato per errore si **revoca** e se ne crea uno nuovo.
 
+## Pagina componibile (widget)
+- L'amministratore sceglie per ogni cliente quali blocchi mostrare e in che ordine. I blocchi liberi (avviso, link utili,
+  contatti) contengono **solo testo**: validato sul server (lunghezze, caratteri invisibili, massimo 20 blocchi e 10 link),
+  salvato com'e' e mostrato sempre con l'escape di React. Provato nel browser: un testo con `<script>` e `<img onerror>` appare
+  come testo, nessun codice viene eseguito.
+- I link ammessi sono **solo https** e senza credenziali, controllati al salvataggio e di nuovo in visualizzazione; si aprono con
+  `noopener noreferrer`.
+- L'anteprima dell'admin usa la stessa funzione che costruisce i dati del cliente: mostra esattamente cio' che il cliente vedra'.
+
 ## Accesso dell'amministratore
 - **Codice a 8 cifre via email** (Resend), valido 10 minuti, nessuna password da rubare o riutilizzare.
 - Il codice parte **solo** verso gli indirizzi in `ADMIN_EMAILS`: per gli altri la risposta e' identica e non succede nulla

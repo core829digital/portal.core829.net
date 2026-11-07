@@ -12,6 +12,7 @@ import {
   scanStatus,
   subscriptionInterval,
   subscriptionStatus,
+  widgetValidator,
 } from "./lib/validators";
 
 /**
@@ -120,6 +121,12 @@ export default defineSchema({
   })
     .index("by_clientId", ["clientId"])
     .index("by_clientId_and_status", ["clientId", "status"]),
+
+  /** Pagina personalizzata del cliente: elenco ordinato di widget. Se manca, vale quella predefinita. */
+  clientPages: defineTable({
+    clientId: v.id("clients"),
+    widgets: v.array(widgetValidator),
+  }).index("by_clientId", ["clientId"]),
 
   /** Link personali del cliente. Si salva solo l'hash del token. */
   accessLinks: defineTable({

@@ -9,6 +9,7 @@ import { AccessLinksPanel } from "@/components/admin/AccessLinksPanel";
 import { ClientOverview } from "@/components/admin/ClientOverview";
 import { DocumentsPanel } from "@/components/admin/DocumentsPanel";
 import { InvoicesPanel } from "@/components/admin/InvoicesPanel";
+import { PageBuilder } from "@/components/admin/PageBuilder";
 import { ProjectsPanel } from "@/components/admin/ProjectsPanel";
 import { SubscriptionsPanel } from "@/components/admin/SubscriptionsPanel";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -40,6 +41,7 @@ export function ClientDetail({ clientId, appUrl }: { clientId: Id<"clients">; ap
               <TabsTrigger value="invoices">Fatture</TabsTrigger>
               <TabsTrigger value="subscriptions">Abbonamenti</TabsTrigger>
               <TabsTrigger value="documents">Documenti</TabsTrigger>
+              <TabsTrigger value="page">Pagina</TabsTrigger>
               <TabsTrigger value="links">Link di accesso</TabsTrigger>
             </TabsList>
             <TabsContent value="overview">
@@ -56,6 +58,9 @@ export function ClientDetail({ clientId, appUrl }: { clientId: Id<"clients">; ap
             </TabsContent>
             <TabsContent value="documents">
               <DocumentsPanel clientId={clientId} />
+            </TabsContent>
+            <TabsContent value="page">
+              <PageBuilder clientId={clientId} />
             </TabsContent>
             <TabsContent value="links">
               <AccessLinksPanel clientId={clientId} appUrl={appUrl} />

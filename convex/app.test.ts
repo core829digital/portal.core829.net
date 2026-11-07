@@ -136,6 +136,10 @@ describe("autorizzazione amministratore", () => {
       "accessLinks.listByClient": (c) => c.query(api.accessLinks.listByClient, { clientId }),
       "documents.listByClient": (c) => c.query(api.documents.listByClient, { clientId }),
       "documents.setVisibility": (c) => c.mutation(api.documents.setVisibility, { documentId, visibleToClient: false }),
+      "pages.get": (c) => c.query(api.pages.get, { clientId }),
+      "pages.save": (c) => c.mutation(api.pages.save, { clientId, widgets: [] }),
+      "pages.reset": (c) => c.mutation(api.pages.reset, { clientId }),
+      "pages.preview": (c) => c.query(api.pages.preview, { clientId }),
     };
 
     // Utente con sessione valida ed email verificata, ma NON nella tabella admins.
@@ -671,5 +675,102 @@ describe("invio del codice al cliente (richiesta -> email -> sblocco)", () => {
     await h.t.mutation(api.otp.requestCode, { token: link.token });
     await flush(h);
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("pagina del cliente (widget)", () => {
+  type W = { id: string; type: string; enabled: boolean; title?: string; body?: string; items?: { label: string; url: string }[] };
+  async function twoPages() {
+    const h = await setup();
+    const a = await newClient(h, "A");
+    const b = await newClient(h, "B");
+    return { h, a, b, linkA: await newLink(h, a), linkB: await newLink(h, b) };
+  }
+  const core = (type: string, enabled = true): W => ({ id: type, type, enabled });
+
+  it("senza personalizzazione vale la pagina predefinita, con tutti i blocchi di sistema", async () => {
+    const { h, a, linkA } = await twoPages();
+    const page = await h.admin.query(api.pages.get, { clientId: a });
+    expect(page.isCustom).toBe(false);
+    expect(page.widgets.map((w) => w.type)).toEqual(["welcome", "onboarding", "summary", "projects", "billing", "subscriptions", "documents"]);
+    const data = await h.t.query(api.portal.overview, { token: linkA.token });
+    expect(data.widgets.map((w) => w.type)).toEqual(page.widgets.map((w) => w.type));
+  });
+
+  it("il cliente vede solo i blocchi attivi, nell'ordine scelto", async () => {
+    const { h, a, linkA } = await twoPages();
+    await h.admin.mutation(api.pages.save, {
+      clientId: a,
+      widgets: [
+        core("summary"),
+        { id: "avviso-1", type: "notice", enabled: true, title: "Chiusura estiva", body: "Siamo chiusi dal 10 al 20 agosto." },
+        core("billing"),
+        core("projects", false),
+        core("documents"),
+      ] as never,
+    });
+    const data = await h.t.query(api.portal.overview, { token: linkA.token });
+    expect(data.widgets.map((w) => w.type)).toEqual(["summary", "notice", "billing", "documents"]);
+    expect(JSON.stringify(data.widgets)).not.toContain("projects");
+  });
+
+  it("la pagina di un cliente non influenza quella di un altro", async () => {
+    const { h, a, linkB } = await twoPages();
+    await h.admin.mutation(api.pages.save, {
+      clientId: a,
+      widgets: [{ id: "avviso-1", type: "notice", enabled: true, title: "SOLO PER A", body: "riservato" }] as never,
+    });
+    const dataB = await h.t.query(api.portal.overview, { token: linkB.token });
+    expect(dataB.widgets.map((w) => w.type)).toContain("projects");
+    expect(JSON.stringify(dataB)).not.toContain("SOLO PER A");
+  });
+
+  it("rifiuta contenuti non validi: link non https, blocchi doppi, troppi blocchi", async () => {
+    const { h, a } = await twoPages();
+    // eslint-disable-next-line no-script-url -- input malevolo: il test verifica che venga rifiutato
+    const badLink = [{ id: "l", type: "links", enabled: true, title: "Link", items: [{ label: "x", url: "javascript:alert(1)" }] }];
+    expect(await codeOf(h.admin.mutation(api.pages.save, { clientId: a, widgets: badLink as never }))).toBe("VALIDATION");
+    const twice = [core("projects"), { id: "p2", type: "projects", enabled: true }];
+    expect(await codeOf(h.admin.mutation(api.pages.save, { clientId: a, widgets: twice as never }))).toBe("VALIDATION");
+    const many = Array.from({ length: 21 }, (_, i) => ({ id: `n${i}`, type: "notice", enabled: true, title: "t", body: "b" }));
+    expect(await codeOf(h.admin.mutation(api.pages.save, { clientId: a, widgets: many as never }))).toBe("VALIDATION");
+    // Nulla e' stato salvato: resta la pagina predefinita.
+    expect((await h.admin.query(api.pages.get, { clientId: a })).isCustom).toBe(false);
+  });
+
+  it("un testo con codice HTML viene salvato come semplice testo, senza essere interpretato", async () => {
+    const { h, a, linkA } = await twoPages();
+    await h.admin.mutation(api.pages.save, {
+      clientId: a,
+      widgets: [{ id: "n", type: "notice", enabled: true, title: "<img src=x onerror=alert(1)>", body: "<script>alert(1)</script>" }] as never,
+    });
+    const data = await h.t.query(api.portal.overview, { token: linkA.token });
+    expect(data.widgets[0]).toMatchObject({ title: "<img src=x onerror=alert(1)>", body: "<script>alert(1)</script>" });
+  });
+
+  it("ripristina la pagina predefinita", async () => {
+    const { h, a } = await twoPages();
+    await h.admin.mutation(api.pages.save, { clientId: a, widgets: [core("summary")] as never });
+    expect((await h.admin.query(api.pages.get, { clientId: a })).isCustom).toBe(true);
+    await h.admin.mutation(api.pages.reset, { clientId: a });
+    expect((await h.admin.query(api.pages.get, { clientId: a })).isCustom).toBe(false);
+  });
+
+  it("l'anteprima mostra le modifiche non salvate e applica le stesse regole di validazione", async () => {
+    const { h, a } = await twoPages();
+    const draft = [core("billing"), core("summary", false)];
+    const preview = await h.admin.query(api.pages.preview, { clientId: a, widgets: draft as never });
+    expect(preview?.widgets.map((w) => w.type)).toEqual(["billing"]);
+    // Nel frattempo nulla e' stato salvato.
+    expect((await h.admin.query(api.pages.get, { clientId: a })).isCustom).toBe(false);
+    const bad = [{ id: "l", type: "links", enabled: true, title: "t", items: [{ label: "x", url: "http://non-sicuro.it" }] }];
+    expect(await codeOf(h.admin.query(api.pages.preview, { clientId: a, widgets: bad as never }))).toBe("VALIDATION");
+  });
+
+  it("il salvataggio finisce nel registro di audit", async () => {
+    const { h, a } = await twoPages();
+    await h.admin.mutation(api.pages.save, { clientId: a, widgets: [core("summary")] as never });
+    const logs = await h.t.run(async (ctx) => ctx.db.query("auditLogs").collect());
+    expect(logs.map((l) => l.action)).toContain("page.saved");
   });
 });

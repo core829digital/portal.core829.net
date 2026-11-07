@@ -5,7 +5,7 @@ import { useEffect, useSyncExternalStore } from "react";
 import { api } from "@convex/_generated/api";
 import { ErrorBoundary } from "@/components/portal/ErrorBoundary";
 import { PortalDocuments } from "@/components/portal/PortalDocuments";
-import { PortalOverview } from "@/components/portal/PortalOverview";
+import { PortalPage } from "@/components/portal/PortalPage";
 import { Skeleton } from "@/components/ui/skeleton";
 import { errorCode } from "@/lib/errors";
 import { getServerSnapshot, getSnapshot, initToken, subscribe } from "@/lib/portalToken";
@@ -50,8 +50,7 @@ function PortalContent({ token }: { token: string }) {
         </div>
       </header>
       <main className="mx-auto w-full max-w-3xl flex-1 space-y-10 px-4 py-8">
-        <PortalOverview data={data} />
-        <PortalDocuments token={token} />
+        <PortalPage data={data} documents={<PortalDocuments token={token} />} />
       </main>
       <footer className="border-t py-6 text-center text-xs text-muted-foreground">
         Per qualsiasi dubbio rispondi al messaggio con cui hai ricevuto questo link.
