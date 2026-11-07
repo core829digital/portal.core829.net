@@ -165,6 +165,18 @@
   }
 }
 
+/* Tipografia del sito core829.net: titoli sempre Unbounded peso 500 (anche dove un componente chiede "semibold"),
+   testo con interlinea 1.6. Fuori da @layer di proposito: prevale sulle classi di utilita'. */
+h1,
+h2,
+h3,
+h4 {
+  font-weight: 500;
+}
+body {
+  line-height: 1.6;
+}
+
 /* Animazioni del brand (stesso easing "out-expo" di core829.net). Solo opacita' e transform: nessun salto di layout. */
 @keyframes dash-rise {
   from { opacity: 0; transform: translateY(14px); }
