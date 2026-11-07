@@ -122,7 +122,18 @@ export type DraftMeta = {
   status: "draft" | "sent";
   sentAt: number | null;
   sentTo: string | null;
-  client: { id: string; displayName: string; email: string } | null;
+  client: {
+    id: string;
+    displayName: string;
+    email: string;
+    contactName?: string;
+    phone?: string | null;
+    vatId?: string | null;
+    address?: string | null;
+    pec?: string | null;
+    legalRep?: string | null;
+    website?: string | null;
+  } | null;
 };
 
 export type SavePayload = {

@@ -269,6 +269,13 @@ test("editor PDF: corpo, colore e grassetto del testo selezionato; testi rapidi;
   await page.getByRole("button", { name: "Nome cliente" }).click();
   await expect(page.getByRole("textbox", { name: "Testo sulla pagina 2" })).toHaveValue("Caffè Rosso Srl");
 
+  // L'elenco dei testi inseriti porta alla pagina giusta.
+  await expect(page.getByText("Testi inseriti (2)")).toBeVisible();
+  await page.getByRole("button", { name: /p\.1.*12\/11\/2026/ }).click();
+  await expect(page.getByText("Pagina 1 di 2")).toBeVisible();
+  await page.getByRole("button", { name: /p\.2.*Caffè Rosso Srl/ }).click();
+  await expect(page.getByText("Pagina 2 di 2")).toBeVisible();
+
   await page.getByRole("button", { name: "Salva" }).click();
   const all = await saved(page);
   expect(all).toHaveLength(2);

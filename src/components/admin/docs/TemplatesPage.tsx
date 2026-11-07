@@ -106,7 +106,7 @@ export function NewDraftDialog({ onClose, clientId, templateId }: { onClose: () 
     if (!chosenClient) return void toast.error("Scegli il cliente.");
     setPending(true);
     try {
-      let result: { draftId: Id<"docDrafts"> };
+      let result: { draftId: Id<"docDrafts">; autofilled: number };
       if (source === "template") {
         const chosen = (templateId ?? String(form.get("templateId") ?? "")) as Id<"docTemplates">;
         if (!chosen) return void toast.error("Scegli un modello.");
@@ -122,6 +122,11 @@ export function NewDraftDialog({ onClose, clientId, templateId }: { onClose: () 
           ? await createPdfDraft({ clientId: chosenClient, uploadStorageId: storageId, name, category })
           : await createDraft({ clientId: chosenClient, uploadStorageId: storageId, name, category });
       }
+      toast.success(
+        result.autofilled > 0
+          ? `Documento creato: ${result.autofilled} ${result.autofilled === 1 ? "campo compilato" : "campi compilati"} in automatico con i dati di CORE829 e del cliente.`
+          : "Documento creato.",
+      );
       router.push(`/admin/drafts/${result.draftId}`);
     } catch (error) {
       toast.error(errorMessage(error, "Creazione non riuscita. Riprova."));

@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { errorMessage } from "@/lib/errors";
 import { formatDateTime } from "@/lib/format";
+import { COMPANY } from "@convex/lib/autofill";
 import { toast } from "@/lib/toast";
 import { cn } from "cn";
 
@@ -257,6 +258,33 @@ export function PdfEditorView({ draft, pdfUrl, pages, initial, quickTexts, onSav
         ) : null}
       </div>
 
+      {notes.length > 0 ? (
+        <details className="reveal rounded-2xl bg-card p-3 ring-1 ring-foreground/10" open={notes.length <= 12}>
+          <summary className="cursor-pointer text-sm font-medium">
+            Testi inseriti ({notes.length}) <span className="font-normal text-muted-foreground">· clic per andare al punto</span>
+          </summary>
+          <ul className="mt-2 grid gap-1 sm:grid-cols-2">
+            {[...notes]
+              .sort((a, b) => a.page - b.page || a.y - b.y || a.x - b.x)
+              .map((n) => (
+                <li key={n.id}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPageIndex(n.page);
+                      setSelected(n.id);
+                    }}
+                    className={cn("flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm ring-1 hover:bg-muted", n.id === selected ? "bg-brand-tint ring-primary/40" : "ring-foreground/10")}
+                  >
+                    <span className="shrink-0 font-mono text-[10px] uppercase text-muted-foreground">p.{n.page + 1}</span>
+                    <span className="truncate">{n.text || "(vuoto)"}</span>
+                  </button>
+                </li>
+              ))}
+          </ul>
+        </details>
+      ) : null}
+
       {current && !locked ? (
         <div className="reveal flex flex-wrap items-center gap-3 rounded-2xl bg-brand-tint p-3 ring-1 ring-primary/20" role="toolbar" aria-label="Testo selezionato">
           <label className="flex items-center gap-2 text-sm">
@@ -427,10 +455,25 @@ export function PdfEditor({ draftId }: { draftId: Id<"docDrafts"> }) {
 
   const quickTexts = useMemo(() => {
     const today = new Intl.DateTimeFormat("it-IT", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Europe/Rome" }).format(new Date());
+    const c = draft?.client;
+    const clientTexts: [string, string | null | undefined][] = [
+      ["Nome cliente", c?.displayName],
+      ["Referente", c?.contactName],
+      ["Sede cliente", c?.address],
+      ["P. IVA cliente", c?.vatId],
+      ["PEC cliente", c?.pec],
+      ["Email cliente", c?.email],
+      ["Telefono cliente", c?.phone],
+      ["Rappr. legale", c?.legalRep],
+    ];
     return [
-      ...(draft?.client ? [{ label: "Nome cliente", value: draft.client.displayName }] : []),
+      ...clientTexts.filter((t): t is [string, string] => Boolean(t[1])).map(([label, value]) => ({ label, value })),
       { label: "Data di oggi", value: today },
-      { label: "CORE829 SRL", value: "CORE829 SRL" },
+      { label: "Roman, data", value: `${COMPANY.place}, ${today}` },
+      { label: "CORE829 SRL", value: COMPANY.name },
+      { label: "Sede CORE829", value: COMPANY.address },
+      { label: "CUI CORE829", value: `CUI/CIF ${COMPANY.cui}` },
+      { label: "Stefan Serban", value: COMPANY.rep },
     ];
   }, [draft]);
 
