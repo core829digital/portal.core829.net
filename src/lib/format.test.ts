@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dateInputToTimestamp, formatCents, formatDate, parseEuroToCents } from "./format";
+import { dateInputToTimestamp, formatCents, formatDate, parseEuroToCents, timestampToDateInput } from "./format";
 
 describe("parseEuroToCents", () => {
   it.each([
@@ -40,5 +40,16 @@ describe("formatCents / formatDate", () => {
   it("gestisce valori assenti", () => {
     expect(formatDate(null)).toBe("—");
     expect(formatDate(undefined)).toBe("—");
+  });
+});
+
+describe("timestampToDateInput", () => {
+  it("fa il percorso inverso senza spostare il giorno", () => {
+    const ts = dateInputToTimestamp("2026-12-31");
+    expect(timestampToDateInput(ts)).toBe("2026-12-31");
+  });
+  it("e' vuoto se manca il valore", () => {
+    expect(timestampToDateInput(null)).toBe("");
+    expect(timestampToDateInput(undefined)).toBe("");
   });
 });

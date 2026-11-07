@@ -7,6 +7,10 @@ import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 import { AccessLinksPanel } from "@/components/admin/AccessLinksPanel";
 import { ClientOverview } from "@/components/admin/ClientOverview";
+import { DocumentsPanel } from "@/components/admin/DocumentsPanel";
+import { InvoicesPanel } from "@/components/admin/InvoicesPanel";
+import { ProjectsPanel } from "@/components/admin/ProjectsPanel";
+import { SubscriptionsPanel } from "@/components/admin/SubscriptionsPanel";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -30,12 +34,28 @@ export function ClientDetail({ clientId, appUrl }: { clientId: Id<"clients">; ap
         <>
           <h1 className="mb-6 text-2xl font-semibold tracking-tight">{client.displayName}</h1>
           <Tabs defaultValue="overview">
-            <TabsList className="mb-6">
+            <TabsList className="mb-6 flex-wrap h-auto">
               <TabsTrigger value="overview">Panoramica</TabsTrigger>
+              <TabsTrigger value="projects">Progetti</TabsTrigger>
+              <TabsTrigger value="invoices">Fatture</TabsTrigger>
+              <TabsTrigger value="subscriptions">Abbonamenti</TabsTrigger>
+              <TabsTrigger value="documents">Documenti</TabsTrigger>
               <TabsTrigger value="links">Link di accesso</TabsTrigger>
             </TabsList>
             <TabsContent value="overview">
               <ClientOverview client={client} />
+            </TabsContent>
+            <TabsContent value="projects">
+              <ProjectsPanel clientId={clientId} />
+            </TabsContent>
+            <TabsContent value="invoices">
+              <InvoicesPanel clientId={clientId} />
+            </TabsContent>
+            <TabsContent value="subscriptions">
+              <SubscriptionsPanel clientId={clientId} />
+            </TabsContent>
+            <TabsContent value="documents">
+              <DocumentsPanel clientId={clientId} />
             </TabsContent>
             <TabsContent value="links">
               <AccessLinksPanel clientId={clientId} appUrl={appUrl} />

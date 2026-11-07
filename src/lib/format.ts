@@ -40,3 +40,13 @@ export function parseEuroToCents(input: string): number | null {
   if (!/^\d+(\.\d{1,2})?$/.test(normalized)) return null;
   return Math.round(Number(normalized) * 100);
 }
+
+/** Timestamp -> valore per un campo data ("2026-11-30"). Vuoto se assente. */
+export function timestampToDateInput(ms: number | null | undefined): string {
+  return typeof ms === "number" ? new Date(ms).toISOString().slice(0, 10) : "";
+}
+
+/** Oggi (+ giorni) come valore per un campo data. */
+export function todayInput(plusDays = 0): string {
+  return new Date(Date.now() + plusDays * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}

@@ -3,20 +3,10 @@ import type { Doc } from "./_generated/dataModel";
 import { mutation, query } from "./_generated/server";
 import { audit } from "./lib/audit";
 import { requireAdmin } from "./lib/auth";
+import { INVOICE_TRANSITIONS, isInvoiceFinal } from "./lib/invoiceFlow";
 import { fail } from "./lib/errors";
 import { assertCents, assertTimestamp, cleanText, invalid } from "./lib/text";
 import { invoiceStatus } from "./lib/validators";
-
-type InvoiceStatus = Doc<"invoices">["status"];
-
-/** Passaggi di stato ammessi. `paid` e `cancelled` sono definitivi. */
-const TRANSITIONS: Record<InvoiceStatus, InvoiceStatus[]> = {
-  draft: ["sent", "cancelled"],
-  sent: ["paid", "overdue", "cancelled"],
-  overdue: ["paid", "cancelled"],
-  paid: [],
-  cancelled: [],
-};
 
 const nullableString = v.optional(v.union(v.string(), v.null()));
 
@@ -98,7 +88,7 @@ export const update = mutation({
     const invoice = await ctx.db.get("invoices", args.invoiceId);
     if (!invoice) return fail("NOT_FOUND", "Fattura non trovata.");
     // Una fattura pagata o annullata non si modifica piu'.
-    if (invoice.status === "paid" || invoice.status === "cancelled") {
+    if (isInvoiceFinal(invoice.status)) {
       return fail("BAD_STATE", "Questa fattura non è più modificabile.");
     }
 
@@ -146,7 +136,7 @@ export const setStatus = mutation({
     const { actorId } = await requireAdmin(ctx);
     const invoice = await ctx.db.get("invoices", args.invoiceId);
     if (!invoice) return fail("NOT_FOUND", "Fattura non trovata.");
-    if (!TRANSITIONS[invoice.status].includes(args.status)) {
+    if (!INVOICE_TRANSITIONS[invoice.status].includes(args.status)) {
       return fail("BAD_STATE", "Questo cambio di stato non è consentito.");
     }
     const patch: Partial<Doc<"invoices">> = { status: args.status };

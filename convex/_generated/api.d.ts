@@ -27,6 +27,7 @@ import type * as lib_audit from "../lib/audit.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_crypto from "../lib/crypto.js";
 import type * as lib_errors from "../lib/errors.js";
+import type * as lib_invoiceFlow from "../lib/invoiceFlow.js";
 import type * as lib_links from "../lib/links.js";
 import type * as lib_text from "../lib/text.js";
 import type * as lib_validators from "../lib/validators.js";
@@ -51,6 +52,7 @@ declare const fullApi: ApiFromModules<{
   "lib/auth": typeof lib_auth;
   "lib/crypto": typeof lib_crypto;
   "lib/errors": typeof lib_errors;
+  "lib/invoiceFlow": typeof lib_invoiceFlow;
   "lib/links": typeof lib_links;
   "lib/text": typeof lib_text;
   "lib/validators": typeof lib_validators;
