@@ -1,7 +1,7 @@
 "use client";
 
 import { useAction, useQuery } from "convex/react";
-import { CheckSquare, Download, Eye, Plus, RotateCcw, Save, Send, Square, Trash2 } from "lucide-react";
+import { CheckSquare, Download, Eye, FileText, Pencil, Plus, RotateCcw, Save, Send, Square, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { api } from "@convex/_generated/api";
@@ -17,6 +17,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { errorMessage } from "@/lib/errors";
 import { formatDateTime } from "@/lib/format";
+import { composePreview, remainingFields, type PreviewBlock } from "@/lib/docPreview";
 import { toast } from "@/lib/toast";
 import { cn } from "cn";
 
@@ -132,6 +133,58 @@ export type SavePayload = {
 };
 
 /** Vista dell'editor: tutto lo stato delle modifiche sta qui; i dati e le azioni arrivano dal contenitore. */
+/** Il documento come sara' dopo il salvataggio, aggiornato a ogni tasto. Clic su un campo = si va a compilarlo; clic su un testo = si modifica. */
+function PreviewPane({ blocks, locked, onField, onParagraph }: { blocks: PreviewBlock[]; locked: boolean; onField: (fieldId: string) => void; onParagraph: (index: number) => void }) {
+  return (
+    <article aria-label="Anteprima del documento" className="mx-auto w-full max-w-[52rem] rounded-2xl bg-white p-6 text-[13.5px] leading-relaxed text-neutral-900 ring-1 ring-foreground/10 shadow-(--shadow-soft) sm:p-10 dark:bg-white">
+      {blocks.length === 0 ? <p className="text-sm text-neutral-500">Il documento è vuoto.</p> : null}
+      {blocks.map((b, i) => {
+        const heading = b.style !== null && /^(title|heading|titolo|intestazione)/i.test(b.style);
+        return (
+          <div
+            key={`${b.index ?? "n"}-${b.insertedAfter ?? ""}-${i}`}
+            data-testid="preview-block"
+            className={cn(
+              "min-w-0 whitespace-pre-wrap break-words py-0.5",
+              heading && "mt-4 font-display text-base font-semibold tracking-tight",
+              b.inTable && "ml-1 border-l-2 border-neutral-200 pl-3",
+              b.edited && "bg-amber-50/70",
+            )}
+          >
+            {b.segments.length === 0 ? <span className="select-none">&nbsp;</span> : null}
+            {b.segments.map((s, j) =>
+              s.type === "text" ? (
+                <span
+                  key={j}
+                  onClick={!locked && b.index !== null ? () => onParagraph(b.index as number) : undefined}
+                  className={!locked && b.index !== null ? "cursor-text" : undefined}
+                >
+                  {s.text}
+                </span>
+              ) : (
+                <button
+                  key={j}
+                  type="button"
+                  data-field={s.fieldId}
+                  data-filled={s.filled}
+                  onClick={() => onField(s.fieldId)}
+                  title={s.filled ? "Compilato: clic per modificare" : "Da compilare"}
+                  className={cn(
+                    "mx-0.5 inline rounded px-1 align-baseline font-medium ring-1 transition-colors focus-visible:outline-2 focus-visible:outline-offset-1",
+                    s.filled ? "bg-emerald-50 text-emerald-900 ring-emerald-300 hover:bg-emerald-100" : "bg-brand/10 text-[#a8121f] ring-brand/40 hover:bg-brand/20",
+                  )}
+                >
+                  {s.text}
+                </button>
+              ),
+            )}
+          </div>
+        );
+      })}
+    </article>
+  );
+}
+
 export function DraftEditorView({
   draft,
   content,
@@ -155,6 +208,7 @@ export function DraftEditorView({
   const [page, setPage] = useState(0);
   const [busy, setBusy] = useState<"save" | "pdf" | "docx" | null>(null);
   const [sending, setSending] = useState(false);
+  const [view, setView] = useState<"preview" | "text">("preview");
 
   const locked = draft.status === "sent";
   const dirty = Object.keys(edits).length + deletes.size + Object.keys(inserts).length + Object.values(fills).filter((v) => v !== "").length > 0;
@@ -177,6 +231,29 @@ export function DraftEditorView({
     const q = fieldSearch.trim().toLowerCase();
     return (content?.fields ?? []).filter((f) => q === "" || `${f.label} ${f.token} ${f.context}`.toLowerCase().includes(q));
   }, [content, fieldSearch]);
+  const state = useMemo(() => ({ edits, deletes, inserts, fills }), [edits, deletes, inserts, fills]);
+  const blocks = useMemo(() => composePreview(content.paragraphs, content.fields, state), [content, state]);
+  const missing = useMemo(() => remainingFields(content.fields, state).length, [content, state]);
+
+  function goToField(fieldId: string) {
+    setFieldSearch("");
+    window.requestAnimationFrame(() => {
+      const el = document.getElementById(`f-${fieldId}`);
+      el?.scrollIntoView({ block: "center", behavior: "smooth" });
+      el?.focus({ preventScroll: true });
+    });
+  }
+  function goToParagraph(index: number) {
+    setView("text");
+    setSearch("");
+    setOnlyFields(false);
+    setPage(Math.floor(index / PAGE_SIZE));
+    window.requestAnimationFrame(() => {
+      const el = document.querySelector<HTMLTextAreaElement>(`textarea[aria-label="Paragrafo ${index + 1}"]`);
+      el?.scrollIntoView({ block: "center" });
+      el?.focus({ preventScroll: true });
+    });
+  }
   const filledCount = (content?.fields ?? []).filter((f) => (fills[f.id] ?? "") !== "").length;
 
   async function save(): Promise<boolean> {
@@ -229,6 +306,7 @@ export function DraftEditorView({
         actions={
           <>
             {dirty ? <Badge variant="secondary">Modifiche non salvate</Badge> : null}
+            {!locked && missing > 0 ? <Badge variant="outline">{missing} {missing === 1 ? "campo vuoto" : "campi vuoti"}</Badge> : null}
             {!locked ? (
               <Button variant="outline" onClick={() => void save()} disabled={busy !== null || !dirty}>
                 <Save aria-hidden /> {busy === "save" ? "Salvataggio…" : "Salva"}
@@ -253,7 +331,7 @@ export function DraftEditorView({
         <section aria-label="Campi da compilare" className="reveal h-fit min-w-0 rounded-2xl bg-card p-4 ring-1 ring-foreground/10 shadow-(--shadow-soft) lg:sticky lg:top-4">
           <h2 className="font-display text-base tracking-tight">Campi da compilare</h2>
           <p className="mt-1 text-xs text-muted-foreground" aria-live="polite">
-            {content.fields.length === 0 ? "Nessun campo da compilare in questo documento." : `${filledCount} compilati su ${content.fields.length}`}
+            {content.fields.length === 0 ? "Nessun campo da compilare in questo documento." : `${filledCount} compilati su ${content.fields.length}${missing > 0 ? ` · ${missing} ancora da compilare` : " · tutto compilato"}`}
           </p>
           {content.fields.length > 8 ? (
             <Input type="search" aria-label="Cerca tra i campi" placeholder="Cerca un campo" value={fieldSearch} onChange={(e) => setFieldSearch(e.target.value)} className="mt-3" />
@@ -291,8 +369,25 @@ export function DraftEditorView({
           </ul>
         </section>
 
-        <section aria-label="Testo del documento" className="reveal min-w-0 space-y-3" style={{ "--i": 1 } as React.CSSProperties}>
-          <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-card p-3 ring-1 ring-foreground/10">
+        <section aria-label="Documento" className="reveal min-w-0 space-y-3" style={{ "--i": 1 } as React.CSSProperties}>
+          <div role="tablist" aria-label="Modo di visualizzazione" className="flex w-fit gap-1 rounded-xl bg-muted p-1">
+            <button type="button" role="tab" aria-selected={view === "preview"} onClick={() => setView("preview")} className={cn("flex min-h-8 items-center gap-1.5 rounded-lg px-3 text-sm", view === "preview" ? "bg-card font-medium shadow-sm" : "text-muted-foreground")}>
+              <FileText aria-hidden className="size-4" /> Anteprima live
+            </button>
+            <button type="button" role="tab" aria-selected={view === "text"} onClick={() => setView("text")} className={cn("flex min-h-8 items-center gap-1.5 rounded-lg px-3 text-sm", view === "text" ? "bg-card font-medium shadow-sm" : "text-muted-foreground")}>
+              <Pencil aria-hidden className="size-4" /> Modifica il testo
+            </button>
+          </div>
+          {view === "preview" ? (
+            <>
+              <p className="text-xs text-muted-foreground">
+                Si aggiorna mentre scrivi. <span className="rounded bg-brand/10 px-1 text-[#a8121f]">Rosso</span> = da compilare, <span className="rounded bg-emerald-50 px-1 text-emerald-900">verde</span> = compilato,{" "}
+                <span className="rounded bg-amber-50 px-1 text-amber-900">giallo</span> = testo che hai modificato. Clicca su un campo per compilarlo{!locked ? ", su un testo per correggerlo" : ""}.
+              </p>
+              <PreviewPane blocks={blocks} locked={locked} onField={goToField} onParagraph={goToParagraph} />
+            </>
+          ) : null}
+          <div className={cn("flex flex-wrap items-center gap-3 rounded-2xl bg-card p-3 ring-1 ring-foreground/10", view !== "text" && "hidden")}>
             <Input
               type="search"
               aria-label="Cerca nel testo"
@@ -319,7 +414,7 @@ export function DraftEditorView({
             <span className="ml-auto text-xs text-muted-foreground">{filteredParagraphs.length} paragrafi</span>
           </div>
 
-          <ol className="space-y-2">
+          <ol className={cn("space-y-2", view !== "text" && "hidden")}>
             {visible.map((p) => {
               const removed = deletes.has(p.index);
               const current = edits[p.index] ?? p.text;
@@ -406,7 +501,7 @@ export function DraftEditorView({
             })}
           </ol>
 
-          {pages > 1 ? (
+          {pages > 1 && view === "text" ? (
             <nav aria-label="Pagine del documento" className="flex items-center justify-between gap-3">
               <Button variant="outline" size="sm" disabled={safePage === 0} onClick={() => setPage(safePage - 1)}>
                 Precedente

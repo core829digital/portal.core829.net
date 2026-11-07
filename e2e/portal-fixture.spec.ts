@@ -109,6 +109,7 @@ test("editor documenti: nessuna violazione WCAG 2 A/AA e nessuno scorrimento ori
 
 test("editor documenti: i campi compilati e il testo modificato segnano le modifiche, il salvataggio le azzera", async ({ page }) => {
   await page.goto("/c/fixture/editor");
+  await page.getByRole("tab", { name: "Modifica il testo" }).click();
   await expect(page.getByText(/compilati su/)).toBeVisible();
   await expect(page.getByText("Modifiche non salvate")).toHaveCount(0);
   const save = page.getByRole("button", { name: "Salva" });
@@ -128,6 +129,7 @@ test("editor documenti: i campi compilati e il testo modificato segnano le modif
 
 test("editor documenti: aggiungi ed elimina paragrafi, caselle accessibili, ricerca e pagine", async ({ page }) => {
   await page.goto("/c/fixture/editor");
+  await page.getByRole("tab", { name: "Modifica il testo" }).click();
   await page.getByRole("button", { name: "Aggiungi un paragrafo dopo il 7", exact: true }).click();
   await page.getByRole("textbox", { name: "Nuovo paragrafo 1 dopo il 7" }).fill("Paragrafo nuovo");
   await page.getByRole("button", { name: "Elimina il paragrafo 1", exact: true }).click();
@@ -145,6 +147,28 @@ test("editor documenti: aggiungi ed elimina paragrafi, caselle accessibili, rice
   await page.getByRole("searchbox", { name: "Cerca nel testo" }).fill("");
   await page.getByRole("button", { name: "Successiva" }).click();
   await expect(page.getByText(/Pagina 2 di/)).toBeVisible();
+});
+
+test("editor documenti: l'anteprima live si aggiorna subito mentre compili e si torna al campo con un clic", async ({ page }) => {
+  await page.goto("/c/fixture/editor");
+  const paper = page.getByRole("article", { name: "Anteprima del documento" });
+  await expect(paper).toContainText("Firma del Cliente:");
+  const field = paper.locator('[data-field="p10.0"]');
+  await expect(field).toHaveAttribute("data-filled", "false");
+  // Compilare dal pannello aggiorna la carta nello stesso istante, senza salvare.
+  await page.getByLabel(/^Firma del Cliente/).first().fill("Mario Rossi");
+  await expect(paper.locator('[data-field="p10.0"]')).toHaveText("Mario Rossi");
+  await expect(paper.locator('[data-field="p10.0"]')).toHaveAttribute("data-filled", "true");
+  await expect(page.getByText(/campi? vuot/)).toBeVisible();
+  // La casella si spunta e appare nell'anteprima.
+  await page.getByRole("checkbox", { name: /Sviluppo software/ }).click();
+  await expect(paper).toContainText("☒");
+  // Un clic su un campo dell'anteprima porta al suo campo di compilazione.
+  await paper.locator('[data-field="p8.0"]').click();
+  await expect(page.locator("#f-p8\\.0")).toBeFocused();
+  // Un clic sul testo porta al paragrafo da correggere.
+  await paper.getByText("ARTICOLO 1 DEFINIZIONI").click();
+  await expect(page.getByRole("textbox", { name: "Paragrafo 6", exact: true })).toBeFocused();
 });
 
 test("editor documenti: la finestra di invio propone email del cliente, oggetto e formati", async ({ page }) => {
