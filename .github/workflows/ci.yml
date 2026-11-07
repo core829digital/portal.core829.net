@@ -18,7 +18,11 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # Blocca caratteri invisibili o di inversione del testo nel codice (Trojan Source).
+      - run: npm run check:unicode
       - run: npm run lint
       - run: npm run typecheck
+      - run: npm test
       - run: npm run build
+      # Vulnerabilita' nelle dipendenze di produzione (gravita' alta o critica).
       - run: npm audit --omit=dev --audit-level=high
