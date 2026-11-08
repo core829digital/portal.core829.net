@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQuery } from "convex/react";
+import { useConvex, useMutation, useQuery } from "convex/react";
 import { Download, Eye, EyeOff, PenLine, Trash2, Upload } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { api } from "@convex/_generated/api";
@@ -9,6 +9,7 @@ import { ALLOWED_EXTENSIONS, MAX_FILE_BYTES, extensionOf } from "@convex/lib/fil
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { Field, NativeSelect, TextField } from "@/components/admin/Field";
 import { Badge } from "@/components/ui/badge";
+import { DocThumb } from "@/components/preview/DocThumb";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -22,6 +23,24 @@ import { toast } from "@/lib/toast";
 type Document = Doc<"documents">;
 const scanLabel = { pending: "In controllo", clean: "Pulito", rejected: "Respinto" } as const;
 const MAX_MB = MAX_FILE_BYTES / (1024 * 1024);
+
+/** Miniatura di un documento dell'admin: l'indirizzo temporaneo si chiede solo quando la miniatura e' visibile. */
+function AdminThumb({ doc }: { doc: Doc<"documents"> }) {
+  const convex = useConvex();
+  return (
+    <DocThumb
+      title={doc.title}
+      fileName={doc.fileName}
+      mimeType={doc.mimeType}
+      resolve={async () => {
+        if (doc.scanStatus !== "clean") throw new Error("non controllato");
+        const url = await convex.query(api.documents.adminUrl, { documentId: doc._id });
+        if (!url) throw new Error("file non disponibile");
+        return url;
+      }}
+    />
+  );
+}
 
 function DownloadButton({ documentId }: { documentId: Id<"documents"> }) {
   const url = useQuery(api.documents.adminUrl, { documentId });
@@ -183,9 +202,14 @@ export function DocumentsPanel({ clientId }: { clientId: Id<"clients"> }) {
               {documents.map((d) => (
                 <TableRow key={d._id}>
                   <TableCell>
-                    <div className="font-medium">{d.title}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {d.fileName} · {formatBytes(d.sizeBytes)}
+                    <div className="flex items-center gap-3">
+                      <AdminThumb doc={d} />
+                      <div className="min-w-0">
+                        <div className="font-medium">{d.title}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {d.fileName} · {formatBytes(d.sizeBytes)}
+                        </div>
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell>{documentKindLabel[d.kind]}</TableCell>

@@ -1,10 +1,11 @@
 "use client";
 
 import { useMutation, useQuery } from "convex/react";
-import { Download, FileText, Lock, PenLine, ShieldCheck } from "lucide-react";
+import { Download, Lock, PenLine, ShieldCheck } from "lucide-react";
 import { useState, type FormEvent, type ReactNode } from "react";
 import { api } from "@convex/_generated/api";
 import { ErrorBoundary } from "@/components/portal/ErrorBoundary";
+import { DocThumb } from "@/components/preview/DocThumb";
 import { SignDialog, type SignOutcome } from "@/components/portal/SignDialog";
 import { useConvexSiteUrl } from "@/components/portal/PortalProvider";
 import { Button } from "@/components/ui/button";
@@ -43,6 +44,20 @@ function DocumentList({ token, unlockToken }: { token: string; unlockToken: stri
     } catch {
       return { ok: false, error: "Non è stato possibile firmare. Controlla la connessione e riprova." };
     }
+  }
+
+  /** Byte del file per la miniatura: stessa richiesta protetta del download (segreto nel corpo, mai nell'indirizzo). */
+  async function fetchBlob(documentId: string): Promise<Blob> {
+    if (!siteUrl) throw new Error("non disponibile");
+    const response = await fetch(`${siteUrl}/portal/download`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, unlockToken, documentId }),
+      credentials: "omit",
+      referrerPolicy: "no-referrer",
+    });
+    if (!response.ok) throw new Error("download");
+    return await response.blob();
   }
 
   async function download(doc: { id: string; fileName: string }) {
@@ -86,7 +101,7 @@ function DocumentList({ token, unlockToken }: { token: string; unlockToken: stri
           const isSignedCopy = requests?.some((r) => r.signedDocumentId === d.id) ?? false;
           return (
           <li key={d.id} className="flex flex-wrap items-center gap-3 p-4">
-            <FileText className="size-5 shrink-0 text-muted-foreground" aria-hidden />
+            <DocThumb title={d.title} fileName={d.fileName} mimeType={d.mimeType} resolve={() => fetchBlob(d.id)} />
             <div className="min-w-0 flex-1">
               <p className="truncate font-medium">{d.title}</p>
               <p className="truncate text-sm text-muted-foreground">

@@ -46,7 +46,8 @@ export function buildCsp({ nonce, isDev, convexUrl, convexSiteUrl }: CspOptions)
     // browser ignorerebbe `unsafe-inline`. In produzione resta il solo nonce.
     ["style-src", isDev ? ["'self'", "'unsafe-inline'"] : ["'self'", `'nonce-${nonce}'`]],
     ["style-src-attr", ["'unsafe-inline'"]],
-    ["img-src", ["'self'", "blob:", "data:"]],
+    // Le anteprime di immagini e documenti arrivano dall'archivio di Convex (https://<deployment>.convex.cloud/api/storage/...).
+    ["img-src", ["'self'", "blob:", "data:", ...convex.filter((c) => /^https?:\/\//.test(c) && !/convex\.site$/.test(c) && c !== convexSiteUrl)]],
     ["font-src", ["'self'"]],
     ["connect-src", ["'self'", ...convex, ...devConnect]],
     ["media-src", ["'self'"]],

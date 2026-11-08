@@ -67,7 +67,7 @@ export function BrandPage() {
                 <div className="grid h-44 place-items-center rounded-xl bg-white ring-1 ring-foreground/10">
                   {a?.url ? (
                     // eslint-disable-next-line @next/next/no-img-element -- anteprima di un file privato servito da Convex
-                    <img src={a.url} alt={`Anteprima: ${LABEL[kind].title}`} className="max-h-40 max-w-[90%] object-contain" />
+                    <img src={a.url} alt={`Anteprima: ${LABEL[kind].title}`} className="max-h-40 max-w-[90%] object-contain" loading="lazy" decoding="async" />
                   ) : (
                     <p className="px-4 text-center text-sm text-muted-foreground">Non ancora caricato: i documenti usciranno senza.</p>
                   )}

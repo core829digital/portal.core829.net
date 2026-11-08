@@ -97,6 +97,48 @@ test("la scheda introduttiva si chiude e resta chiusa", async ({ page }) => {
   await expect(page.getByText("Come funziona questo spazio")).toHaveCount(0);
 });
 
+// ---- Anteprime dei documenti con caricamento pigro ----
+
+test("anteprime: si caricano solo quando sono visibili, mostrano immagini e prima pagina dei PDF, icone per gli altri file", async ({ page }) => {
+  await page.goto("/c/fixture/previews");
+  const calls = async () => JSON.parse((await page.getByTestId("calls").textContent()) ?? "{}") as Record<string, number>;
+  // In vista: caricate. Lontane: NON richieste (caricamento pigro).
+  await expect.poll(async () => (await calls()).img1).toBe(1);
+  await expect.poll(async () => (await calls()).pdf1).toBe(1);
+  expect((await calls()).late1).toBeUndefined();
+  expect((await calls()).late2).toBeUndefined();
+  // Immagine vera, PDF disegnato (pixel non tutti bianchi).
+  await expect(page.getByRole("button", { name: "Anteprima di Foto evento" }).locator("img")).toHaveAttribute("src", /^data:image/);
+  const pdfCanvas = page.getByRole("button", { name: "Anteprima di Contratto" }).locator("canvas");
+  await expect.poll(async () => pdfCanvas.evaluate((c: HTMLCanvasElement) => { const d = c.getContext("2d")?.getImageData(0, 0, c.width, c.height).data; if (!d) return 0; let n = 0; for (let i = 0; i < d.length; i += 4) if (d[i] < 200) n++; return n; })).toBeGreaterThan(20);
+  // Word/Excel: nessuna chiamata, icona con il tipo, pulsante disattivato.
+  expect((await calls()).doc1).toBeUndefined();
+  await expect(page.getByRole("button", { name: /Preventivo Word \(nessuna anteprima: DOCX\)/ })).toBeDisabled();
+  await expect(page.getByRole("button", { name: /Listino \(nessuna anteprima: XLSX\)/ })).toBeDisabled();
+  // File rotto: icona al posto della miniatura, nessun errore in pagina.
+  await expect(page.getByRole("button", { name: /File rotto \(nessuna anteprima/ })).toBeDisabled();
+  // Scorrendo fino in fondo si caricano anche quelle lontane.
+  await page.getByText("PDF in fondo").scrollIntoViewIfNeeded();
+  await expect.poll(async () => (await calls()).late1).toBe(1);
+  await expect.poll(async () => (await calls()).late2).toBe(1);
+  // Le miniature gia' caricate non si richiedono di nuovo.
+  expect((await calls()).img1).toBe(1);
+});
+
+test("anteprime: un clic apre l'anteprima grande (immagine e PDF a pagine), si chiude con Esc, senza violazioni WCAG", async ({ page }) => {
+  await page.goto("/c/fixture/previews");
+  await page.getByRole("button", { name: "Anteprima di Foto evento" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByRole("img", { name: "Foto evento" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  await page.getByRole("button", { name: "Anteprima di Contratto" }).click();
+  await expect(dialog.getByRole("img", { name: "Pagina 1" })).toBeVisible();
+  await expect(dialog.getByRole("img", { name: "Pagina 2" })).toBeAttached();
+  const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
+  expect(results.violations.map((v) => `${v.id}: ${v.help}`)).toEqual([]);
+});
+
 // ---- Firma elettronica del cliente (comportamento inventato) ----
 
 test("firma: serve aver letto il documento, scritto il nome e accettato le due dichiarazioni; gli errori si vedono", async ({ page }) => {

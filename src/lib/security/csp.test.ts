@@ -60,6 +60,15 @@ describe("buildCsp (sviluppo)", () => {
   it("in sviluppo gli stili inline sono ammessi (strumenti di Next.js)", () => {
     expect(directive(csp, "style-src")).toContain("'unsafe-inline'");
   });
+  it("le immagini possono arrivare dall'archivio del proprio Convex (anteprime), non da altri siti", () => {
+    const img = directive(buildCsp({ nonce: "N", isDev: false, convexUrl: "https://happy-otter-123.convex.cloud" }), "img-src");
+    expect(img).toContain("https://happy-otter-123.convex.cloud");
+    expect(img).not.toContain(".convex.site");
+    expect(img).not.toContain("wss:");
+    for (const source of ["'self'", "blob:", "data:"]) expect(img).toContain(source);
+    expect(directive(buildCsp({ nonce: "N", isDev: false }), "img-src")).toContain("https://*.convex.cloud");
+  });
+
   it("senza URL Convex usa il dominio generico convex.cloud", () => {
     expect(directive(csp, "connect-src")).toContain("https://*.convex.cloud");
   });
