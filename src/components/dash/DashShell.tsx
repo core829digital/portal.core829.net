@@ -204,13 +204,13 @@ export function DashShell({
         {footer ? <div className="border-t pt-4">{footer}</div> : null}
       </aside>
 
-      <main id="contenuto" className="min-w-0 px-4 py-6 sm:px-6 lg:px-8 lg:py-6">
+      <main id="contenuto" className="min-w-0 px-4 py-6 sm:px-6 lg:px-8 lg:py-6 2xl:px-12">
         {toolbar ? (
-          <div className="pointer-events-none sticky top-3 z-30 mx-auto mb-4 hidden w-full max-w-6xl justify-end lg:flex">
+          <div className="pointer-events-none sticky top-3 z-30 mb-4 hidden w-full justify-end lg:flex">
             <div className="glass-bar pointer-events-auto flex items-center gap-1 rounded-full p-1.5">{toolbar}</div>
           </div>
         ) : null}
-        <div className="mx-auto w-full max-w-6xl space-y-6">{children}</div>
+        <div className="w-full space-y-6">{children}</div>
       </main>
     </div>
   );

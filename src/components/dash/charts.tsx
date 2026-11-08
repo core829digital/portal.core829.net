@@ -90,12 +90,17 @@ export function AreaChart({
           </>
         ) : null}
       </div>
+      {/* Etichette: al massimo ~10, a intervalli regolari (con 30 o 90 punti non devono sovrapporsi). */}
       <div aria-hidden className="mt-2 flex justify-between font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-        {points.map((p, i) => (
-          <span key={`${p.label}-${i}`} className={cn(points.length > 8 && i % 2 === 1 && "hidden sm:inline", i === shown && "text-brand-deep")}>
-            {p.label}
-          </span>
-        ))}
+        {points.map((p, i) => {
+          const step = Math.max(1, Math.ceil(points.length / 10));
+          const visible = i % step === 0 || i === points.length - 1;
+          return (
+            <span key={`${p.label}-${i}`} className={cn(!visible && "invisible w-0 overflow-hidden", i === shown && "text-brand-deep")}>
+              {p.label}
+            </span>
+          );
+        })}
       </div>
       <div className="sr-only">
         <table>

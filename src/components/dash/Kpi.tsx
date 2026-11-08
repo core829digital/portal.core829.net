@@ -72,7 +72,7 @@ export function Kpi({
 /** Contenitore degli indicatori: elenco semantico, griglia fluida. */
 export function KpiGrid({ children, label }: { children: ReactNode; label: string }) {
   return (
-    <div role="list" aria-label={label} className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+    <div role="list" aria-label={label} className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(12.5rem,1fr))] sm:gap-4">
       {children}
     </div>
   );
