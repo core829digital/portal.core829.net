@@ -40,34 +40,18 @@ function Frame({ children }: { children: ReactNode }) {
   const client = useQuery(api.clients.get, clientId ? { clientId } : "skip");
 
   const groups: NavGroup[] = [
+    { items: [{ href: "/admin", label: "Panoramica", icon: LayoutDashboard, exact: true }] },
     {
-      items: [
-        { href: "/admin", label: "Panoramica", icon: LayoutDashboard, exact: true },
-        { href: "/admin/clients", label: "Clienti", icon: Users, exact: !clientId },
-      ],
-    },
-    {
-      label: "Gestione",
-      items: [
-        { href: "/admin/invoices", label: "Fatture", icon: Receipt },
-        { href: "/admin/subscriptions", label: "Abbonamenti", icon: Repeat },
-        { href: "/admin/projects", label: "Progetti", icon: FolderKanban },
-        { href: "/admin/activity", label: "Attività", icon: Activity },
-      ],
-    },
-    {
-      label: "Documenti",
-      items: [
-        { href: "/admin/templates", label: "Modelli", icon: FileStack },
-        { href: "/admin/drafts", label: "Bozze e invii", icon: FilePen },
-        { href: "/admin/brand", label: "Firma e timbro", icon: Stamp },
-      ],
+      id: "clienti",
+      label: "Clienti",
+      items: [{ href: "/admin/clients", label: "Tutti i clienti", icon: Users, exact: !clientId }],
     },
   ];
 
   if (clientId) {
     const base = `/admin/clients/${clientId}`;
     groups.push({
+      id: "cliente-corrente",
       label: client ? `Cliente · ${client.displayName}` : "Cliente",
       items: [
         { href: base, label: "Scheda", icon: UserRound, exact: true },
@@ -82,6 +66,32 @@ function Frame({ children }: { children: ReactNode }) {
       ],
     });
   }
+
+  groups.push(
+    {
+      id: "lavoro",
+      label: "Lavoro e incassi",
+      items: [
+        { href: "/admin/projects", label: "Progetti", icon: FolderKanban },
+        { href: "/admin/invoices", label: "Fatture", icon: Receipt },
+        { href: "/admin/subscriptions", label: "Abbonamenti", icon: Repeat },
+      ],
+    },
+    {
+      id: "documenti",
+      label: "Documenti",
+      items: [
+        { href: "/admin/templates", label: "Modelli", icon: FileStack },
+        { href: "/admin/drafts", label: "Bozze e invii", icon: FilePen },
+        { href: "/admin/brand", label: "Firma e timbro", icon: Stamp },
+      ],
+    },
+    {
+      id: "sistema",
+      label: "Sistema",
+      items: [{ href: "/admin/activity", label: "Registro attività", icon: Activity }],
+    },
+  );
 
   return (
     <DashShell

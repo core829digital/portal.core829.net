@@ -1,7 +1,7 @@
 "use client";
 
 import type { LucideIcon } from "lucide-react";
-import { Menu, X } from "lucide-react";
+import { ChevronDown, Menu, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -9,7 +9,36 @@ import { useEffect, useState, type ReactNode } from "react";
 import { cn } from "cn";
 
 export type NavItem = { href: string; label: string; icon: LucideIcon; exact?: boolean; badge?: string | number };
-export type NavGroup = { label?: string; items: NavItem[] };
+export type NavGroup = {
+  /** Chiave stabile per ricordare aperto/chiuso (se manca si usa l'etichetta). */
+  id?: string;
+  label?: string;
+  items: NavItem[];
+  /** Con un'etichetta il gruppo si apre e si chiude (a meno di `collapsible: false`). Il gruppo con la pagina corrente e' sempre aperto. */
+  collapsible?: boolean;
+  /** Aperto la prima volta che si vede (poi si ricorda la scelta). Predefinito: aperto. */
+  defaultOpen?: boolean;
+};
+
+const STORAGE_KEY = "core829.nav.closed";
+
+function readClosed(): Set<string> {
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    const parsed: unknown = raw ? JSON.parse(raw) : [];
+    return new Set(Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === "string") : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function writeClosed(closed: Set<string>) {
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify([...closed]));
+  } catch {
+    /* archivio bloccato: il menu funziona lo stesso, senza ricordare */
+  }
+}
 
 function isActive(pathname: string, item: NavItem): boolean {
   if (pathname === item.href) return true;
@@ -33,6 +62,21 @@ export function DashShell({
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  // Gruppi chiusi dall'utente (ricordati). Il primo disegno e' uguale al server: si legge l'archivio dopo.
+  const [closed, setClosed] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- legge una preferenza dal browser dopo il primo disegno
+    setClosed(readClosed());
+  }, []);
+  const toggleGroup = (id: string, defaultOpen: boolean) =>
+    setClosed((prev) => {
+      const next = new Set(prev);
+      const isOpen = defaultOpen ? !next.has(id) : next.has(`open:${id}`);
+      if (defaultOpen) (isOpen ? next.add(id) : next.delete(id));
+      else (isOpen ? next.delete(`open:${id}`) : next.add(`open:${id}`));
+      writeClosed(next);
+      return next;
+    });
 
   useEffect(() => {
     if (!open) return;
@@ -96,35 +140,59 @@ export function DashShell({
         </div>
 
         <nav aria-label="Pagine" className="flex flex-1 flex-col gap-5">
-          {groups.map((group, gi) => (
-            <div key={group.label ?? gi} className="space-y-1">
-              {group.label ? (
-                <p className="px-3 pb-1 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{group.label}</p>
-              ) : null}
-              {group.items.map((item) => {
-                const active = isActive(pathname, item);
-                const Icon = item.icon;
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    aria-current={active ? "page" : undefined}
-                    onClick={() => setOpen(false)}
-                    className={cn(
-                      "group relative flex min-h-10 items-center gap-3 rounded-full px-3 text-sm transition-colors",
-                      active ? "bg-brand-tint font-medium text-brand-deep" : "text-foreground/80 hover:bg-muted hover:text-foreground",
-                    )}
-                  >
-                    <Icon aria-hidden className={cn("size-4 shrink-0 transition-colors", active ? "text-brand" : "text-muted-foreground group-hover:text-brand")} />
-                    <span className="min-w-0 flex-1 truncate">{item.label}</span>
-                    {item.badge !== undefined ? (
-                      <span className="rounded-full bg-primary px-1.5 py-0.5 font-mono text-[10px] text-primary-foreground tabular-nums">{item.badge}</span>
-                    ) : null}
-                  </Link>
-                );
-              })}
-            </div>
-          ))}
+          {groups.map((group, gi) => {
+            const id = group.id ?? group.label ?? String(gi);
+            const collapsible = Boolean(group.label) && group.collapsible !== false;
+            const defaultOpen = group.defaultOpen !== false;
+            const hasActive = group.items.some((item) => isActive(pathname, item));
+            const userOpen = defaultOpen ? !closed.has(id) : closed.has(`open:${id}`);
+            const expanded = !collapsible || hasActive || userOpen;
+            const panelId = `grp-${gi}`;
+            return (
+              <div key={id} className="space-y-1">
+                {group.label ? (
+                  collapsible ? (
+                    <button
+                      type="button"
+                      aria-expanded={expanded}
+                      aria-controls={panelId}
+                      onClick={() => toggleGroup(id, defaultOpen)}
+                      className="flex w-full items-center justify-between rounded-full px-3 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                      <span className="truncate">{group.label}</span>
+                      <ChevronDown aria-hidden className={cn("size-3.5 shrink-0 transition-transform duration-200", expanded ? "rotate-0" : "-rotate-90")} />
+                    </button>
+                  ) : (
+                    <p className="px-3 pb-1 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{group.label}</p>
+                  )
+                ) : null}
+                <div id={panelId} hidden={!expanded} className="space-y-1">
+                  {group.items.map((item) => {
+                    const active = isActive(pathname, item);
+                    const Icon = item.icon;
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        aria-current={active ? "page" : undefined}
+                        onClick={() => setOpen(false)}
+                        className={cn(
+                          "group relative flex min-h-10 items-center gap-3 rounded-full px-3 text-sm transition-colors",
+                          active ? "bg-brand-tint font-medium text-brand-deep" : "text-foreground/80 hover:bg-muted hover:text-foreground",
+                        )}
+                      >
+                        <Icon aria-hidden className={cn("size-4 shrink-0 transition-colors", active ? "text-brand" : "text-muted-foreground group-hover:text-brand")} />
+                        <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                        {item.badge !== undefined ? (
+                          <span className="rounded-full bg-primary px-1.5 py-0.5 font-mono text-[10px] text-primary-foreground tabular-nums">{item.badge}</span>
+                        ) : null}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
         </nav>
 
         {footer ? <div className="border-t pt-4">{footer}</div> : null}

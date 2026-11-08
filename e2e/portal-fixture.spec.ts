@@ -97,6 +97,36 @@ test("la scheda introduttiva si chiude e resta chiusa", async ({ page }) => {
   await expect(page.getByText("Come funziona questo spazio")).toHaveCount(0);
 });
 
+// ---- Menu a gruppi comprimibili ----
+
+test("menu a gruppi: si apre e si chiude, ricorda la scelta, il gruppo della pagina corrente resta aperto", async ({ page, isMobile }) => {
+  await page.goto("/fixture-nav");
+  if (isMobile) await page.getByRole("button", { name: "Apri il menu" }).click();
+  const nav = page.getByRole("navigation", { name: "Pagine" });
+  const clienti = nav.getByRole("button", { name: /Clienti/ });
+  const sistema = nav.getByRole("button", { name: /Sistema/ });
+  await expect(clienti).toHaveAttribute("aria-expanded", "true");
+  await expect(nav.getByRole("link", { name: "Tutti i clienti" })).toBeVisible();
+  await expect(sistema).toHaveAttribute("aria-expanded", "false"); // chiuso di partenza
+  await expect(nav.getByRole("link", { name: "Registro" })).toBeHidden();
+  await clienti.click();
+  await expect(clienti).toHaveAttribute("aria-expanded", "false");
+  await expect(nav.getByRole("link", { name: "Tutti i clienti" })).toBeHidden();
+  await sistema.click();
+  await expect(nav.getByRole("link", { name: "Registro" })).toBeVisible();
+  // La scelta si ricorda dopo il ricaricamento.
+  await page.reload();
+  if (isMobile) await page.getByRole("button", { name: "Apri il menu" }).click();
+  await expect(nav.getByRole("button", { name: /Clienti/ })).toHaveAttribute("aria-expanded", "false");
+  await expect(nav.getByRole("button", { name: /Sistema/ })).toHaveAttribute("aria-expanded", "true");
+  // Tastiera: Invio sul titolo del gruppo lo riapre.
+  await nav.getByRole("button", { name: /Clienti/ }).focus();
+  await page.keyboard.press("Enter");
+  await expect(nav.getByRole("link", { name: "Tutti i clienti" })).toBeVisible();
+  const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
+  expect(results.violations.map((v) => `${v.id}: ${v.help}`)).toEqual([]);
+});
+
 // ---- Grafico ad area: la linea deve arrivare fino all'ultimo mese ----
 
 test("grafico incassi: la linea e l'area arrivano fino a novembre (ultimo punto) e il punto attivo e' l'ultimo", async ({ page }) => {
