@@ -23,6 +23,10 @@ const app = defineApp({
     B2B_WEBHOOK_SECRET: v.optional(v.string()),
     /** Segreto di firma (whsec_...) con cui il sito core829.net firma i messaggi del modulo contatti e le visite inviati al portale. SEGRETO. Senza, gli endpoint /site/* rifiutano tutto. */
     SITE_BRIDGE_SECRET: v.optional(v.string()),
+    /** Mittente delle email ai clienti, es. "CORE829 <clients@core829.net>". Il dominio deve essere verificato in Resend. Se manca si usa quello indicato. */
+    CLIENTS_EMAIL_FROM: v.optional(v.string()),
+    /** Indirizzi (separati da virgola) che ricevono le notifiche per l'amministrazione. Se manca si usa ADMIN_EMAILS. */
+    NOTIFY_ADMIN_EMAILS: v.optional(v.string()),
     /** Facoltativa: indirizzi IP (o intervalli CIDR) da cui accettare i webhook, separati da virgola. Vedi docs/SECURITY.md. */
     WEBHOOK_IP_ALLOWLIST: v.optional(v.string()),
   },

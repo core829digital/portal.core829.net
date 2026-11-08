@@ -17,6 +17,8 @@ export type EmailMessage = {
   text: string;
   html: string;
   replyTo?: string;
+  /** Copia nascosta (es. nella casella ufficiale, per tenere traccia di cio' che si invia). */
+  bcc?: string;
   attachments?: EmailAttachment[];
 };
 
@@ -42,6 +44,7 @@ export async function sendEmail(apiKey: string, message: EmailMessage): Promise<
         text: message.text,
         html: message.html,
         ...(message.replyTo ? { reply_to: message.replyTo } : {}),
+        ...(message.bcc ? { bcc: [message.bcc] } : {}),
         ...(message.attachments && message.attachments.length > 0 ? { attachments: message.attachments } : {}),
       }),
     });

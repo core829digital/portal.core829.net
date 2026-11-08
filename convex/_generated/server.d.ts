@@ -39,6 +39,8 @@ type Env = {
   readonly WEBHOOK_IP_ALLOWLIST?: string;
   readonly B2B_WEBHOOK_SECRET?: string;
   readonly SITE_BRIDGE_SECRET?: string;
+  readonly CLIENTS_EMAIL_FROM?: string;
+  readonly NOTIFY_ADMIN_EMAILS?: string;
 };
 
 /**

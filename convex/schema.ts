@@ -311,6 +311,18 @@ export default defineSchema({
     .index("by_createdAt", ["createdAt"])
     .index("by_status_and_createdAt", ["status", "createdAt"]),
 
+  /** Risposte inviate dal portale alle richieste del sito (email da clients@core829.net). */
+  siteReplies: defineTable({
+    messageId: v.id("siteMessages"),
+    to: v.string(),
+    subject: v.string(),
+    body: v.string(),
+    status: v.union(v.literal("queued"), v.literal("sent"), v.literal("failed")),
+    createdAt: v.number(),
+    sentAt: v.optional(v.number()),
+    actorId: v.string(),
+  }).index("by_messageId", ["messageId"]),
+
   /** SEO modificabile dal portale: titolo, descrizione e indicizzazione di una pagina del sito in una lingua. */
   siteSeo: defineTable({
     page: v.string(),

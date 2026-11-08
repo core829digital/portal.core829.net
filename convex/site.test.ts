@@ -200,6 +200,88 @@ describe("area amministratore del sito", () => {
   });
 });
 
+describe("risposte alle richieste del sito (email da clients@core829.net)", () => {
+  beforeEach(() => {
+    process.env.RESEND_API_KEY = "re_x";
+    delete process.env.CLIENTS_EMAIL_FROM;
+  });
+  const fetchOk = () => {
+    const f = vi.fn().mockResolvedValue(new Response("{}", { status: 200 }));
+    vi.stubGlobal("fetch", f);
+    return f;
+  };
+
+  it("parte da clients@core829.net, risponde a hello@, avvisa di scrivere all'indirizzo ufficiale e tiene una copia nascosta", async () => {
+    const { t, admin } = await setup();
+    await post(t, "/site/contact", contact());
+    const f = fetchOk();
+    const [m] = await admin.query(api.site.messages, {});
+    await admin.mutation(api.site.reply, { messageId: m.id, subject: "Re: la tua richiesta", body: "Buongiorno Anna,\n\nci sentiamo domani.\n\nCORE829" });
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect(f).toHaveBeenCalledTimes(1);
+    const sent = JSON.parse(String(f.mock.calls[0][1].body)) as Record<string, unknown>;
+    expect(sent.from).toBe("CORE829 <clients@core829.net>");
+    expect(sent.to).toEqual(["anna@azienda.it"]);
+    expect(sent.reply_to).toBe("hello@core829.net");
+    expect(sent.bcc).toEqual(["hello@core829.net"]);
+    expect(String(sent.text)).toContain("ci sentiamo domani");
+    expect(String(sent.text)).toContain("(clients@core829.net) che non viene letto");
+    expect(String(sent.text)).toContain("scrivi a hello@core829.net");
+    expect(String(sent.html)).toContain("footer di core829.net");
+    const [reply] = await admin.query(api.site.repliesFor, { messageId: m.id });
+    expect(reply).toMatchObject({ status: "sent", subject: "Re: la tua richiesta" });
+    expect((await admin.query(api.site.messages, {}))[0].status).toBe("handled");
+  });
+
+  it("il mittente si puo' cambiare con CLIENTS_EMAIL_FROM; il testo del messaggio non diventa mai HTML", async () => {
+    const { t, admin } = await setup();
+    await post(t, "/site/contact", contact());
+    process.env.CLIENTS_EMAIL_FROM = "CORE829 Clienti <clienti@core829.net>";
+    const f = fetchOk();
+    const [m] = await admin.query(api.site.messages, {});
+    await admin.mutation(api.site.reply, { messageId: m.id, subject: "Ciao", body: "<script>alert(1)</script> e <b>grassetto</b>" });
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    const sent = JSON.parse(String(f.mock.calls[0][1].body)) as { from: string; html: string };
+    expect(sent.from).toBe("CORE829 Clienti <clienti@core829.net>");
+    expect(sent.html).not.toContain("<script>");
+    expect(sent.html).toContain("&lt;script&gt;");
+  });
+
+  it("se l'invio fallisce la risposta e' segnata «non inviata» e si puo' riprovare; senza chiave email non parte nulla", async () => {
+    const { t, admin } = await setup();
+    await post(t, "/site/contact", contact());
+    const [m] = await admin.query(api.site.messages, {});
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("{}", { status: 500 })));
+    const id = await admin.mutation(api.site.reply, { messageId: m.id, subject: "Ciao", body: "Testo della risposta" });
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect((await admin.query(api.site.repliesFor, { messageId: m.id }))[0].status).toBe("failed");
+    const f = fetchOk();
+    await admin.mutation(api.site.retryReply, { replyId: id });
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect(f).toHaveBeenCalledTimes(1);
+    expect((await admin.query(api.site.repliesFor, { messageId: m.id }))[0].status).toBe("sent");
+    expect(await code(admin.mutation(api.site.retryReply, { replyId: id }))).toBe("BAD_STATE"); // gia' inviata: non si rinvia
+    delete process.env.RESEND_API_KEY;
+    const id2 = await admin.mutation(api.site.reply, { messageId: m.id, subject: "Altro", body: "Secondo messaggio" });
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect((await t.run((ctx) => ctx.db.get("siteReplies", id2)))!.status).toBe("failed");
+  });
+
+  it("solo l'amministratore risponde; oggetto e testo validi", async () => {
+    const { t, admin, stranger } = await setup();
+    await post(t, "/site/contact", contact());
+    const [m] = await admin.query(api.site.messages, {});
+    const f = fetchOk();
+    expect(await code(stranger.mutation(api.site.reply, { messageId: m.id, subject: "Ciao", body: "Testo valido" }))).toBe("FORBIDDEN");
+    expect(await code(t.mutation(api.site.reply, { messageId: m.id, subject: "Ciao", body: "Testo valido" }))).toBe("UNAUTHENTICATED");
+    expect(await code(stranger.query(api.site.repliesFor, { messageId: m.id }))).toBe("FORBIDDEN");
+    expect(await code(admin.mutation(api.site.reply, { messageId: m.id, subject: "", body: "Testo valido" }))).not.toBe("OK");
+    expect(await code(admin.mutation(api.site.reply, { messageId: m.id, subject: "Ciao", body: "x" }))).not.toBe("OK");
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect(f).not.toHaveBeenCalled();
+  });
+});
+
 describe("regole pure", () => {
   it("percorsi tracciati", () => {
     expect(parseTrackedPath("/it/servizi/web")).toEqual({ locale: "it", path: "/servizi/web" });

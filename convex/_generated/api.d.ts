@@ -48,6 +48,7 @@ import type * as lib_invoiceFlow from "../lib/invoiceFlow.js";
 import type * as lib_ipAllowlist from "../lib/ipAllowlist.js";
 import type * as lib_links from "../lib/links.js";
 import type * as lib_logoPng from "../lib/logoPng.js";
+import type * as lib_mailFrame from "../lib/mailFrame.js";
 import type * as lib_metrics from "../lib/metrics.js";
 import type * as lib_money from "../lib/money.js";
 import type * as lib_otpLimits from "../lib/otpLimits.js";
@@ -79,6 +80,7 @@ import type * as reports from "../reports.js";
 import type * as signActions from "../signActions.js";
 import type * as signatures from "../signatures.js";
 import type * as site from "../site.js";
+import type * as siteMail from "../siteMail.js";
 import type * as subscriptions from "../subscriptions.js";
 import type * as webhooks from "../webhooks.js";
 
@@ -118,6 +120,7 @@ declare const fullApi: ApiFromModules<{
   "lib/ipAllowlist": typeof lib_ipAllowlist;
   "lib/links": typeof lib_links;
   "lib/logoPng": typeof lib_logoPng;
+  "lib/mailFrame": typeof lib_mailFrame;
   "lib/metrics": typeof lib_metrics;
   "lib/money": typeof lib_money;
   "lib/otpLimits": typeof lib_otpLimits;
@@ -149,6 +152,7 @@ declare const fullApi: ApiFromModules<{
   signActions: typeof signActions;
   signatures: typeof signatures;
   site: typeof site;
+  siteMail: typeof siteMail;
   subscriptions: typeof subscriptions;
   webhooks: typeof webhooks;
 }>;

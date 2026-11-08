@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
+import { internal } from "./_generated/api";
 import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { audit } from "./lib/audit";
 import { requireAdmin } from "./lib/auth";
@@ -269,3 +270,69 @@ export const announcementSave = mutation({
   },
 });
 
+
+// ---- Risposte alle richieste (email da clients@core829.net) ----
+
+/** Invia la risposta al visitatore. L'email parte subito dopo (azione separata); la richiesta passa a «gestita». */
+export const reply = mutation({
+  args: { messageId: v.id("siteMessages"), subject: v.string(), body: v.string() },
+  handler: async (ctx, args): Promise<Id<"siteReplies">> => {
+    const { actorId } = await requireAdmin(ctx);
+    const m = await ctx.db.get("siteMessages", args.messageId);
+    if (!m) return fail("NOT_FOUND", "Richiesta non trovata.");
+    const subject = cleanText(args.subject, { field: "oggetto", min: 3, max: 150 });
+    const body = cleanText(args.body, { field: "messaggio", min: 5, max: 5000, multiline: true });
+    const id = await ctx.db.insert("siteReplies", { messageId: m._id, to: m.email, subject, body, status: "queued", createdAt: Date.now(), actorId });
+    if (m.status === "new") await ctx.db.patch("siteMessages", m._id, { status: "handled", handledAt: Date.now() });
+    await audit(ctx, { actorType: "admin", actorId, action: "site.reply_sent", resourceType: "siteMessage", resourceId: m._id });
+    await ctx.scheduler.runAfter(0, internal.siteMail.deliver, { replyId: id });
+    return id;
+  },
+});
+
+export const repliesFor = query({
+  args: { messageId: v.id("siteMessages") },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const rows = await ctx.db
+      .query("siteReplies")
+      .withIndex("by_messageId", (q) => q.eq("messageId", args.messageId))
+      .order("desc")
+      .take(20);
+    return rows.map((r) => ({ id: r._id, subject: r.subject, body: r.body, status: r.status, createdAt: r.createdAt, sentAt: r.sentAt ?? null }));
+  },
+});
+
+/** Riprova un invio non riuscito. */
+export const retryReply = mutation({
+  args: { replyId: v.id("siteReplies") },
+  handler: async (ctx, args): Promise<null> => {
+    const { actorId } = await requireAdmin(ctx);
+    const r = await ctx.db.get("siteReplies", args.replyId);
+    if (!r) return fail("NOT_FOUND", "Risposta non trovata.");
+    if (r.status !== "failed") return fail("BAD_STATE", "Questa risposta non è da rinviare.");
+    await ctx.db.patch("siteReplies", r._id, { status: "queued" });
+    await audit(ctx, { actorType: "admin", actorId, action: "site.reply_retry", resourceType: "siteReply", resourceId: r._id });
+    await ctx.scheduler.runAfter(0, internal.siteMail.deliver, { replyId: r._id });
+    return null;
+  },
+});
+
+export const replyForDelivery = internalQuery({
+  args: { replyId: v.id("siteReplies") },
+  handler: async (ctx, args) => {
+    const r = await ctx.db.get("siteReplies", args.replyId);
+    if (!r || r.status !== "queued") return null;
+    return { to: r.to, subject: r.subject, body: r.body };
+  },
+});
+
+export const replyResult = internalMutation({
+  args: { replyId: v.id("siteReplies"), ok: v.boolean() },
+  handler: async (ctx, args): Promise<null> => {
+    const r = await ctx.db.get("siteReplies", args.replyId);
+    if (!r) return null;
+    await ctx.db.patch("siteReplies", r._id, args.ok ? { status: "sent", sentAt: Date.now() } : { status: "failed" });
+    return null;
+  },
+});
