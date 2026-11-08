@@ -61,7 +61,7 @@ describe("catalogo", () => {
   it("ogni tipo ha testi sensati e nessuno e' un'azione solo-admin", () => {
     expect(KIND_LIST.length).toBeGreaterThanOrEqual(15);
     for (const k of KIND_LIST) {
-      const r = k.render({ number: "F1", amount: "€ 1,00", due: "1 gen", note: "", title: "Titolo", name: "Anna", client: "Azienda", project: "Sito", text: "Testo dell'aggiornamento", month: "gennaio 2026", until: "1 gen", date: "1 gen", email: "a@b.it", message: "m", company: "", service: "", budget: "" });
+      const r = k.render({ number: "F1", amount: "€ 1,00", due: "1 gen", note: "", title: "Titolo", subject: "Oggetto", excerpt: "Testo del messaggio", category: "Domanda", name: "Anna", client: "Azienda", project: "Sito", text: "Testo dell'aggiornamento", month: "gennaio 2026", until: "1 gen", date: "1 gen", email: "a@b.it", message: "m", company: "", service: "", budget: "" });
       expect(r.subject.length).toBeGreaterThan(3);
       expect(r.body.length, k.kind).toBeGreaterThan(10);
       expect(r.subject + r.body).not.toMatch(/undefined|\[object/);
