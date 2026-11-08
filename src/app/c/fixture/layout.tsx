@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { PageIn } from "@/components/dash/PageIn";
 import { PortalChrome } from "@/components/portal/PortalChrome";
 import { fixtureData } from "./fixtureData";
 
@@ -10,7 +11,7 @@ export default function FixtureLayout({ children }: { children: React.ReactNode 
   if (process.env.E2E_FIXTURES !== "1") notFound();
   return (
     <PortalChrome data={fixtureData} token={"A".repeat(43)} base="/c/fixture">
-      {children}
+      <PageIn>{children}</PageIn>
     </PortalChrome>
   );
 }

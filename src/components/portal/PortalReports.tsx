@@ -25,7 +25,7 @@ export type ReportData = {
 export function ReportView({ report }: { report: ReportData }) {
   const groups = groupMetrics(report.metrics);
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       {report.summary ? (
         <Panel title="Com'è andato il mese" index={0}>
           <p className="whitespace-pre-wrap text-sm leading-6">{report.summary}</p>
@@ -95,7 +95,7 @@ export function ReportsBrowser({
 }) {
   if (months.length === 0) return <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">Il primo report arriverà a fine mese.</p>;
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-3">
         <div role="group" aria-label="Scegli il mese" className="flex flex-wrap gap-1.5">
           {months.map((m) => (

@@ -248,7 +248,7 @@ export function UnlockGate({
               {pending ? "Invio in corso…" : "Mandami il codice"}
             </Button>
           ) : (
-            <form onSubmit={onVerify} className="grid max-w-xs gap-3" noValidate>
+            <form onSubmit={onVerify} className="grid max-w-xs gap-4" noValidate>
               <div className="grid gap-1.5">
                 <Label htmlFor="code">Codice ricevuto</Label>
                 <Input id="code" name="code" inputMode="numeric" autoComplete="one-time-code" maxLength={6} pattern="[0-9]{6}" placeholder="123456" required autoFocus />

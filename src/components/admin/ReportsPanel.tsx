@@ -195,7 +195,7 @@ function ReportForm({ clientId, month, initial, previous, onBack }: { clientId: 
   const auto = initial?.auto;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-3">
         <Button variant="outline" size="sm" onClick={onBack}>
           ← Tutti i report
