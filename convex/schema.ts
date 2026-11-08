@@ -33,9 +33,12 @@ export default defineSchema({
   ...authTables,
 
   /** Amministratori autorizzati. L'identita' arriva dal provider di login, l'autorizzazione da qui. */
+  /** Team: amministratori (accesso a tutto) e agenti commerciali (solo il CRM). Senza `role` = amministratore. */
   admins: defineTable({
     email: v.string(),
     addedAt: v.number(),
+    role: v.optional(v.union(v.literal("admin"), v.literal("agent"))),
+    name: v.optional(v.string()),
   }).index("by_email", ["email"]),
 
   clients: defineTable({

@@ -6,7 +6,7 @@ import type { Id } from "./_generated/dataModel";
 import { PDFDocument, degrees } from "pdf-lib";
 import * as pdfjs from "pdfjs-dist/legacy/build/pdf.mjs";
 import { createBlankDocx, detectFields, listParagraphs, readDocx } from "./lib/docx";
-import { makePng } from "./lib/testPng";
+import { makePng } from "../test/testPng";
 import { strFromU8 } from "fflate";
 import schema from "./schema";
 

@@ -5,7 +5,7 @@ import { pngSize, sealPdf, coreLogoBytes, serverLogoBytes } from "./brandSeal";
 import { applyChanges, createBlankDocx, listParagraphs, readDocx, toModel, writeDocx } from "./docx";
 import { decorateDocx } from "./docxBrand";
 import { renderPdf } from "./docPdf";
-import { makePng } from "./testPng";
+import { makePng } from "../../test/testPng";
 
 const STAMP = makePng(40, 40, [0, 0, 200, 255]);
 const SIGN = makePng(60, 20, [20, 20, 120, 255]);
