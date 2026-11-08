@@ -3,6 +3,7 @@ import { internal } from "./_generated/api";
 import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { audit } from "./lib/audit";
 import { requireAdmin } from "./lib/auth";
+import { notify } from "./lib/notify";
 import { fail } from "./lib/errors";
 import { MAX_FILE_BYTES, extensionOf, mimeFor, typeForExtension } from "./lib/files";
 import { cleanFileName, cleanText } from "./lib/text";
@@ -44,6 +45,9 @@ export const setVisibility = mutation({
       resourceId: args.documentId,
       metadata: { visibleToClient: args.visibleToClient },
     });
+    if (args.visibleToClient && !document.visibleToClient && document.scanStatus === "clean") {
+      await notify(ctx, "document_available", { clientId: document.clientId, data: { title: document.title } });
+    }
     return null;
   },
 });
@@ -244,6 +248,7 @@ export const setScanResult = internalMutation({
       resourceId: args.documentId,
       metadata: args.ok ? {} : { reason: (args.reason ?? "").slice(0, 120) },
     });
+    if (args.ok && document.visibleToClient) await notify(ctx, "document_available", { clientId: document.clientId, data: { title: document.title } });
     return null;
   },
 });

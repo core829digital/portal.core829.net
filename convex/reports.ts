@@ -5,7 +5,8 @@ import { requireAdmin } from "./lib/auth";
 import { requireUnlock, resolveLink } from "./lib/links";
 import { fail } from "./lib/errors";
 import { addMonths, buildReportView } from "./lib/reportData";
-import { cleanMetrics, isMonthStart, MAX_METRICS } from "./lib/reports";
+import { notify } from "./lib/notify";
+import { cleanMetrics, isMonthStart, MAX_METRICS, monthLabel } from "./lib/reports";
 import { cleanText, invalid } from "./lib/text";
 
 /** Report mensili: solo amministratore. Il cliente li legge da `portal.reports` / `portal.report` (solo pubblicati, con sblocco). */
@@ -98,6 +99,7 @@ export const setPublished = mutation({
     if (args.published && report.metrics.length === 0 && !report.summary) return fail("BAD_STATE", "Aggiungi almeno una metrica o un commento prima di pubblicare.");
     await ctx.db.patch("clientReports", report._id, args.published ? { status: "published", publishedAt: Date.now() } : { status: "draft", publishedAt: undefined });
     await audit(ctx, { actorType: "admin", actorId, clientId: args.clientId, action: args.published ? "report.published" : "report.unpublished", resourceType: "clientReport", resourceId: report._id, metadata: { month: args.month } });
+    if (args.published && report.status !== "published") await notify(ctx, "report_published", { clientId: args.clientId, data: { month: monthLabel(args.month) }, dedupeSubject: `${args.clientId}:${args.month}` });
     return null;
   },
 });
@@ -137,6 +139,8 @@ export const logExport = internalMutation({
   args: { clientId: v.id("clients"), month: v.number() },
   handler: async (ctx, args): Promise<null> => {
     await audit(ctx, { actorType: "client", clientId: args.clientId, action: "report.exported", resourceType: "clientReport", metadata: { month: args.month } });
+    const client = await ctx.db.get("clients", args.clientId);
+    await notify(ctx, "report_exported", { clientId: args.clientId, data: { client: client?.displayName ?? "Cliente", month: monthLabel(args.month) }, ctaPath: `/admin/clients/${args.clientId}`, dedupeSubject: `${args.clientId}:${args.month}` });
     return null;
   },
 });

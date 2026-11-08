@@ -4,6 +4,7 @@ import { internalMutation, mutation } from "./_generated/server";
 import { audit } from "./lib/audit";
 import { randomDigits, randomToken, timingSafeEqual } from "./lib/crypto";
 import { fail, INVALID_LINK_MESSAGE } from "./lib/errors";
+import { notify } from "./lib/notify";
 import { hashOtp, hashUnlockToken, resolveLink } from "./lib/links";
 import { CODE_TTL_MS, MAX_ATTEMPTS, UNLOCK_TTL_MS, recentCodes } from "./lib/otpLimits";
 
@@ -109,7 +110,11 @@ export const verifyCode = mutation({
         resourceId: link._id,
         metadata: { attempts },
       });
-      if (attempts >= MAX_ATTEMPTS) return { ok: false, reason: "LOCKED" };
+      if (attempts >= MAX_ATTEMPTS) {
+        const client = await ctx.db.get("clients", link.clientId);
+        await notify(ctx, "otp_locked", { clientId: link.clientId, data: { client: client?.displayName ?? "Cliente" }, ctaPath: `/admin/clients/${link.clientId}` });
+        return { ok: false, reason: "LOCKED" };
+      }
       return { ok: false, reason: "INVALID_CODE", attemptsLeft: MAX_ATTEMPTS - attempts };
     }
 
@@ -128,6 +133,8 @@ export const verifyCode = mutation({
       resourceType: "accessLink",
       resourceId: link._id,
     });
+    const unlockedClient = await ctx.db.get("clients", link.clientId);
+    await notify(ctx, "client_unlocked", { clientId: link.clientId, data: { client: unlockedClient?.displayName ?? "Cliente" }, ctaPath: `/admin/clients/${link.clientId}` });
     return { ok: true, unlockToken, expiresAt };
   },
 });

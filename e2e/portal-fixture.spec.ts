@@ -510,3 +510,16 @@ test("editor PDF: l'invio e' solo PDF (nessuna scelta del Word)", async ({ page 
   await expect(dialog.getByRole("checkbox", { name: /firma e timbro/i })).toBeChecked();
   await expect(dialog.getByRole("checkbox", { name: /Word/ })).toHaveCount(0);
 });
+
+test("panoramica: 8 indicatori su una sola riga, «Incassato» il piu' grande, niente testo tagliato", async ({ page, isMobile }) => {
+  test.skip(isMobile, "su telefono le schede vanno a capo per scelta");
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto("/c/fixture/kpi");
+  const cards = page.getByRole("listitem");
+  await expect(cards).toHaveCount(8);
+  const boxes = await cards.evaluateAll((els) => els.map((e) => { const r = e.getBoundingClientRect(); return { top: Math.round(r.top), w: r.width, sw: e.scrollWidth, cw: e.clientWidth }; }));
+  expect(new Set(boxes.map((b) => b.top)).size).toBe(1); // stessa riga
+  expect(boxes[0].w).toBe(Math.max(...boxes.map((b) => b.w))); // la prima e' la piu' larga
+  expect(boxes.every((b) => b.sw <= b.cw + 1)).toBe(true); // nessun contenuto che esce dalla scheda
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBe(false);
+});

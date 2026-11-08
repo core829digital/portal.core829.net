@@ -2,15 +2,9 @@
 
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
-import { internalAction, env } from "./_generated/server";
-import { COMPANY } from "./lib/autofill";
+import { internalAction } from "./_generated/server";
 import { fail } from "./lib/errors";
-import { sendEmail } from "./lib/resend";
 import { appendSignatureCertificate, CONSENT_VERSION, cleanSignerName, sha256Hex } from "./lib/signature";
-import { escapeHtml } from "./lib/text";
-
-const FRAME = (inner: string) =>
-  `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1f2937"><p style="font-size:13px;letter-spacing:2px;color:#c2410c;font-weight:bold;margin:0">CORE829</p>${inner}<p style="font-size:13px;line-height:20px;color:#6b7280">${COMPANY.name} · ${COMPANY.address} · CUI/CIF ${COMPANY.cui}</p></div>`;
 
 /**
  * Il cliente firma. Chiamata SOLO dall'endpoint /portal/sign (che aggiunge IP e browser).
@@ -70,67 +64,10 @@ export const sign = internalAction({
         fileName: `${baseName}-firmato.pdf`,
         kind: started.kind,
       });
-      await ctx.scheduler.runAfter(0, internal.signActions.notifySigned, { requestId: args.requestId });
       return { signedDocumentId: done.signedDocumentId };
     } catch (error) {
       await ctx.runMutation(internal.signatures.release, { requestId: args.requestId });
       throw error;
     }
-  },
-});
-
-/** Email al cliente: c'è un documento da firmare. Non contiene il link personale (non si puo' ricostruire): rimanda a quello gia' ricevuto. */
-export const notifyRequested = internalAction({
-  args: { requestId: v.id("signatureRequests") },
-  handler: async (ctx, args): Promise<null> => {
-    if (!env.RESEND_API_KEY || !env.AUTH_EMAIL_FROM) return null;
-    const d = await ctx.runMutation(internal.signatures.emailData, args);
-    if (!d) return null;
-    const until = new Intl.DateTimeFormat("it-IT", { dateStyle: "long", timeZone: "Europe/Rome" }).format(new Date(d.expiresAt));
-    try {
-      await sendEmail(env.RESEND_API_KEY, {
-        from: env.AUTH_EMAIL_FROM,
-        to: d.email,
-        subject: `Da firmare: ${d.title}`,
-        text: `Buongiorno,\n\nCORE829 le ha inviato un documento da firmare: «${d.title}».\n\nApra il suo link personale al portale clienti, vada in «Documenti» e prema «Firma». Serve un codice che le arriverà per email.\nLa richiesta è valida fino al ${until}.\n\nCORE829 SRL`,
-        html: FRAME(`<p style="font-size:16px;line-height:24px">Buongiorno,<br/>CORE829 le ha inviato un documento da firmare: <strong>${escapeHtml(d.title)}</strong>.</p><p style="font-size:15px;line-height:22px">Apra il suo <strong>link personale</strong> al portale clienti, vada in <strong>Documenti</strong> e prema <strong>Firma</strong>. Serve un codice che le arriverà per email.<br/>La richiesta è valida fino al ${escapeHtml(until)}.</p>`),
-        replyTo: "office@core829.net",
-      });
-    } catch {
-      // L'email e' un avviso: se non parte, la richiesta resta valida e visibile nel portale.
-    }
-    return null;
-  },
-});
-
-/** Conferma di firma: copia firmata al cliente e a CORE829. */
-export const notifySigned = internalAction({
-  args: { requestId: v.id("signatureRequests") },
-  handler: async (ctx, args): Promise<null> => {
-    if (!env.RESEND_API_KEY || !env.AUTH_EMAIL_FROM) return null;
-    const d = await ctx.runMutation(internal.signatures.emailData, args);
-    if (!d || !d.signedStorageId) return null;
-    const blob = await ctx.storage.get(d.signedStorageId);
-    if (!blob) return null;
-    const attachments = [{ filename: "documento-firmato.pdf", content: Buffer.from(await blob.arrayBuffer()).toString("base64") }];
-    const who = d.signedName ?? d.clientName;
-    for (const [to, intro] of [
-      [d.email, `Grazie, ${escapeHtml(who)}: il documento «${escapeHtml(d.title)}» è stato firmato. In allegato trova la copia firmata, che resta sempre disponibile anche nel portale.`],
-      ["office@core829.net", `${escapeHtml(who)} (${escapeHtml(d.clientName)}) ha firmato «${escapeHtml(d.title)}». Copia firmata in allegato.`],
-    ] as const) {
-      try {
-        await sendEmail(env.RESEND_API_KEY, {
-          from: env.AUTH_EMAIL_FROM,
-          to,
-          subject: `Firmato: ${d.title}`,
-          text: intro.replace(/<[^>]+>/g, ""),
-          html: FRAME(`<p style="font-size:16px;line-height:24px">${intro}</p>`),
-          attachments,
-        });
-      } catch {
-        // Copia comunque archiviata nel portale.
-      }
-    }
-    return null;
   },
 });

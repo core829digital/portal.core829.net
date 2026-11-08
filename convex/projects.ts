@@ -3,6 +3,7 @@ import type { Doc } from "./_generated/dataModel";
 import { mutation, query } from "./_generated/server";
 import { audit } from "./lib/audit";
 import { requireAdmin } from "./lib/auth";
+import { notify } from "./lib/notify";
 import { fail } from "./lib/errors";
 import { assertIntInRange, assertTimestamp, cleanText } from "./lib/text";
 import { projectStatus } from "./lib/validators";
@@ -133,6 +134,9 @@ export const addUpdate = mutation({
       resourceId: updateId,
       metadata: { visibleToClient: args.visibleToClient },
     });
+    if (args.visibleToClient) {
+      await notify(ctx, "project_update", { clientId: project.clientId, data: { project: project.name, title: cleanText(args.title, { field: "titolo", min: 1, max: 120 }), text: cleanText(args.body, { field: "testo", min: 1, max: 2000, multiline: true }) } });
+    }
     return updateId;
   },
 });

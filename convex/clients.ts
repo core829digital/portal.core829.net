@@ -82,6 +82,7 @@ export const update = mutation({
     website: nullableString,
     packageType: v.optional(packageType),
     status: v.optional(clientStatus),
+    notifyEmail: v.optional(v.boolean()),
     welcomeMessage: nullableString,
     internalNotes: nullableString,
   },
@@ -112,6 +113,7 @@ export const update = mutation({
     if (args.website !== undefined) patch.website = args.website === null ? undefined : cleanText(args.website, { field: "sito web", max: 200 });
     if (args.packageType !== undefined) patch.packageType = args.packageType;
     if (args.status !== undefined) patch.status = args.status;
+    if (args.notifyEmail !== undefined) patch.notifyEmail = args.notifyEmail;
     if (args.welcomeMessage !== undefined) {
       patch.welcomeMessage =
         args.welcomeMessage === null

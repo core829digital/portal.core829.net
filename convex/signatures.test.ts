@@ -87,10 +87,12 @@ beforeEach(() => {
   vi.setSystemTime(NOW);
   process.env.RESEND_API_KEY = "re_x";
   process.env.AUTH_EMAIL_FROM = "CORE829 <portal@core829.net>";
+  process.env.NOTIFY_ADMIN_EMAILS = "office@core829.net";
   fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: "m" }), { status: 200 }));
   vi.stubGlobal("fetch", fetchMock);
 });
 afterEach(() => {
+  delete process.env.NOTIFY_ADMIN_EMAILS;
   vi.useRealTimers();
   vi.unstubAllGlobals();
 });

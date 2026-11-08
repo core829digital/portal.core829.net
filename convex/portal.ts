@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { internalMutation, mutation, query } from "./_generated/server";
 import { audit } from "./lib/audit";
 import { fail, INVALID_LINK_MESSAGE } from "./lib/errors";
+import { notify } from "./lib/notify";
 import { requireUnlock, resolveLink } from "./lib/links";
 import { buildOverview, loadWidgets } from "./lib/overview";
 import { buildReportView } from "./lib/reportData";
@@ -97,6 +98,8 @@ export const touch = mutation({
       resourceType: "accessLink",
       resourceId: link._id,
     });
+    const opened = await ctx.db.get("clients", link.clientId);
+    await notify(ctx, "client_opened", { clientId: link.clientId, data: { client: opened?.displayName ?? "Cliente" }, ctaPath: `/admin/clients/${link.clientId}` });
     return null;
   },
 });
@@ -122,6 +125,8 @@ export const prepareDownload = internalMutation({
       resourceType: "document",
       resourceId: args.documentId,
     });
+    const downloader = await ctx.db.get("clients", link.clientId);
+    await notify(ctx, "document_downloaded", { clientId: link.clientId, data: { client: downloader?.displayName ?? "Cliente", title: document.title }, ctaPath: `/admin/clients/${link.clientId}`, dedupeSubject: document._id });
     return { storageId: document.storageId, fileName: document.fileName, mimeType: document.mimeType };
   },
 });

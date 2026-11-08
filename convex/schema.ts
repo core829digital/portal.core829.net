@@ -56,6 +56,8 @@ export default defineSchema({
     welcomeMessage: v.optional(v.string()),
     /** SOLO per l'amministratore. Non esporre mai al cliente. */
     internalNotes: v.optional(v.string()),
+    /** Se false, il cliente non riceve le email automatiche del portale (restano al registro come «saltate»). Predefinito: si. */
+    notifyEmail: v.optional(v.boolean()),
   })
     .index("by_email", ["email"])
     .index("by_status", ["status"]),
@@ -349,6 +351,39 @@ export default defineSchema({
   })
     .index("by_day", ["day"])
     .index("by_day_and_path_and_locale", ["day", "path", "locale"]),
+
+  /** Registro di tutte le email automatiche tra portale, clienti e amministrazione (una riga per destinatario). */
+  notifications: defineTable({
+    kind: v.string(),
+    audience: v.union(v.literal("client"), v.literal("admin")),
+    clientId: v.optional(v.id("clients")),
+    to: v.string(),
+    subject: v.string(),
+    heading: v.string(),
+    body: v.string(),
+    ctaLabel: v.optional(v.string()),
+    /** Percorso dentro il portale (es. "/c" o "/admin/clients/..."), mai un indirizzo esterno. */
+    ctaPath: v.optional(v.string()),
+    attachmentStorageId: v.optional(v.id("_storage")),
+    attachmentName: v.optional(v.string()),
+    status: v.union(v.literal("queued"), v.literal("sent"), v.literal("failed"), v.literal("skipped")),
+    /** Perche' e' stata saltata o non e' partita (testo leggibile). */
+    reason: v.optional(v.string()),
+    createdAt: v.number(),
+    sentAt: v.optional(v.number()),
+    /** Evita email ripetute per lo stesso evento in una finestra di tempo. */
+    dedupeKey: v.optional(v.string()),
+  })
+    .index("by_createdAt", ["createdAt"])
+    .index("by_clientId_and_createdAt", ["clientId", "createdAt"])
+    .index("by_status_and_createdAt", ["status", "createdAt"])
+    .index("by_dedupeKey_and_createdAt", ["dedupeKey", "createdAt"]),
+
+  /** Quali tipi di notifica sono attivi (se manca la riga vale il predefinito del tipo). */
+  notificationSettings: defineTable({
+    kind: v.string(),
+    enabled: v.boolean(),
+  }).index("by_kind", ["kind"]),
 
   auditLogs: defineTable({
     actorType: v.union(v.literal("admin"), v.literal("client"), v.literal("system")),

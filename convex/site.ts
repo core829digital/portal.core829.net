@@ -5,6 +5,7 @@ import { internalMutation, internalQuery, mutation, query } from "./_generated/s
 import { audit } from "./lib/audit";
 import { requireAdmin } from "./lib/auth";
 import { fail } from "./lib/errors";
+import { notify } from "./lib/notify";
 import { cleanAnnouncement, cleanSeo, dayKey, isSiteLocale, parseTrackedPath, type Announcement } from "./lib/siteConfig";
 import { cleanEmail, cleanText } from "./lib/text";
 
@@ -49,6 +50,14 @@ export const receiveMessage = internalMutation({
     });
     await ctx.db.insert("webhookEvents", { eventId: args.eventId, type: "site.contact", receivedAt: Date.now() });
     await audit(ctx, { actorType: "system", action: "site.message_received", resourceType: "siteMessage", resourceId: id });
+    const saved = await ctx.db.get("siteMessages", id);
+    if (saved) {
+      await notify(ctx, "site_message", {
+        data: { name: saved.name, email: saved.email, company: saved.company ?? "", service: saved.service ?? "", budget: saved.budget ?? "", message: saved.message },
+        ctaPath: "/admin/site",
+        dedupeSubject: id,
+      });
+    }
     return { status: "created" };
   },
 });

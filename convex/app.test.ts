@@ -572,6 +572,7 @@ describe("manutenzione periodica", () => {
     const link = await newLink(h, clientId);
     vi.setSystemTime(NOW + 2 * DAY);
     await h.t.mutation(internal.maintenance.markOverdueInvoices, {});
+    await h.t.finishAllScheduledFunctions(vi.runAllTimers); // la notifica di scadenza non deve restare in sospeso
     const { billing } = await h.t.query(api.portal.overview, { token: link.token });
     expect(billing.invoices[0].status).toBe("overdue");
     expect(billing.overdueCents).toBe(5000);

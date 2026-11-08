@@ -5,6 +5,8 @@ import { audit } from "./lib/audit";
 import { requireAdmin } from "./lib/auth";
 import { INVOICE_TRANSITIONS, isInvoiceFinal } from "./lib/invoiceFlow";
 import { fail } from "./lib/errors";
+import { notify } from "./lib/notify";
+import { formatDateIt, formatEuroIt } from "./lib/reminders";
 import { assertCents, assertTimestamp, cleanText, invalid } from "./lib/text";
 import { invoiceStatus } from "./lib/validators";
 
@@ -153,6 +155,11 @@ export const setStatus = mutation({
       resourceId: args.invoiceId,
       metadata: { from: invoice.status, to: args.status },
     });
+    if (invoice.visibleToClient) {
+      const data = { number: invoice.number, amount: formatEuroIt(invoice.amountCents), due: formatDateIt(invoice.dueAt), note: invoice.note ?? "" };
+      if (args.status === "sent") await notify(ctx, "invoice_sent", { clientId: invoice.clientId, data, dedupeSubject: invoice._id });
+      if (args.status === "paid") await notify(ctx, "invoice_paid", { clientId: invoice.clientId, data });
+    }
     return null;
   },
 });

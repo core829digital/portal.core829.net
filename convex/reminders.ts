@@ -4,6 +4,7 @@ import type { Id } from "./_generated/dataModel";
 import { env, internalAction, internalMutation } from "./_generated/server";
 import { parseAdminEmails } from "./lib/adminEmails";
 import { audit } from "./lib/audit";
+import { notify } from "./lib/notify";
 import {
   advanceRenewal,
   DAY_MS,
@@ -116,6 +117,15 @@ export const recordSent = internalMutation({
       resourceId: args.subscriptionId,
       metadata: { renewalAt: args.renewalAt, adminNotified: args.adminNotified },
     });
+    const subscription = await ctx.db.get("subscriptions", args.subscriptionId);
+    if (subscription) {
+      await notify(ctx, "subscription_renewal", {
+        clientId: args.clientId,
+        data: { amount: formatEuroIt(subscription.amountCents), date: formatDateIt(args.renewalAt), name: subscription.name },
+        dedupeSubject: `${args.subscriptionId}:${args.renewalAt}`,
+        logOnly: true,
+      });
+    }
     return null;
   },
 });

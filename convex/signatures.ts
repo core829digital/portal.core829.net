@@ -1,10 +1,11 @@
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
-import { internal } from "./_generated/api";
 import { internalMutation, mutation, query, type MutationCtx } from "./_generated/server";
 import { audit } from "./lib/audit";
 import { requireAdmin } from "./lib/auth";
 import { fail } from "./lib/errors";
+import { notify } from "./lib/notify";
+import { formatDateIt } from "./lib/reminders";
 import { requireFreshUnlock, resolveLink, requireUnlock } from "./lib/links";
 import { FRESH_CODE_MS, SIGN_TTL_MS, sha256Hex } from "./lib/signature";
 
@@ -58,7 +59,11 @@ async function createRequest(
     docSha256,
   });
   await audit(ctx, { actorType: "admin", actorId, clientId: doc.clientId, action: "signature.requested", resourceType: "signatureRequest", resourceId: id });
-  await ctx.scheduler.runAfter(0, internal.signActions.notifyRequested, { requestId: id });
+  await notify(ctx, "signature_requested", {
+    clientId: doc.clientId,
+    data: { title: doc.title, until: formatDateIt(now + SIGN_TTL_MS) },
+    dedupeSubject: id,
+  });
   return id;
 }
 
@@ -225,22 +230,10 @@ export const finish = internalMutation({
       signedSha256: args.signedSha256,
     });
     await audit(ctx, { actorType: "client", clientId: r.clientId, action: "signature.signed", resourceType: "signatureRequest", resourceId: r._id, metadata: { consent: args.consentVersion } });
+    const client = await ctx.db.get("clients", r.clientId);
+    const data = { title: args.title, name: args.signedName, client: client?.displayName ?? "Cliente" };
+    await notify(ctx, "signature_signed_client", { clientId: r.clientId, data, attachmentStorageId: args.storageId, attachmentName: "documento-firmato.pdf", dedupeSubject: r._id });
+    await notify(ctx, "signature_signed_admin", { clientId: r.clientId, data, ctaPath: `/admin/clients/${r.clientId}`, attachmentStorageId: args.storageId, attachmentName: "documento-firmato.pdf", dedupeSubject: r._id });
     return { signedDocumentId, clientId: r.clientId };
-  },
-});
-
-/** Dati per le email (richiesta e conferma): niente segreti. */
-export const emailData = internalMutation({
-  args: { requestId: v.id("signatureRequests") },
-  handler: async (ctx, args) => {
-    const r = await ctx.db.get("signatureRequests", args.requestId);
-    if (!r) return null;
-    const [doc, signed, client] = await Promise.all([
-      ctx.db.get("documents", r.documentId),
-      r.signedDocumentId ? ctx.db.get("documents", r.signedDocumentId) : Promise.resolve(null),
-      ctx.db.get("clients", r.clientId),
-    ]);
-    if (!doc || !client) return null;
-    return { title: doc.title, clientName: client.displayName, email: r.signerEmail, expiresAt: r.expiresAt, signedStorageId: signed?.storageId ?? null, signedName: r.signedName ?? null };
   },
 });

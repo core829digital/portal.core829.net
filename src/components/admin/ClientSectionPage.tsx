@@ -7,6 +7,7 @@ import { AccessLinksPanel } from "@/components/admin/AccessLinksPanel";
 import { DraftsList } from "@/components/admin/docs/DraftsList";
 import { ClientOverview } from "@/components/admin/ClientOverview";
 import { DocumentsPanel } from "@/components/admin/DocumentsPanel";
+import { NotificationsLog } from "@/components/admin/NotificationsPage";
 import { InvoicesPanel } from "@/components/admin/InvoicesPanel";
 import { PageBuilder } from "@/components/admin/PageBuilder";
 import { ReportsPanel } from "@/components/admin/ReportsPanel";
@@ -16,7 +17,7 @@ import { PageHeader } from "@/components/dash/DashShell";
 import { Skeleton } from "@/components/ui/skeleton";
 import { clientStatusLabel } from "@/lib/labels";
 
-export type ClientSection = "overview" | "projects" | "invoices" | "subscriptions" | "documents" | "contracts" | "reports" | "page" | "links";
+export type ClientSection = "overview" | "projects" | "invoices" | "subscriptions" | "documents" | "contracts" | "reports" | "page" | "links" | "notifications";
 
 const SECTION_TITLE: Record<ClientSection, string> = {
   overview: "Scheda cliente",
@@ -28,6 +29,7 @@ const SECTION_TITLE: Record<ClientSection, string> = {
   reports: "Report mensili",
   page: "Pagina cliente",
   links: "Link di accesso",
+  notifications: "Email inviate",
 };
 
 /** Una sezione di un cliente, come pagina a se' (nel menu laterale, non in una scheda). */
@@ -58,6 +60,7 @@ export function ClientSectionPage({ clientId, section, appUrl }: { clientId: Id<
         {section === "contracts" ? <DraftsList clientId={clientId} /> : null}
         {section === "reports" ? <ReportsPanel clientId={clientId} /> : null}
         {section === "page" ? <PageBuilder clientId={clientId} /> : null}
+        {section === "notifications" ? <NotificationsLog clientId={clientId} /> : null}
         {section === "links" ? <AccessLinksPanel clientId={clientId} appUrl={appUrl} /> : null}
       </div>
     </>

@@ -1,6 +1,8 @@
 import { internal } from "./_generated/api";
 import { internalMutation } from "./_generated/server";
 import { audit } from "./lib/audit";
+import { notify } from "./lib/notify";
+import { formatDateIt, formatEuroIt } from "./lib/reminders";
 
 const BATCH = 100;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -77,6 +79,13 @@ export const markOverdueInvoices = internalMutation({
         resourceType: "invoice",
         resourceId: invoice._id,
       });
+      if (invoice.visibleToClient) {
+        await notify(ctx, "invoice_overdue", {
+          clientId: invoice.clientId,
+          data: { number: invoice.number, amount: formatEuroIt(invoice.amountCents), due: formatDateIt(invoice.dueAt) },
+          dedupeSubject: invoice._id,
+        });
+      }
     }
     if (due.length === BATCH) await ctx.scheduler.runAfter(0, internal.maintenance.markOverdueInvoices, {});
     return { processed: due.length };

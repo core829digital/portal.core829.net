@@ -5,6 +5,7 @@ import { useQuery } from "convex/react";
 import {
   Activity,
   BarChart3,
+  Bell,
   CreditCard,
   FilePen,
   FileStack,
@@ -69,6 +70,7 @@ function Frame({ children }: { children: ReactNode }) {
         { href: `${base}/reports`, label: "Report mensili", icon: BarChart3 },
         { href: `${base}/page`, label: "Pagina cliente", icon: LayoutTemplate },
         { href: `${base}/links`, label: "Link di accesso", icon: Link2 },
+        { href: `${base}/notifications`, label: "Email inviate", icon: Bell },
       ],
     });
   }
@@ -107,7 +109,10 @@ function Frame({ children }: { children: ReactNode }) {
     {
       id: "sistema",
       label: "Sistema",
-      items: [{ href: "/admin/activity", label: "Registro attività", icon: Activity }],
+      items: [
+        { href: "/admin/notifications", label: "Centro notifiche", icon: Bell },
+        { href: "/admin/activity", label: "Registro attività", icon: Activity },
+      ],
     },
   );
 

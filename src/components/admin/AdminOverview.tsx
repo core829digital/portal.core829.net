@@ -48,11 +48,12 @@ export function AdminOverview() {
         description="Incassi, scadenze e ricavi ricorrenti di tutti i clienti. Gli importi sono quelli registrati nel portale."
       />
 
-      <KpiGrid label="Indicatori principali">
-        <Kpi index={0} tone="accent" icon={Wallet} label={`Incassato ${year}`} value={<CountUp value={kpis.collectedYearCents} format={money} />} hint={`${money(kpis.collectedTotalCents)} in totale`} />
-        <Kpi index={1} icon={TrendingUp} label="Incassato nel mese" value={<CountUp value={kpis.collectedThisMonthCents} format={money} />} delta={monthDelta} hint={monthDelta === null ? "nessun confronto" : "vs mese scorso"} />
-        <Kpi index={2} icon={CircleDollarSign} label="Da incassare" value={<CountUp value={kpis.outstandingCents} format={money} />} hint="fatture inviate e scadute" />
+      <KpiGrid label="Indicatori principali" oneRow={8}>
+        <Kpi size="hero" index={0} tone="accent" icon={Wallet} label={`Incassato ${year}`} value={<CountUp value={kpis.collectedYearCents} format={money} />} hint={`${money(kpis.collectedTotalCents)} in totale`} />
+        <Kpi size="compact" index={1} icon={TrendingUp} label="Incassato nel mese" value={<CountUp value={kpis.collectedThisMonthCents} format={money} />} delta={monthDelta} hint={monthDelta === null ? "nessun confronto" : "vs mese scorso"} />
+        <Kpi size="compact" index={2} icon={CircleDollarSign} label="Da incassare" value={<CountUp value={kpis.outstandingCents} format={money} />} hint="fatture inviate e scadute" />
         <Kpi
+          size="compact"
           index={3}
           tone={kpis.overdueCount > 0 ? "warn" : "default"}
           icon={TriangleAlert}
@@ -60,10 +61,10 @@ export function AdminOverview() {
           value={<CountUp value={kpis.overdueCents} format={money} />}
           hint={kpis.overdueCount === 0 ? "nessuna fattura scaduta" : `${kpis.overdueCount} ${kpis.overdueCount === 1 ? "fattura" : "fatture"}`}
         />
-        <Kpi index={4} icon={Repeat} label="Ricavi ricorrenti (MRR)" value={<CountUp value={kpis.mrrCents} format={money} />} hint={`${money(kpis.arrCents)} all'anno`} />
-        <Kpi index={5} icon={CalendarClock} label="Rinnovi a 30 giorni" value={<CountUp value={kpis.renewals30dCount} format={(n) => String(n)} />} hint={kpis.renewals30dCount === 0 ? "nessun rinnovo" : `${money(kpis.renewals30dCents)} previsti`} />
-        <Kpi index={6} icon={Users} label="Clienti attivi" value={<CountUp value={kpis.activeClients} format={(n) => String(n)} />} hint={`su ${kpis.totalClients} totali`} />
-        <Kpi index={7} icon={FolderKanban} label="Progetti in corso" value={<CountUp value={kpis.openProjects} format={(n) => String(n)} />} hint={`${kpis.completedProjects} completati`} />
+        <Kpi size="compact" index={4} icon={Repeat} label="Ricavi ricorrenti (MRR)" value={<CountUp value={kpis.mrrCents} format={money} />} hint={`${money(kpis.arrCents)} all'anno`} />
+        <Kpi size="compact" index={5} icon={CalendarClock} label="Rinnovi a 30 giorni" value={<CountUp value={kpis.renewals30dCount} format={(n) => String(n)} />} hint={kpis.renewals30dCount === 0 ? "nessun rinnovo" : `${money(kpis.renewals30dCents)} previsti`} />
+        <Kpi size="compact" index={6} icon={Users} label="Clienti attivi" value={<CountUp value={kpis.activeClients} format={(n) => String(n)} />} hint={`su ${kpis.totalClients} totali`} />
+        <Kpi size="compact" index={7} icon={FolderKanban} label="Progetti in corso" value={<CountUp value={kpis.openProjects} format={(n) => String(n)} />} hint={`${kpis.completedProjects} completati`} />
       </KpiGrid>
 
       <div className="grid gap-4 lg:grid-cols-3">

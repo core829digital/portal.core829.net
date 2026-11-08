@@ -68,6 +68,7 @@ export function ClientOverview({ client }: { client: Doc<"clients"> }) {
         website: nullable(form, "website"),
         status,
         packageType,
+        notifyEmail: form.get("notifyEmail") === "on",
         welcomeMessage: nullable(form, "welcomeMessage"),
         internalNotes: nullable(form, "internalNotes"),
       });
@@ -105,6 +106,7 @@ export function ClientOverview({ client }: { client: Doc<"clients"> }) {
               <Badge variant={client.status === "active" ? "default" : "secondary"}>{clientStatusLabel[client.status]}</Badge>
             </dd>
           </div>
+          <Row label="Email automatiche" value={client.notifyEmail === false ? "Disattivate" : "Attive"} />
           <Row label="Cliente dal" value={formatDate(client._creationTime)} />
           <Row label="Messaggio di benvenuto" value={client.welcomeMessage} />
           <Row label="Note interne (private)" value={client.internalNotes} />
@@ -151,6 +153,13 @@ export function ClientOverview({ client }: { client: Doc<"clients"> }) {
                 </NativeSelect>
               </Field>
             </div>
+            <label className="flex items-start gap-3 text-sm">
+              <input type="checkbox" name="notifyEmail" defaultChecked={client.notifyEmail !== false} className="mt-1 size-4 accent-primary" />
+              <span>
+                <span className="font-medium">Invia a questo cliente le email automatiche</span>
+                <span className="block text-muted-foreground">Fatture, documenti, report, richieste di firma. Le risposte alle sue richieste partono comunque a mano.</span>
+              </span>
+            </label>
             <Field id="welcomeMessage" label="Messaggio di benvenuto" hint="Visibile al cliente.">
               <Textarea id="welcomeMessage" name="welcomeMessage" defaultValue={client.welcomeMessage ?? ""} maxLength={1000} rows={3} />
             </Field>
