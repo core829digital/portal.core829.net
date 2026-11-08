@@ -97,6 +97,37 @@ test("la scheda introduttiva si chiude e resta chiusa", async ({ page }) => {
   await expect(page.getByText("Come funziona questo spazio")).toHaveCount(0);
 });
 
+// ---- Menu a tendina in stile core829.net ----
+
+test("portale cliente: il menu «Contatta CORE829» si apre, si naviga da tastiera e si chiude con Esc", async ({ page }) => {
+  await page.goto("/c/fixture");
+  const trigger = page.getByRole("button", { name: /Contatta CORE829/ }).first();
+  await expect(trigger).toHaveAttribute("aria-haspopup", "menu");
+  await trigger.click();
+  const menu = page.getByRole("menu");
+  await expect(menu).toBeVisible();
+  await expect(menu.getByRole("menuitem")).toHaveCount(3);
+  await expect(menu.getByRole("menuitem", { name: /Scrivici/ })).toHaveAttribute("href", "mailto:hello@core829.net");
+  await expect(menu.getByRole("menuitem", { name: /Chiamaci/ })).toHaveAttribute("href", /^tel:\+39/);
+  const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
+  expect(results.violations.map((v) => `${v.id}: ${v.help}`)).toEqual([]);
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Escape");
+  await expect(menu).toBeHidden();
+  await expect(trigger).toBeFocused();
+});
+
+test("pagina d'accesso: capsula in vetro con menu dei contatti, senza violazioni WCAG e senza scorrimento orizzontale", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: /Contattaci/ }).click();
+  const menu = page.getByRole("menu");
+  await expect(menu.getByRole("menuitem", { name: /Compila il modulo/ })).toHaveAttribute("href", "https://core829.net/it/contatti");
+  await page.keyboard.press("Escape");
+  const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
+  expect(results.violations.map((v) => `${v.id}: ${v.help} (${v.nodes.length})`)).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBe(false);
+});
+
 // ---- Menu a gruppi comprimibili ----
 
 test("menu a gruppi: si apre e si chiude, ricorda la scelta, il gruppo della pagina corrente resta aperto", async ({ page, isMobile }) => {

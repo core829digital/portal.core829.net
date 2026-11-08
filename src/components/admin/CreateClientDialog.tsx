@@ -2,7 +2,7 @@
 
 import { useMutation } from "convex/react";
 import { Plus } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { toast } from "@/lib/toast";
 import { api } from "@convex/_generated/api";
@@ -28,7 +28,8 @@ function optional(form: FormData, name: string): string | undefined {
 export function CreateClientDialog() {
   const router = useRouter();
   const createClient = useMutation(api.clients.create);
-  const [open, setOpen] = useState(false);
+  // Aperto da «Crea → Nuovo cliente» (barra in alto): /admin/clients?nuovo=1
+  const [open, setOpen] = useState(useSearchParams().get("nuovo") === "1");
   const [pending, setPending] = useState(false);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {

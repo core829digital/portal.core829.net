@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import type { Widget } from "@convex/lib/widgets";
 import { DashShell, type NavGroup } from "@/components/dash/DashShell";
 import { PortalContextProvider } from "@/components/portal/PortalContext";
+import { PortalToolbar } from "@/components/portal/PortalToolbar";
 import type { PortalData } from "@/components/portal/PortalPage";
 
 /** Quali pagine mostrare nel menu: solo quelle i cui blocchi sono attivi per questo cliente (scelta dell'amministratore). */
@@ -37,6 +38,7 @@ export function PortalChrome({ data, token, base, children }: { data: PortalData
       <DashShell
         groups={groups}
         kicker="Il tuo spazio"
+        toolbar={<PortalToolbar />}
         footer={
           <div className="space-y-1 px-3 text-xs text-muted-foreground">
             <p className="truncate font-medium text-foreground">{data.client.displayName}</p>

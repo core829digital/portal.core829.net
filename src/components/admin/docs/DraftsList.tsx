@@ -3,6 +3,7 @@
 import { useMutation, useQuery } from "convex/react";
 import { FilePlus2, Trash2 } from "lucide-react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
@@ -21,7 +22,8 @@ import { docCategoryLabel } from "@/lib/labels";
 /** Elenco delle bozze e dei documenti inviati. Con `clientId` mostra solo quelli di un cliente. */
 export function DraftsList({ clientId }: { clientId?: Id<"clients"> }) {
   const drafts = useQuery(api.docStudio.listDrafts, clientId ? { clientId } : {});
-  const [creating, setCreating] = useState(false);
+  // Aperto da «Crea → Nuovo documento» (barra in alto): /admin/drafts?nuovo=1
+  const [creating, setCreating] = useState(useSearchParams().get("nuovo") === "1" && !clientId);
   const deleteDraft = useMutation(api.docStudio.deleteDraft);
   const [toDelete, setToDelete] = useState<{ id: Id<"docDrafts">; name: string } | null>(null);
 

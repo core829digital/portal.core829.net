@@ -270,3 +270,129 @@ html {
 html[data-onboarding-seen] [data-onboarding] {
   display: none;
 }
+
+/* ---------------------------------------------------------------------------------------------
+   Materiali "vetro" di core829.net (stesso aspetto del sito): barra a capsula, pannelli dei menu a tendina e pulsanti lucidi.
+   Valori identici a core829.net-new/app/globals.css, cosi' sito e portale sembrano un unico prodotto.
+   --------------------------------------------------------------------------------------------- */
+.glass-bar {
+  background-color: rgb(255 255 255 / 0.72);
+  background-image: linear-gradient(180deg, rgb(255 255 255 / 0.55), rgb(255 255 255 / 0) 70%);
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+  backdrop-filter: blur(22px) saturate(180%);
+  border: 1px solid rgb(255 255 255 / 0.6);
+  box-shadow: 0 0 0 1px rgb(10 10 10 / 0.06), inset 0 1px 0 rgb(255 255 255 / 0.85), 0 12px 32px -14px rgb(10 10 10 / 0.4);
+}
+.glass-panel {
+  background-color: rgb(255 255 255 / 0.95);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgb(255 255 255 / 0.7);
+  box-shadow: 0 0 0 1px rgb(10 10 10 / 0.07), inset 0 1px 0 rgb(255 255 255 / 0.9), 0 18px 40px -16px rgb(10 10 10 / 0.45);
+}
+.dark .glass-bar,
+.dark .glass-panel {
+  background-color: rgb(28 28 30 / 0.78);
+  background-image: none;
+  border-color: rgb(255 255 255 / 0.12);
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.06), 0 18px 40px -16px rgb(0 0 0 / 0.7);
+}
+
+.btn-glass {
+  border: 1px solid var(--btn-border, transparent);
+  background-color: var(--btn-bg);
+  background-image: var(--btn-sheen, none);
+  color: var(--btn-fg);
+  box-shadow: var(--btn-shadow, none);
+  -webkit-backdrop-filter: blur(16px) saturate(170%);
+  backdrop-filter: blur(16px) saturate(170%);
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
+}
+.btn-glass:hover,
+.btn-glass[aria-expanded="true"] {
+  background-color: var(--btn-bg-hover);
+  color: var(--btn-fg-hover, var(--btn-fg));
+}
+.btn-glass:active {
+  background-color: var(--btn-bg-active);
+}
+.btn-glass-primary {
+  --btn-bg: rgb(221 26 43 / 0.95);
+  --btn-bg-hover: rgb(196 18 31 / 0.98);
+  --btn-bg-active: rgb(160 12 24);
+  --btn-fg: #fff;
+  --btn-border: rgb(255 255 255 / 0.38);
+  --btn-sheen: linear-gradient(180deg, rgb(255 255 255 / 0.3), rgb(255 255 255 / 0) 60%);
+  --btn-shadow: inset 0 1px 0 rgb(255 255 255 / 0.45), 0 8px 20px -8px rgb(221 26 43 / 0.55);
+}
+.btn-glass-secondary {
+  --btn-bg: rgb(255 255 255 / 0.62);
+  --btn-bg-hover: rgb(255 255 255 / 0.92);
+  --btn-bg-active: rgb(232 232 232 / 0.96);
+  --btn-fg: var(--foreground);
+  --btn-fg-hover: var(--brand-deep, #b3121f);
+  --btn-border: rgb(255 255 255 / 0.7);
+  --btn-sheen: linear-gradient(180deg, rgb(255 255 255 / 0.7), rgb(255 255 255 / 0) 60%);
+  --btn-shadow: 0 0 0 1px rgb(10 10 10 / 0.09), inset 0 1px 0 rgb(255 255 255 / 0.9), 0 6px 18px -10px rgb(10 10 10 / 0.35);
+}
+.dark .btn-glass-secondary {
+  --btn-bg: rgb(255 255 255 / 0.08);
+  --btn-bg-hover: rgb(255 255 255 / 0.16);
+  --btn-bg-active: rgb(255 255 255 / 0.22);
+  --btn-border: rgb(255 255 255 / 0.16);
+  --btn-sheen: none;
+  --btn-shadow: 0 6px 18px -10px rgb(0 0 0 / 0.6);
+}
+
+/* Menu a tendina: apertura morbida (opacita' + scala), come sul sito. */
+.menu-popup {
+  transform-origin: var(--transform-origin, top);
+  transition: opacity 0.16s ease, transform 0.2s var(--ease-out-expo);
+}
+.menu-popup[data-starting-style],
+.menu-popup[data-ending-style] {
+  opacity: 0;
+  transform: scale(0.96) translateY(-4px);
+}
+
+/* Accessibilita': come sul sito, senza sfocature se l'utente le riduce o chiede piu' contrasto. */
+@media (prefers-reduced-transparency: reduce) {
+  .glass-bar,
+  .glass-panel,
+  .btn-glass {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .glass-bar,
+  .glass-panel {
+    background-color: #fff;
+    background-image: none;
+  }
+  .btn-glass-secondary {
+    --btn-bg: #fff;
+    --btn-bg-hover: #f2f2f2;
+    --btn-sheen: none;
+  }
+}
+@media (prefers-contrast: more) {
+  .glass-bar {
+    background-color: #fff;
+    border-color: currentColor;
+  }
+  .btn-glass {
+    --btn-border: currentColor;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .menu-popup {
+    transition: none;
+  }
+}
+@media (forced-colors: active) {
+  .glass-bar,
+  .glass-panel,
+  .btn-glass {
+    border: 1px solid ButtonText;
+    forced-color-adjust: auto;
+  }
+}

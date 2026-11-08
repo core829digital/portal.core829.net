@@ -34,6 +34,7 @@ import type { Id } from "@convex/_generated/dataModel";
 import { AdminGate } from "@/components/admin/AdminGate";
 import { ErrorBoundary } from "@/components/portal/ErrorBoundary";
 import { errorCode } from "@/lib/errors";
+import { AdminToolbar } from "@/components/admin/AdminToolbar";
 import { DashShell, type NavGroup } from "@/components/dash/DashShell";
 import { Button } from "@/components/ui/button";
 
@@ -118,6 +119,13 @@ function Frame({ children }: { children: ReactNode }) {
     <DashShell
       groups={groups}
       kicker="Area amministrazione"
+      toolbar={
+        <AdminToolbar
+          onSignOut={() => {
+            void signOut().then(() => router.replace("/admin/login"));
+          }}
+        />
+      }
       footer={
         <Button
           variant="ghost"

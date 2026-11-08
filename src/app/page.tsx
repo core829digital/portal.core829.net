@@ -2,6 +2,7 @@ import { ArrowUpRight, KeyRound, Sparkles } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { CompanyDetails } from "@/components/brand/CompanyDetails";
+import { LandingNav } from "@/components/brand/LandingNav";
 import { ContactCtas } from "@/components/brand/ContactCtas";
 import NeuralNoise from "@/components/brand/NeuralNoise";
 import { COMPANY } from "@/lib/company";
@@ -18,23 +19,12 @@ export default function Home() {
       {/* Velo scuro leggero in basso: tiene leggibili i testi sopra lo sfondo animato. */}
       <div aria-hidden className="pointer-events-none absolute inset-0 -z-0 bg-gradient-to-b from-transparent via-transparent to-ink/80" />
 
-      <header className="relative z-10 mx-auto flex w-full max-w-6xl items-center justify-between px-5 py-6 sm:px-8">
-        <a href={SITE_URL} aria-label="CORE829, vai al sito" className="fade-in">
-          <Image src="/brand/core829-logo-white.webp" alt="CORE829" width={120} height={82} priority unoptimized className="h-10 w-auto" />
-        </a>
-        <a
-          href={SITE_URL}
-          className="fade-in inline-flex items-center gap-1.5 rounded-full px-3 py-2 font-mono text-[11px] uppercase tracking-[0.14em] text-on-ink-muted transition-colors hover:text-on-ink"
-          style={{ "--i": 1 } as React.CSSProperties}
-        >
-          core829.net <ArrowUpRight aria-hidden className="size-3.5" />
-        </a>
-      </header>
+      <LandingNav />
 
-      <main className="relative z-10 mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center gap-10 px-5 py-10 sm:px-8 lg:py-16">
+      <main className="relative z-10 mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center gap-10 px-5 pb-10 pt-28 sm:px-8 lg:pb-16">
         <div className="max-w-3xl">
           <p
-            className="reveal mb-6 inline-flex items-center gap-2 border border-white/20 bg-white/5 px-4 py-1.5 font-mono text-[11px] uppercase tracking-[0.18em] text-white/80 backdrop-blur-sm"
+            className="reveal mb-6 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-4 py-1.5 font-mono text-[11px] uppercase tracking-[0.18em] text-white/80 backdrop-blur-sm"
             style={{ "--i": 1 } as React.CSSProperties}
           >
             <span aria-hidden className="size-1.5 rounded-full bg-primary" />

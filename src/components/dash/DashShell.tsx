@@ -53,11 +53,14 @@ export function DashShell({
   groups,
   kicker,
   footer,
+  toolbar,
   children,
 }: {
   groups: NavGroup[];
   kicker: string;
   footer?: ReactNode;
+  /** Barra a capsula "vetro" in alto a destra (menu a tendina: crea, account, contatti...). */
+  toolbar?: ReactNode;
   children: ReactNode;
 }) {
   const pathname = usePathname();
@@ -97,20 +100,23 @@ export function DashShell({
       </a>
 
       {/* Barra superiore (telefono e tablet) */}
-      <div className="sticky top-0 z-40 flex h-14 items-center justify-between gap-3 border-b bg-background/90 px-4 backdrop-blur lg:hidden">
+      <div className="glass-bar sticky top-2 z-40 mx-3 mt-2 flex h-14 items-center justify-between gap-2 rounded-full pl-4 pr-1.5 lg:hidden">
         <Link href={groups[0]?.items[0]?.href ?? "/"}>
           <Image src="/brand/core829-logo.webp" alt="CORE829" width={96} height={26} priority unoptimized className="h-6 w-auto" />
         </Link>
+        <div className="flex items-center gap-1">
+          {toolbar}
         <button
           type="button"
           onClick={() => setOpen(true)}
           aria-expanded={open}
           aria-controls="menu-laterale"
-          className="inline-flex size-10 items-center justify-center rounded-full ring-1 ring-foreground/10 transition-colors hover:bg-muted"
+          className="inline-flex size-10 items-center justify-center rounded-full ring-1 ring-foreground/10 transition-colors hover:bg-foreground/[0.06]"
         >
           <Menu aria-hidden className="size-5" />
           <span className="sr-only">Apri il menu</span>
         </button>
+        </div>
       </div>
 
       {open ? <div aria-hidden className="fade-in fixed inset-0 z-40 bg-foreground/40 lg:hidden" onClick={() => setOpen(false)} /> : null}
@@ -198,7 +204,12 @@ export function DashShell({
         {footer ? <div className="border-t pt-4">{footer}</div> : null}
       </aside>
 
-      <main id="contenuto" className="min-w-0 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+      <main id="contenuto" className="min-w-0 px-4 py-6 sm:px-6 lg:px-8 lg:py-6">
+        {toolbar ? (
+          <div className="pointer-events-none sticky top-3 z-30 mx-auto mb-4 hidden w-full max-w-6xl justify-end lg:flex">
+            <div className="glass-bar pointer-events-auto flex items-center gap-1 rounded-full p-1.5">{toolbar}</div>
+          </div>
+        ) : null}
         <div className="mx-auto w-full max-w-6xl space-y-6">{children}</div>
       </main>
     </div>
