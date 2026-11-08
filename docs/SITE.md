@@ -1,32 +1,26 @@
-# Backoffice di Andromedia Web dentro il portale
+# Backoffice del sito core829.net
 
-Dal menu **Sito Andromedia Web** dell'area admin gestisci il sito andromediaweb.it senza usare il suo vecchio `/admin`:
-panoramica (visite, clic, pagine più viste), **Blog**, **Portfolio**, **Messaggi** del modulo contatti, **Contenuti** (dati generali, pagina iniziale, FAQ), **SEO** per pagina, **Sicurezza e registro**.
+Dal menu **Sito core829.net** dell'area admin gestisci il sito pubblico (repo `core829.net-new`):
 
-## Come funziona (il «ponte»)
+| Pagina | Cosa fa |
+|---|---|
+| **Panoramica** | richieste da gestire, visite (con consenso analytics), SEO personalizzate, avviso attivo |
+| **Richieste dal sito** | i messaggi del modulo contatti; rispondi, segna come gestita/spam, **crea il cliente** con un clic (note comprese), elimina |
+| **SEO** | titolo, descrizione e «nascondi ai motori» per ogni pagina e lingua (24); «Tutte le lingue» vale dove manca il testo |
+| **Avviso in testata** | una riga in cima a tutte le pagine (chiusure, novità) |
 
-I dati restano nel database del sito (un altro deployment Convex): il sito pubblico continua a funzionare senza modifiche.
-Il portale parla con quel database **dal server** (mai dal browser):
+(Il backoffice nasce dall'idea di quello di Andromedia Web, ma è pensato per core829.net. Andromedia Web è un cliente come gli altri: nessun collegamento al suo database.)
 
-1. entri nel portale come amministratore (codice via email);
-2. ogni azione del backoffice controlla *per prima cosa* che tu sia amministratore;
-3. poi chiama il database del sito con la **firma** (SHA-256 del segreto condiviso) che il sito già richiede per ogni scrittura;
-4. ogni modifica finisce nel registro del sito e nel registro attività del portale.
+## Come comunicano sito e portale
+- **Sito → portale (firmato):** il server del sito invia al portale i messaggi (`POST /site/contact`) e le visite (`POST /site/event`) con firma HMAC «Standard Webhooks» (stessa del collegamento B2B): senza firma valida, risposta generica 401. Il visitatore non parla mai con il portale.
+- **Portale → sito (pubblico, sola lettura):** `GET /site/config` restituisce SEO e avviso, solo testi pensati per il sito. Il sito li legge dal server e li tiene in cache 5 minuti.
+- Se il portale non risponde il sito **non si rompe**: usa i testi predefiniti, e il modulo contatti continua a inviare l'email come prima (il portale è una copia in più).
 
 ## Collegamento (una volta sola)
+1. Genera un segreto: `openssl rand -base64 32`; il segreto è `whsec_` + quel valore.
+2. **Convex del portale** (produzione): `SITE_BRIDGE_SECRET` = `whsec_…`.
+3. **Vercel del sito** (Production): `PORTAL_SITE_URL` = indirizzo Convex HTTP del portale (`https://<deployment>.convex.site`), `SITE_BRIDGE_SECRET` = lo stesso `whsec_…`. Redeploy.
 
-Su **Convex del portale** (dashboard → produzione → Settings → Environment Variables):
-
-| Variabile | Valore |
-|---|---|
-| `AW_CONVEX_URL` | indirizzo del Convex di Andromedia Web, `https://….convex.cloud` (lo trovi nel `.env.local` del sito: `NEXT_PUBLIC_CONVEX_URL`) |
-| `AW_CONVEX_GUARD` | **lo stesso segreto** che il sito ha come `AW_CONVEX_GUARD` (nel suo `.env.local` e su Vercel). Il sito, su Convex, ha `AW_GUARD_DIGEST` = SHA-256 di quel segreto: non va cambiato |
-
-Se mancano o non coincidono, le pagine mostrano un messaggio che dice cosa controllare («firma rifiutata» = i due segreti sono diversi).
-
-## Cose da sapere
-
-- **Il vecchio `/admin` del sito resta attivo** finché non lo spegni; conviene toglierlo (e le sue credenziali predefinite in `src/lib/admin-credentials.ts`) quando passi al portale.
-- **Messaggi e articoli sono leggibili da chiunque conosca l'indirizzo Convex del sito** (le funzioni `messages:list`, `posts:list` non hanno controlli): i messaggi contengono nomi ed email dei visitatori. Consiglio: nel repository del sito proteggere `messages:list` con la stessa guardia (o spostarla in una funzione interna) e leggerla solo dal ponte.
-- Le immagini di copertina e del portfolio si caricano nell'archivio del sito tramite un indirizzo temporaneo generato dal ponte.
-- Le statistiche (visite/clic) le registra il sito con il suo tracker: qui si leggono e si possono pulire quelle oltre 90 giorni.
+## Privacy
+- Le **visite** sono solo contatori giornalieri per pagina e lingua: nessun IP, nessun identificativo. Il sito li invia **solo se il visitatore ha accettato i cookie analitici**. Fate verificare la dicitura nella privacy policy.
+- Le **richieste dal modulo contatti** contengono dati personali: eliminarle quando non servono più (pulsante «Elimina»).

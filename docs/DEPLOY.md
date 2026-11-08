@@ -80,6 +80,10 @@ Da fare **dopo** i passi di `docs/SETUP.md` (chiavi Convex Auth, variabili, prim
 3. Completa la scheda dei clienti (sede, P. IVA, PEC, rappresentante legale): più dati hai, più documenti escono già compilati.
 4. Clienti → Report mensili: vedi `docs/REPORTS.md`.
 
-## 10. Backoffice del sito Andromedia Web
+## 10. Backoffice del sito core829.net
 
-Imposta su Convex (produzione) del portale `AW_CONVEX_URL` e `AW_CONVEX_GUARD` come descritto in `docs/SITE.md`, poi apri *Sito Andromedia Web → Panoramica* nell'area admin: se vedi i numeri, il ponte funziona.
+Imposta `SITE_BRIDGE_SECRET` su Convex del portale e sul sito come descritto in `docs/SITE.md`, poi apri *Sito core829.net → Panoramica*.
+
+## 11. Firma elettronica dei clienti
+
+Vedi `docs/FIRMA.md` (valore legale incluso). Nessuna configurazione in più: usa Resend già impostato.

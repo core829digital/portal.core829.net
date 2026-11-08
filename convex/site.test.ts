@@ -1,40 +1,36 @@
 /// <reference types="vite/client" />
-import { createHash } from "node:crypto";
 import { convexTest } from "convex-test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
+import { cleanAnnouncement, parseTrackedPath } from "./lib/siteConfig";
 import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
+const SECRET = "whsec_" + btoa("0123456789abcdef0123456789abcdef");
+const NOW = Date.UTC(2026, 10, 15, 10, 0, 0);
+
+async function sign(id: string, ts: number, body: string, secret = SECRET): Promise<string> {
+  const key = await crypto.subtle.importKey("raw", Uint8Array.from(atob(secret.slice(6)), (c) => c.charCodeAt(0)), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const mac = new Uint8Array(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`${id}.${ts}.${body}`)));
+  return "v1," + btoa(String.fromCharCode(...mac));
+}
+async function post(t: ReturnType<typeof convexTest>, path: string, payload: unknown, opts: { id?: string; secret?: string; ts?: number; raw?: string } = {}) {
+  const body = opts.raw ?? JSON.stringify(payload);
+  const id = opts.id ?? `evt_${Math.random().toString(36).slice(2)}`;
+  const ts = opts.ts ?? Math.floor(Date.now() / 1000);
+  return t.fetch(path, { method: "POST", headers: { "webhook-id": id, "webhook-timestamp": String(ts), "webhook-signature": await sign(id, ts, body, opts.secret) }, body });
+}
 const asUser = (t: ReturnType<typeof convexTest>, userId: Id<"users">) =>
   t.withIdentity({ subject: `${userId}|s1`, issuer: "https://test.local", tokenIdentifier: `https://test.local|${userId}|s1` });
-const SECRET = "segreto-condiviso-di-prova";
-const DIGEST = createHash("sha256").update(SECRET).digest("hex");
-
-type Call = { url: string; path: string; args: Record<string, unknown> };
-
-/** Finto server di Andromedia Web: risponde come l'API HTTP di Convex e registra le chiamate. */
-function fakeSite(handlers: Record<string, (args: Record<string, unknown>) => unknown>) {
-  const calls: Call[] = [];
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
-      const url = String(input);
-      const body = JSON.parse(String(init?.body ?? "{}")) as { path: string; args: Record<string, unknown>[] };
-      const args = body.args?.[0] ?? {};
-      calls.push({ url, path: body.path, args });
-      const h = handlers[body.path];
-      if (!h) return new Response(JSON.stringify({ status: "error", errorMessage: `Could not find public function for '${body.path}'` }), { status: 200 });
-      try {
-        return new Response(JSON.stringify({ status: "success", value: h(args) }), { status: 200 });
-      } catch (e) {
-        return new Response(JSON.stringify({ status: "error", errorMessage: `Uncaught Error: ${(e as Error).message}` }), { status: 200 });
-      }
-    }),
-  );
-  return calls;
-}
+const code = async (p: Promise<unknown>) => {
+  try {
+    await p;
+    return "OK";
+  } catch (e) {
+    return (e as { data?: { code?: string } }).data?.code ?? `ERR:${String(e).slice(0, 60)}`;
+  }
+};
 
 async function setup() {
   const t = convexTest(schema, modules);
@@ -43,145 +39,175 @@ async function setup() {
   return { t, admin: asUser(t, await mk("stefan@core829.net")), stranger: asUser(t, await mk("altro@esempio.it")) };
 }
 
-const code = async (p: Promise<unknown>) => {
-  try {
-    await p;
-    return "OK";
-  } catch (e) {
-    return (e as { data?: { code?: string; message?: string } }).data?.code ?? `ERR:${String(e).slice(0, 100)}`;
-  }
-};
+const contact = (extra: Record<string, unknown> = {}) => ({ name: "Anna Verdi", email: "Anna@Azienda.it", company: "Azienda Srl", service: "software", budget: "5-10k", message: "Vorremmo un gestionale.", locale: "it", ...extra });
 
 beforeEach(() => {
-  process.env.AW_CONVEX_URL = "https://andromedia-test-123.convex.cloud";
-  process.env.AW_CONVEX_GUARD = SECRET;
+  process.env.SITE_BRIDGE_SECRET = SECRET;
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(NOW);
 });
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.useRealTimers();
+  delete process.env.SITE_BRIDGE_SECRET;
+});
 
-describe("ponte con il backoffice di Andromedia Web", () => {
-  it("solo l'amministratore: anonimi ed estranei non fanno nessuna chiamata verso il sito", async () => {
-    const h = await setup();
-    const calls = fakeSite({});
-    const run = (c: { action: typeof h.admin.action }) => [
-      c.action(api.siteActions.postsList, {}),
-      c.action(api.siteActions.messagesList, {}),
-      c.action(api.siteActions.postRemove, { id: "x" }),
-      c.action(api.siteActions.settingSet, { key: "global", value: {} }),
-      c.action(api.siteActions.uploadUrl, { kind: "posts" }),
-      c.action(api.siteActions.dashboard, {}),
-    ];
-    for (const p of run(h.t as never)) expect(await code(p)).toBe("UNAUTHENTICATED");
-    for (const p of run(h.stranger as never)) expect(await code(p)).toBe("FORBIDDEN");
-    expect(calls).toHaveLength(0);
+describe("endpoint firmati del sito core829.net", () => {
+  it("il modulo contatti arriva nel portale; lo stesso invio ripetuto non crea doppioni", async () => {
+    const { t } = await setup();
+    const r = await post(t, "/site/contact", contact(), { id: "evt_1" });
+    expect(r.status).toBe(200);
+    expect(await r.json()).toEqual({ ok: true, status: "created" });
+    expect(await (await post(t, "/site/contact", contact(), { id: "evt_1" })).json()).toEqual({ ok: true, status: "duplicate" });
+    const rows = await t.run((ctx) => ctx.db.query("siteMessages").collect());
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ name: "Anna Verdi", email: "anna@azienda.it", company: "Azienda Srl", status: "new", locale: "it" });
   });
 
-  it("le scritture portano la guardia (SHA-256 del segreto), le letture no; il segreto non viaggia mai", async () => {
-    const h = await setup();
-    const calls = fakeSite({
-      "posts:list": () => [{ _id: "p1", title: "Ciao", slug: "ciao", excerpt: "", content: "", status: "draft", createdAt: 1, updatedAt: 1 }],
-      "posts:create": () => "p2",
-    });
-    expect(await h.admin.action(api.siteActions.postsList, {})).toHaveLength(1);
-    await h.admin.action(api.siteActions.postSave, { id: null, title: "Nuovo", slug: "nuovo", excerpt: "e", content: "c", tags: ["a"], status: "draft" });
-    const read = calls.find((c) => c.path === "posts:list")!;
-    const write = calls.find((c) => c.path === "posts:create")!;
-    expect(read.args.guard).toBeUndefined();
-    expect(write.args.guard).toBe(DIGEST);
-    expect(JSON.stringify(calls)).not.toContain(SECRET);
-    expect(write.url.startsWith("https://andromedia-test-123.convex.cloud")).toBe(true);
-    // Tracciato nel registro del portale.
-    const log = await h.t.run((ctx) => ctx.db.query("auditLogs").collect());
-    expect(log.find((l) => l.action === "site.post_created")?.metadata).toMatchObject({ target: "nuovo" });
+  it("rifiuta senza firma, con firma sbagliata, vecchia, corpo troppo grande o dati non validi; non dice quale controllo e' fallito", async () => {
+    const { t } = await setup();
+    expect((await t.fetch("/site/contact", { method: "POST", body: JSON.stringify(contact()) })).status).toBe(401);
+    expect((await post(t, "/site/contact", contact(), { secret: "whsec_" + btoa("altro-segreto-altro-segreto-1234") })).status).toBe(401);
+    expect((await post(t, "/site/contact", contact(), { ts: Math.floor(Date.now() / 1000) - 3600 })).status).toBe(401);
+    expect((await post(t, "/site/contact", contact({ message: "x".repeat(20_000) }))).status).toBe(413);
+    expect((await post(t, "/site/contact", contact({ email: "non-una-email" }))).status).toBe(400);
+    expect((await post(t, "/site/contact", { name: "A" })).status).toBe(400);
+    expect((await post(t, "/site/contact", null, { raw: "[1,2]" })).status).toBe(400);
+    delete process.env.SITE_BRIDGE_SECRET;
+    expect((await post(t, "/site/contact", contact())).status).toBe(503);
+    expect(await t.run((ctx) => ctx.db.query("siteMessages").collect())).toHaveLength(0);
   });
 
-  it("aggiorna, cambia stato ed elimina con gli identificativi giusti", async () => {
-    const h = await setup();
-    const calls = fakeSite({ "posts:update": () => null, "posts:setStatus": () => null, "posts:remove": () => null });
-    await h.admin.action(api.siteActions.postSave, { id: "abc", title: "T", slug: "t", excerpt: "", content: "", tags: [], status: "published" });
-    await h.admin.action(api.siteActions.postSetStatus, { id: "abc", status: "draft" });
-    await h.admin.action(api.siteActions.postRemove, { id: "abc" });
-    expect(calls.map((c) => c.path)).toEqual(["posts:update", "posts:setStatus", "posts:remove"]);
-    expect(calls[0].args).toMatchObject({ id: "abc", status: "published" });
+  it("il testo del messaggio e' conservato come testo (nessun HTML eseguito) e ripulito dai caratteri di controllo", async () => {
+    const { t } = await setup();
+    await post(t, "/site/contact", contact({ message: "Ciao <script>alert(1)</script>\u0000 fine" }));
+    const [m] = await t.run((ctx) => ctx.db.query("siteMessages").collect());
+    expect(m.message).not.toContain("\u0000");
+    expect(m.message).toContain("<script>"); // resta testo: la pagina admin lo mostra sempre con l'escape
   });
 
-  it("non parte nessuna chiamata se i dati sono sbagliati (titolo vuoto, URL non http, chiave non ammessa)", async () => {
-    const h = await setup();
-    const calls = fakeSite({});
-    expect(await code(h.admin.action(api.siteActions.postSave, { id: null, title: "  ", slug: "x", excerpt: "", content: "", tags: [], status: "draft" }))).not.toBe("OK");
-    // eslint-disable-next-line no-script-url -- prova: un indirizzo javascript: deve essere rifiutato
-    expect(await code(h.admin.action(api.siteActions.workCreate, { title: "A", client: "B", url: "javascript:alert(1)", category: "SEO", description: "", featured: false }))).not.toBe("OK");
-    expect(await code(h.admin.action(api.siteActions.workCreate, { title: "", client: "B", url: "", category: "SEO", description: "", featured: false }))).not.toBe("OK");
-    expect(await code(h.admin.action(api.siteActions.settingSet, { key: "admin:password", value: {} }))).not.toBe("OK");
-    expect(await code(h.admin.action(api.siteActions.settingSet, { key: "global", value: { big: "x".repeat(70_000) } }))).not.toBe("OK");
-    expect(calls.filter((c) => c.path !== "")).toHaveLength(0);
+  it("le visite sono solo contatori per giorno, pagina e lingua; percorsi strani sono scartati", async () => {
+    const { t } = await setup();
+    for (const path of ["/it/prezzi", "/it/prezzi", "/en/prezzi", "/it"]) expect((await post(t, "/site/event", { path })).status).toBe(200);
+    for (const bad of ["/xx/prezzi", "https://evil.example", "/it/../../etc", "/it/<script>", "", "x".repeat(200)]) expect((await post(t, "/site/event", { path: bad })).status).toBe(400);
+    const stats = await t.run((ctx) => ctx.db.query("siteStats").collect());
+    expect(stats.map((s) => `${s.locale}${s.path}:${s.views}`).sort()).toEqual(["en/prezzi:1", "it/:1", "it/prezzi:2"]);
+    expect(JSON.stringify(stats)).not.toMatch(/ip|agent|email/i);
+    expect((await t.fetch("/site/event", { method: "POST", body: JSON.stringify({ path: "/it" }) })).status).toBe(401);
   });
 
-  it("rifiuta indirizzi non Convex o non https e segnala configurazione mancante", async () => {
-    const h = await setup();
-    const calls = fakeSite({ "posts:list": () => [] });
-    for (const bad of ["http://andromedia-test-123.convex.cloud", "https://evil.example.com", "https://x.convex.cloud.evil.com", "non-un-url"]) {
-      process.env.AW_CONVEX_URL = bad;
-      expect(await code(h.admin.action(api.siteActions.postsList, {}))).not.toBe("OK");
-    }
-    delete process.env.AW_CONVEX_URL;
-    expect(await code(h.admin.action(api.siteActions.postsList, {}))).not.toBe("OK");
-    process.env.AW_CONVEX_URL = "https://andromedia-test-123.convex.cloud";
-    delete process.env.AW_CONVEX_GUARD;
-    expect(await code(h.admin.action(api.siteActions.postRemove, { id: "x" }))).not.toBe("OK");
-    expect(calls).toHaveLength(0);
+  it("la configurazione pubblica contiene solo SEO e avviso, senza dati di clienti o messaggi", async () => {
+    const { t, admin } = await setup();
+    await post(t, "/site/contact", contact());
+    await admin.mutation(api.site.seoSave, { page: "prezzi", locale: "it", title: "Prezzi chiari", description: "Piani e costi.", noindex: false });
+    await admin.mutation(api.site.announcementSave, { enabled: true, text: "Nuovo servizio AI", href: "/it/ai-per-aziende", cta: "Scopri" });
+    const res = await t.fetch("/site/config", { method: "GET" });
+    expect(res.status).toBe(200);
+    expect(res.headers.get("cache-control")).toMatch(/s-maxage/);
+    const body = await res.json();
+    expect(body).toEqual({ seo: [{ page: "prezzi", locale: "it", title: "Prezzi chiari", description: "Piani e costi.", noindex: false }], announcement: { text: "Nuovo servizio AI", href: "/it/ai-per-aziende", cta: "Scopri" } });
+    expect(JSON.stringify(body)).not.toMatch(/anna|azienda|gestionale/i);
   });
+});
 
-  it("traduce gli errori del sito in messaggi chiari e non scrive nel registro se la scrittura fallisce", async () => {
-    const h = await setup();
-    fakeSite({
-      "posts:create": () => {
-        throw new Error("Operazione non autorizzata: firma di sicurezza mancante o non valida.");
-      },
-      "posts:remove": () => {
-        throw new Error("Slug già esistente");
-      },
-    });
-    const err = async (p: Promise<unknown>) => {
-      try {
-        await p;
-        return "OK";
-      } catch (e) {
-        return (e as { data?: { message?: string } }).data?.message ?? String(e);
-      }
+describe("area amministratore del sito", () => {
+  it("solo l'amministratore legge e scrive", async () => {
+    const { t, admin, stranger } = await setup();
+    await post(t, "/site/contact", contact());
+    const [{ _id }] = await t.run((ctx) => ctx.db.query("siteMessages").collect());
+    const calls: Record<string, (c: typeof admin) => Promise<unknown>> = {
+      overview: (c) => c.query(api.site.overview, {}),
+      messages: (c) => c.query(api.site.messages, {}),
+      setMessageStatus: (c) => c.mutation(api.site.setMessageStatus, { messageId: _id, status: "handled" }),
+      removeMessage: (c) => c.mutation(api.site.removeMessage, { messageId: _id }),
+      messageToClient: (c) => c.mutation(api.site.messageToClient, { messageId: _id }),
+      seoList: (c) => c.query(api.site.seoList, {}),
+      seoSave: (c) => c.mutation(api.site.seoSave, { page: "home", locale: "it", title: "X" }),
+      announcementGet: (c) => c.query(api.site.announcementGet, {}),
+      announcementSave: (c) => c.mutation(api.site.announcementSave, { enabled: false, text: "", href: "", cta: "" }),
     };
-    expect(await err(h.admin.action(api.siteActions.postSave, { id: null, title: "T", slug: "t", excerpt: "", content: "", tags: [], status: "draft" }))).toMatch(/AW_CONVEX_GUARD/);
-    expect(await err(h.admin.action(api.siteActions.postRemove, { id: "x" }))).toBe("Slug già esistente");
-    expect((await h.t.run((ctx) => ctx.db.query("auditLogs").collect())).some((l) => l.action.startsWith("site."))).toBe(false);
+    for (const [name, call] of Object.entries(calls)) {
+      expect(await code(call(t as unknown as typeof admin)), `${name} anonimo`).toBe("UNAUTHENTICATED");
+      expect(await code(call(stranger)), `${name} non admin`).toBe("FORBIDDEN");
+    }
+    expect(await t.run((ctx) => ctx.db.query("siteMessages").collect())).toHaveLength(1);
   });
 
-  it("impostazioni: solo chiavi ammesse, scritte con l'attore del portale; lettura, messaggi e statistiche", async () => {
-    const h = await setup();
-    const calls = fakeSite({
-      "settings:listAll": () => ({ global: { name: "Andromedia" } }),
-      "settings:set": () => ({ ok: true }),
-      "messages:list": () => [{ _id: "m1", name: "A", email: "a@b.it", message: "ciao", source: "web", createdAt: 5 }],
-      "events:summary": () => ({ viewsToday: 1, clicksToday: 0, views7: 5, clicks7: 1, views30: 20, clicks30: 3, ctr30: 15, total: 99 }),
-      "events:timeseries": () => [{ day: "2026-11-01", views: 3, clicks: 1 }],
-      "events:topPaths": () => [{ path: "/", count: 9 }],
-      "events:topLabels": () => [{ label: "cta", count: 2 }],
-      "posts:list": () => [{ _id: "p", status: "published" }, { _id: "q", status: "draft" }],
-      "portfolio:list": () => [{ _id: "w" }],
-    });
-    expect(await h.admin.action(api.siteActions.settingsAll, {})).toEqual({ global: { name: "Andromedia" } });
-    await h.admin.action(api.siteActions.settingSet, { key: "seo:home", value: { title: "Home" } });
-    const set = calls.find((c) => c.path === "settings:set")!;
-    expect(set.args).toMatchObject({ key: "seo:home", guard: DIGEST });
-    expect(String(set.args.actor)).toMatch(/^portale:/);
-    const dash = await h.admin.action(api.siteActions.dashboard, { days: 500 });
-    expect(dash.counts).toEqual({ posts: 2, published: 1, works: 1, messages: 1, lastMessageAt: 5 });
-    expect(calls.find((c) => c.path === "events:timeseries")!.args.days).toBe(90); // limitato
-    expect(dash.summary.total).toBe(99);
+  it("messaggi: filtro per stato, stato gestito, eliminazione registrata", async () => {
+    const { t, admin } = await setup();
+    await post(t, "/site/contact", contact({ name: "Uno Uno" }));
+    await post(t, "/site/contact", contact({ name: "Due Due" }));
+    const all = await admin.query(api.site.messages, {});
+    expect(all).toHaveLength(2);
+    await admin.mutation(api.site.setMessageStatus, { messageId: all[0].id, status: "spam" });
+    expect(await admin.query(api.site.messages, { status: "new" })).toHaveLength(1);
+    expect(await admin.query(api.site.messages, { status: "spam" })).toHaveLength(1);
+    await admin.mutation(api.site.removeMessage, { messageId: all[1].id });
+    expect(await admin.query(api.site.messages, {})).toHaveLength(1);
+    const log = await t.run((ctx) => ctx.db.query("auditLogs").collect());
+    expect(log.map((l) => l.action)).toEqual(expect.arrayContaining(["site.message_received", "site.message_status", "site.message_deleted"]));
   });
 
-  it("l'indirizzo di caricamento deve essere dell'archivio Convex", async () => {
-    const h = await setup();
-    fakeSite({ "posts:generateUploadUrl": () => "https://andromedia-test-123.convex.cloud/api/storage/upload?token=abc", "portfolio:generateUploadUrl": () => "https://evil.example.com/x" });
-    expect(await h.admin.action(api.siteActions.uploadUrl, { kind: "posts" })).toMatch(/^https:\/\/andromedia-test-123\.convex\.cloud\//);
-    expect(await code(h.admin.action(api.siteActions.uploadUrl, { kind: "portfolio" }))).not.toBe("OK");
+  it("dalla richiesta al cliente: crea la scheda con le note, non duplica se l'email esiste gia'", async () => {
+    const { t, admin } = await setup();
+    await post(t, "/site/contact", contact());
+    const [m] = await admin.query(api.site.messages, {});
+    const clientId = await admin.mutation(api.site.messageToClient, { messageId: m.id });
+    const client = (await t.run((ctx) => ctx.db.get("clients", clientId)))!;
+    expect(client).toMatchObject({ displayName: "Azienda Srl", contactName: "Anna Verdi", email: "anna@azienda.it", status: "onboarding" });
+    expect(client.internalNotes).toContain("gestionale");
+    expect(await admin.mutation(api.site.messageToClient, { messageId: m.id })).toBe(clientId); // ripetuto: stesso cliente
+    expect((await admin.query(api.site.messages, {}))[0]).toMatchObject({ status: "handled", clientId });
+    // Altra richiesta con la stessa email: si riusa il cliente esistente.
+    await post(t, "/site/contact", contact({ message: "Seconda richiesta" }));
+    const second = (await admin.query(api.site.messages, { status: "new" }))[0];
+    expect(await admin.mutation(api.site.messageToClient, { messageId: second.id })).toBe(clientId);
+    expect(await t.run((ctx) => ctx.db.query("clients").collect())).toHaveLength(1);
+  });
+
+  it("SEO: salva per pagina e lingua, solo pagine e lingue del sito; tutto vuoto = torna al testo predefinito", async () => {
+    const { t, admin } = await setup();
+    await admin.mutation(api.site.seoSave, { page: "home", locale: "*", title: "CORE829 — software e AI", description: "Descrizione." });
+    await admin.mutation(api.site.seoSave, { page: "home", locale: "en", title: "CORE829 — software and AI" });
+    expect((await admin.query(api.site.seoList, {})).map((s) => `${s.page}/${s.locale}`).sort()).toEqual(["home/*", "home/en"]);
+    for (const bad of [{ page: "admin", locale: "it" }, { page: "home", locale: "xx" }]) expect(await code(admin.mutation(api.site.seoSave, { ...bad, title: "X" }))).not.toBe("OK");
+    expect(await code(admin.mutation(api.site.seoSave, { page: "home", locale: "it", title: "x".repeat(500) }))).not.toBe("OK");
+    await admin.mutation(api.site.seoSave, { page: "home", locale: "en", title: "", description: "" });
+    expect(await t.run((ctx) => ctx.db.query("siteSeo").collect())).toHaveLength(1);
+  });
+
+  it("avviso in testata: attivo solo con un testo; indirizzi pericolosi rifiutati", async () => {
+    const { admin } = await setup();
+    expect(await code(admin.mutation(api.site.announcementSave, { enabled: true, text: "", href: "", cta: "" }))).not.toBe("OK");
+    // eslint-disable-next-line no-script-url -- prova: un indirizzo javascript: deve essere rifiutato
+    for (const href of ["javascript:alert(1)", "data:text/html,x", "//evil.example", "http://non-sicuro.it", "/it/<x>"]) {
+      expect(await code(admin.mutation(api.site.announcementSave, { enabled: true, text: "Ciao", href, cta: "Vai" })), href).not.toBe("OK");
+    }
+    await admin.mutation(api.site.announcementSave, { enabled: true, text: "Chiusi il 24 dicembre", href: "https://core829.net/it/contatti", cta: "Contatti" });
+    expect(await admin.query(api.site.announcementGet, {})).toMatchObject({ enabled: true, text: "Chiusi il 24 dicembre" });
+  });
+
+  it("panoramica: visite per giorno/pagina/lingua, messaggi nuovi", async () => {
+    const { t, admin } = await setup();
+    for (const path of ["/it/prezzi", "/it/prezzi", "/en"]) await post(t, "/site/event", { path });
+    await post(t, "/site/contact", contact());
+    const o = await admin.query(api.site.overview, { days: 7 });
+    expect(o.views).toBe(3);
+    expect(o.series).toHaveLength(7);
+    expect(o.series[6]).toEqual({ day: "2026-11-15", value: 3 });
+    expect(o.topPaths[0]).toEqual({ label: "/prezzi", value: 2 });
+    expect(o.topLocales[0]).toEqual({ label: "it", value: 2 });
+    expect(o.newMessages).toBe(1);
+  });
+});
+
+describe("regole pure", () => {
+  it("percorsi tracciati", () => {
+    expect(parseTrackedPath("/it/servizi/web")).toEqual({ locale: "it", path: "/servizi/web" });
+    expect(parseTrackedPath("/en")).toEqual({ locale: "en", path: "/" });
+    expect(parseTrackedPath("/it/a/b/c/d/e")).toEqual({ locale: "it", path: "/a/b/c" });
+    expect(parseTrackedPath("/zz/x")).toBeNull();
+  });
+  it("avviso: normalizza e valida", () => {
+    expect(cleanAnnouncement({ enabled: false, text: "  ", href: "", cta: "" })).toEqual({ enabled: false, text: "", href: "", cta: "" });
   });
 });

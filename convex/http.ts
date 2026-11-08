@@ -151,6 +151,79 @@ http.route({
   }),
 });
 
+const MAX_SITE_BYTES = 16 * 1024;
+
+/** Lettura firmata + limitata del corpo per gli endpoint del sito. Restituisce il JSON oppure un codice di rifiuto (sempre generico). */
+async function readSiteCall(request: Request): Promise<{ ok: true; body: Record<string, unknown>; id: string } | { ok: false; status: number }> {
+  if (!env.SITE_BRIDGE_SECRET) return { ok: false, status: 503 };
+  const declared = Number(request.headers.get("content-length") ?? "0");
+  if (Number.isFinite(declared) && declared > MAX_SITE_BYTES) return { ok: false, status: 413 };
+  const raw = await request.text();
+  if (raw.length > MAX_SITE_BYTES) return { ok: false, status: 413 };
+  const verification = await verifyWebhook({ secret: env.SITE_BRIDGE_SECRET, headers: request.headers, body: raw, nowMs: Date.now() });
+  if (!verification.ok) return { ok: false, status: 401 };
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return { ok: false, status: 400 };
+    return { ok: true, body: parsed as Record<string, unknown>, id: verification.id };
+  } catch {
+    return { ok: false, status: 400 };
+  }
+}
+const siteReply = (status: number, body: Record<string, unknown> = {}) =>
+  new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } });
+
+/** Messaggio del modulo contatti di core829.net. Firmato dal server del sito; il visitatore non parla mai con questo endpoint. */
+http.route({
+  path: "/site/contact",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const call = await readSiteCall(request);
+    if (!call.ok) return siteReply(call.status, { error: call.status === 503 ? "not_configured" : call.status === 401 ? "unauthorized" : "bad_request" });
+    const str = (x: unknown): string | undefined => (typeof x === "string" ? x : undefined);
+    const { name, email, message } = call.body;
+    if (typeof name !== "string" || typeof email !== "string" || typeof message !== "string") return siteReply(400, { error: "bad_request" });
+    try {
+      const r = await ctx.runMutation(internal.site.receiveMessage, {
+        eventId: call.id,
+        name,
+        email,
+        message,
+        company: str(call.body.company),
+        service: str(call.body.service),
+        budget: str(call.body.budget),
+        locale: str(call.body.locale),
+      });
+      return siteReply(200, { ok: true, status: r.status });
+    } catch {
+      return siteReply(400, { error: "bad_request" });
+    }
+  }),
+});
+
+/** Visita a una pagina (solo contatore giornaliero). Il sito la invia soltanto se il visitatore ha accettato gli analytics. */
+http.route({
+  path: "/site/event",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const call = await readSiteCall(request);
+    if (!call.ok) return siteReply(call.status, { error: call.status === 503 ? "not_configured" : call.status === 401 ? "unauthorized" : "bad_request" });
+    if (typeof call.body.path !== "string") return siteReply(400, { error: "bad_request" });
+    const ok = await ctx.runMutation(internal.site.recordView, { path: call.body.path });
+    return siteReply(ok ? 200 : 400, ok ? { ok: true } : { error: "bad_request" });
+  }),
+});
+
+/** SEO e avviso in testata, in sola lettura e pubblici (contengono solo testi destinati al sito). Il sito li legge dal server e li tiene in cache. */
+http.route({
+  path: "/site/config",
+  method: "GET",
+  handler: httpAction(async (ctx) => {
+    const config = await ctx.runQuery(internal.site.publicConfig, {});
+    return new Response(JSON.stringify(config), { status: 200, headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=30, s-maxage=60, stale-while-revalidate=300" } });
+  }),
+});
+
 const MAX_WEBHOOK_BYTES = 64 * 1024;
 
 /**

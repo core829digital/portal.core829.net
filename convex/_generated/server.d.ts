@@ -38,8 +38,7 @@ type Env = {
   readonly RESEND_WEBHOOK_SECRET?: string;
   readonly WEBHOOK_IP_ALLOWLIST?: string;
   readonly B2B_WEBHOOK_SECRET?: string;
-  readonly AW_CONVEX_URL?: string;
-  readonly AW_CONVEX_GUARD?: string;
+  readonly SITE_BRIDGE_SECRET?: string;
 };
 
 /**

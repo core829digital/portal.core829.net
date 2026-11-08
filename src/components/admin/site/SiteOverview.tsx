@@ -1,66 +1,74 @@
 "use client";
 
-import { Eye, FileText, FolderKanban, Inbox, MousePointerClick, Percent } from "lucide-react";
+import { useQuery } from "convex/react";
+import { Eye, Globe, Inbox, Megaphone, Search } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 import { api } from "@convex/_generated/api";
-import { BridgeError, SiteLoading } from "@/components/admin/site/SiteBits";
-import { useSiteData } from "@/components/admin/site/useSiteData";
 import { AreaChart, RankList } from "@/components/dash/charts";
 import { CountUp } from "@/components/dash/CountUp";
 import { PageHeader } from "@/components/dash/DashShell";
 import { Kpi, KpiGrid, Panel } from "@/components/dash/Kpi";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { formatDateTime } from "@/lib/format";
+import { SITE_URL } from "@/lib/contact";
 
 const n = (x: number) => new Intl.NumberFormat("it-IT").format(x);
 
-/** Panoramica del sito Andromedia Web: visite, clic, contenuti e messaggi. */
+/** Panoramica del sito core829.net: visite (solo con consenso agli analytics), richieste dal modulo contatti, SEO e avviso. */
 export function SiteOverview() {
   const [days, setDays] = useState(30);
-  const { data, error, loading, reload } = useSiteData(api.siteActions.dashboard, { days });
-
+  const data = useQuery(api.site.overview, { days });
   return (
     <>
       <PageHeader
-        kicker="Sito Andromedia Web"
+        kicker="Sito core829.net"
         title="Panoramica del sito"
-        description="Visite e clic degli ultimi giorni, contenuti pubblicati e messaggi ricevuti dal modulo contatti."
+        description="Richieste dal modulo contatti e visite. Le visite contano solo chi ha accettato i cookie analitici, senza dati personali: sono un'indicazione, non il totale reale."
         actions={
-          <div role="group" aria-label="Periodo" className="flex gap-1">
-            {[7, 30, 90].map((d) => (
-              <Button key={d} size="sm" variant={days === d ? "default" : "outline"} aria-pressed={days === d} onClick={() => setDays(d)}>
-                {d} giorni
-              </Button>
-            ))}
-          </div>
+          <>
+            <div role="group" aria-label="Periodo" className="flex gap-1">
+              {[7, 30, 90].map((d) => (
+                <Button key={d} size="sm" variant={days === d ? "default" : "outline"} aria-pressed={days === d} onClick={() => setDays(d)}>
+                  {d} giorni
+                </Button>
+              ))}
+            </div>
+            <Button size="sm" variant="outline" nativeButton={false} render={<a href={SITE_URL} target="_blank" rel="noopener noreferrer" />}>
+              <Globe aria-hidden /> Apri il sito
+            </Button>
+          </>
         }
       />
-      {error && !data ? <BridgeError message={error} onRetry={() => void reload()} /> : null}
-      {loading && !data ? <SiteLoading /> : null}
-      {data ? (
+      {data === undefined ? (
+        <Skeleton className="h-64 w-full rounded-2xl" />
+      ) : (
         <>
           <KpiGrid label="Riepilogo del sito">
-            <Kpi index={0} tone="accent" icon={Eye} label="Visite oggi" value={<CountUp value={data.summary.viewsToday} format={n} />} hint={`${n(data.summary.views7)} negli ultimi 7 giorni`} />
-            <Kpi index={1} icon={Eye} label="Visite (30 giorni)" value={<CountUp value={data.summary.views30} format={n} />} hint={`${n(data.summary.total)} eventi in archivio`} />
-            <Kpi index={2} icon={MousePointerClick} label="Clic (30 giorni)" value={<CountUp value={data.summary.clicks30} format={n} />} hint={`${n(data.summary.clicksToday)} oggi`} />
-            <Kpi index={3} icon={Percent} label="Clic su visite" value={`${data.summary.ctr30}%`} hint="tasso di clic a 30 giorni" />
-            <Kpi index={4} icon={FileText} label="Articoli" value={<CountUp value={data.counts.posts} format={n} />} hint={`${data.counts.published} pubblicati`} />
-            <Kpi index={5} icon={FolderKanban} label="Lavori in portfolio" value={<CountUp value={data.counts.works} format={n} />} hint="mostrati sul sito" />
-            <Kpi index={6} icon={Inbox} label="Messaggi ricevuti" value={<CountUp value={data.counts.messages} format={n} />} hint={data.counts.lastMessageAt ? `ultimo: ${formatDateTime(data.counts.lastMessageAt)}` : "nessun messaggio"} />
+            <Kpi index={0} tone={data.newMessages > 0 ? "accent" : "default"} icon={Inbox} label="Richieste da gestire" value={<CountUp value={data.newMessages} format={n} />} hint={data.lastMessageAt ? `ultima: ${formatDateTime(data.lastMessageAt)}` : "nessuna richiesta"} />
+            <Kpi index={1} icon={Eye} label={`Visite (${days} giorni)`} value={<CountUp value={data.views} format={n} />} hint="solo con consenso analytics" />
+            <Kpi index={2} icon={Search} label="Pagine con SEO personalizzata" value={<CountUp value={data.seoOverrides} format={n} />} hint="le altre usano il testo del sito" />
+            <Kpi index={3} icon={Megaphone} label="Avviso in testata" value={data.announcementActive ? "Attivo" : "Spento"} hint={data.announcementActive ? "visibile a tutti i visitatori" : "nessun avviso mostrato"} />
           </KpiGrid>
+          {data.newMessages > 0 ? (
+            <Link href="/admin/site/messages" className="block rounded-2xl bg-brand-tint p-4 text-sm ring-1 ring-primary/25 hover:bg-brand-tint/70">
+              <strong>{data.newMessages === 1 ? "C'è una richiesta nuova" : `Ci sono ${data.newMessages} richieste nuove`}</strong> dal modulo contatti: aprile e rispondi.
+            </Link>
+          ) : null}
           <div className="grid gap-4 lg:grid-cols-3">
-            <Panel index={8} className="lg:col-span-2" title={`Visite negli ultimi ${days} giorni`} description="Pagine viste ogni giorno sul sito.">
-              <AreaChart ariaLabel={`Visite al sito negli ultimi ${days} giorni`} format={n} points={data.series.map((p) => ({ label: p.day.slice(8) + "/" + p.day.slice(5, 7), value: p.views }))} />
+            <Panel index={4} className="lg:col-span-2" title={`Visite negli ultimi ${days} giorni`} description="Pagine viste ogni giorno.">
+              <AreaChart ariaLabel={`Visite al sito negli ultimi ${days} giorni`} format={n} points={data.series.map((p) => ({ label: `${p.day.slice(8)}/${p.day.slice(5, 7)}`, value: p.value }))} />
             </Panel>
-            <Panel index={9} title="Pagine più viste" description={`Ultimi ${days} giorni`}>
-              <RankList format={n} empty="Ancora nessuna visita registrata." rows={data.topPaths.map((p) => ({ label: p.path, value: p.count }))} />
+            <Panel index={5} title="Pagine più viste">
+              <RankList format={n} empty="Ancora nessuna visita registrata." rows={data.topPaths} />
             </Panel>
           </div>
-          <Panel index={10} title="Clic più frequenti" description="Pulsanti e sezioni cliccati.">
-            <RankList format={n} empty="Ancora nessun clic registrato." rows={data.topLabels.map((p) => ({ label: p.label, value: p.count }))} />
+          <Panel index={6} title="Lingue dei visitatori" description="Le visite per lingua del sito.">
+            <RankList format={n} empty="Ancora nessuna visita registrata." rows={data.topLocales} />
           </Panel>
         </>
-      ) : null}
+      )}
     </>
   );
 }

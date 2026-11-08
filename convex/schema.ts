@@ -293,6 +293,51 @@ export default defineSchema({
     .index("by_documentId", ["documentId"])
     .index("by_status", ["status"]),
 
+  /** Richieste arrivate dal modulo contatti di core829.net (il sito le invia firmate). */
+  siteMessages: defineTable({
+    name: v.string(),
+    email: v.string(),
+    company: v.optional(v.string()),
+    service: v.optional(v.string()),
+    budget: v.optional(v.string()),
+    message: v.string(),
+    locale: v.optional(v.string()),
+    status: v.union(v.literal("new"), v.literal("handled"), v.literal("spam")),
+    createdAt: v.number(),
+    handledAt: v.optional(v.number()),
+    /** Cliente creato a partire da questa richiesta. */
+    clientId: v.optional(v.id("clients")),
+  })
+    .index("by_createdAt", ["createdAt"])
+    .index("by_status_and_createdAt", ["status", "createdAt"]),
+
+  /** SEO modificabile dal portale: titolo, descrizione e indicizzazione di una pagina del sito in una lingua. */
+  siteSeo: defineTable({
+    page: v.string(),
+    locale: v.string(),
+    title: v.optional(v.string()),
+    description: v.optional(v.string()),
+    noindex: v.optional(v.boolean()),
+    updatedAt: v.number(),
+  }).index("by_page_and_locale", ["page", "locale"]),
+
+  /** Contenuti semplici del sito (per ora: l'avviso in testata). Un documento per chiave. */
+  siteSettings: defineTable({
+    key: v.string(),
+    value: v.any(),
+    updatedAt: v.number(),
+  }).index("by_key", ["key"]),
+
+  /** Visite al sito: solo contatori giornalieri per pagina e lingua. Nessun IP, nessun identificativo del visitatore. */
+  siteStats: defineTable({
+    day: v.string(),
+    path: v.string(),
+    locale: v.string(),
+    views: v.number(),
+  })
+    .index("by_day", ["day"])
+    .index("by_day_and_path_and_locale", ["day", "path", "locale"]),
+
   auditLogs: defineTable({
     actorType: v.union(v.literal("admin"), v.literal("client"), v.literal("system")),
     actorId: v.optional(v.string()),

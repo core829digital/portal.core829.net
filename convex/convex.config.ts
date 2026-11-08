@@ -21,10 +21,8 @@ const app = defineApp({
     RESEND_WEBHOOK_SECRET: v.optional(v.string()),
     /** Segreto di firma (whsec_...) con cui b2b.core829.net firma le trattative inviate al portale. SEGRETO. Senza, l'endpoint rifiuta tutto. */
     B2B_WEBHOOK_SECRET: v.optional(v.string()),
-    /** Indirizzo del deployment Convex di Andromedia Web (https://....convex.cloud): il ponte del backoffice del sito. */
-    AW_CONVEX_URL: v.optional(v.string()),
-    /** Segreto condiviso con Andromedia Web (AW_CONVEX_GUARD): firma le scritture sul suo database. SEGRETO. */
-    AW_CONVEX_GUARD: v.optional(v.string()),
+    /** Segreto di firma (whsec_...) con cui il sito core829.net firma i messaggi del modulo contatti e le visite inviati al portale. SEGRETO. Senza, gli endpoint /site/* rifiutano tutto. */
+    SITE_BRIDGE_SECRET: v.optional(v.string()),
     /** Facoltativa: indirizzi IP (o intervalli CIDR) da cui accettare i webhook, separati da virgola. Vedi docs/SECURITY.md. */
     WEBHOOK_IP_ALLOWLIST: v.optional(v.string()),
   },
