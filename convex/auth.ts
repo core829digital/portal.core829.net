@@ -1,6 +1,5 @@
 import { Email } from "@convex-dev/auth/providers/Email";
 import { convexAuth } from "@convex-dev/auth/server";
-import { internal } from "./_generated/api";
 import { env } from "./_generated/server";
 import { isAllowedAdminEmail } from "./lib/adminEmails";
 import { randomDigits } from "./lib/crypto";
@@ -25,13 +24,8 @@ const ResendOtp = Email({
   async generateVerificationToken() {
     return randomDigits(8);
   },
-  // Convex Auth passa anche `ctx` ai provider email ma il tipo non lo dichiara: lo leggiamo dal secondo argomento.
-  async sendVerificationRequest(...args: unknown[]) {
-    const { identifier: email, token } = args[0] as { identifier: string; token: string };
-    const ctx = args[1] as { runQuery: (ref: typeof internal.admins.isTeamEmail, a: { email: string }) => Promise<boolean> };
-    // Il codice parte solo per gli amministratori (ADMIN_EMAILS) e per i membri del team registrati dall'amministratore.
-    const allowed = isAllowedAdminEmail(email, env.ADMIN_EMAILS) || (await ctx.runQuery(internal.admins.isTeamEmail, { email }));
-    if (!allowed) return; // silenzio: stessa risposta per tutti
+  async sendVerificationRequest({ identifier: email, token }) {
+    if (!isAllowedAdminEmail(email, env.ADMIN_EMAILS)) return; // silenzio: stessa risposta per tutti
     if (!env.RESEND_API_KEY || !env.AUTH_EMAIL_FROM) {
       throw new Error("Configurazione email mancante (RESEND_API_KEY, AUTH_EMAIL_FROM).");
     }

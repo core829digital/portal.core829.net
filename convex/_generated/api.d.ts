@@ -74,7 +74,6 @@ import type * as reminders from "../reminders.js";
 import type * as reportExport from "../reportExport.js";
 import type * as reports from "../reports.js";
 import type * as subscriptions from "../subscriptions.js";
-import type * as team from "../team.js";
 import type * as webhooks from "../webhooks.js";
 
 declare const fullApi: ApiFromModules<{
@@ -139,7 +138,6 @@ declare const fullApi: ApiFromModules<{
   reportExport: typeof reportExport;
   reports: typeof reports;
   subscriptions: typeof subscriptions;
-  team: typeof team;
   webhooks: typeof webhooks;
 }>;
 
