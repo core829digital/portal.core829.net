@@ -6,6 +6,7 @@ import type { PortalData } from "@/components/portal/PortalPage";
 const D = (m: number, d: number) => Date.UTC(2026, m, d, 11);
 export const fixtureData = {
   hasReports: true,
+  pendingSignatures: 1,
   client: { displayName: "Ristorante Da Mario", contactName: "Mario", packageType: "standard", status: "active", welcomeMessage: "Benvenuto Mario!" },
   projects: [
     { id: "p1", name: "Sito web", description: "Home, menu e contatti.", status: "in_progress", progress: 60, startDate: D(10, 3), dueDate: D(10, 24), updates: [{ title: "Bozza pronta", body: "Prima bozza caricata.", at: D(10, 6) }] },

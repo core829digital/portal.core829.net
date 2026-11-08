@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery } from "convex/react";
-import { Download, Eye, EyeOff, Trash2, Upload } from "lucide-react";
+import { Download, Eye, EyeOff, PenLine, Trash2, Upload } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { api } from "@convex/_generated/api";
 import type { Doc, Id } from "@convex/_generated/dataModel";
@@ -141,6 +141,7 @@ export function DocumentsPanel({ clientId }: { clientId: Id<"clients"> }) {
   const documents = useQuery(api.documents.listByClient, { clientId });
   const setVisibility = useMutation(api.documents.setVisibility);
   const removeDocument = useMutation(api.documents.remove);
+  const requestSignature = useMutation(api.signatures.requestForDocument);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [toDelete, setToDelete] = useState<Document | null>(null);
   const [toDeleteSent, setToDeleteSent] = useState<Document | null>(null);
@@ -198,6 +199,19 @@ export function DocumentsPanel({ clientId }: { clientId: Id<"clients"> }) {
                   <TableCell>
                     <div className="flex flex-wrap justify-end gap-2">
                       {d.scanStatus === "clean" ? <DownloadButton documentId={d._id} /> : null}
+                      {d.scanStatus === "clean" && d.mimeType === "application/pdf" && !d.title.endsWith("— firmato") ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            void requestSignature({ documentId: d._id })
+                              .then(() => toast.success("Richiesta di firma inviata: il cliente la trova in Documenti."))
+                              .catch((e: unknown) => toast.error(errorMessage(e)));
+                          }}
+                        >
+                          <PenLine aria-hidden /> Richiedi firma
+                        </Button>
+                      ) : null}
                       {d.scanStatus === "clean" ? (
                         <Button
                           size="sm"
@@ -237,7 +251,7 @@ export function DocumentsPanel({ clientId }: { clientId: Id<"clients"> }) {
               .then(() => toast.success("Documento eliminato."))
               .catch((e: unknown) => {
                 // Documento già inviato al cliente: serve una seconda conferma, di proposito.
-                if (errorMessage(e).includes("inviato al cliente")) setToDeleteSent(target);
+                if (errorMessage(e).includes("inviato al cliente") || errorMessage(e).includes("firmato dal cliente")) setToDeleteSent(target);
                 else toast.error(errorMessage(e));
               });
           }

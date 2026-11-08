@@ -91,6 +91,7 @@ function Frame({ children }: { children: ReactNode }) {
       items: [
         { href: "/admin/templates", label: "Modelli", icon: FileStack },
         { href: "/admin/drafts", label: "Bozze e invii", icon: FilePen },
+        { href: "/admin/signatures", label: "Firme dei clienti", icon: PenLine },
         { href: "/admin/brand", label: "Firma e timbro", icon: Stamp },
       ],
     },

@@ -1,10 +1,11 @@
 "use client";
 
 import { useMutation, useQuery } from "convex/react";
-import { Download, FileText, Lock } from "lucide-react";
+import { Download, FileText, Lock, PenLine, ShieldCheck } from "lucide-react";
 import { useState, type FormEvent, type ReactNode } from "react";
 import { api } from "@convex/_generated/api";
 import { ErrorBoundary } from "@/components/portal/ErrorBoundary";
+import { SignDialog, type SignOutcome } from "@/components/portal/SignDialog";
 import { useConvexSiteUrl } from "@/components/portal/PortalProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,11 +17,34 @@ type Phase = "locked" | "code" | "unlocked";
 
 function DocumentList({ token, unlockToken }: { token: string; unlockToken: string }) {
   const documents = useQuery(api.portal.documents, { token, unlockToken });
+  const requests = useQuery(api.signatures.forClient, { token, unlockToken });
   const siteUrl = useConvexSiteUrl();
+  const [signing, setSigning] = useState<{ requestId: string; documentId: string; title: string; fileName: string } | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   /** Il segreto viaggia nel corpo di una richiesta POST (mai nell'indirizzo) e il file si scarica come blob. */
+  async function sign(input: { fullName: string; consent: true; consentVersion: string }): Promise<SignOutcome> {
+    if (!siteUrl || !signing) return { ok: false, error: "La firma non è disponibile al momento. Scrivici e ti aiutiamo." };
+    try {
+      const response = await fetch(`${siteUrl}/portal/sign`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, unlockToken, requestId: signing.requestId, ...input }),
+        credentials: "omit",
+        referrerPolicy: "no-referrer",
+      });
+      const body = (await response.json().catch(() => ({}))) as { ok?: boolean; error?: string; code?: string };
+      if (response.ok && body.ok) {
+        setSigning(null);
+        return { ok: true };
+      }
+      return { ok: false, error: body.error ?? "Non è stato possibile firmare. Riprova.", staleCode: body.code === "UNLOCK_REQUIRED" };
+    } catch {
+      return { ok: false, error: "Non è stato possibile firmare. Controlla la connessione e riprova." };
+    }
+  }
+
   async function download(doc: { id: string; fileName: string }) {
     if (!siteUrl) {
       setError("Il download non è disponibile al momento. Scrivici e ti inviamo il file.");
@@ -57,7 +81,10 @@ function DocumentList({ token, unlockToken }: { token: string; unlockToken: stri
   return (
     <div className="space-y-3">
       <ul className="divide-y rounded-lg border">
-        {documents.map((d) => (
+        {documents.map((d) => {
+          const req = requests?.find((r) => r.documentId === d.id);
+          const isSignedCopy = requests?.some((r) => r.signedDocumentId === d.id) ?? false;
+          return (
           <li key={d.id} className="flex flex-wrap items-center gap-3 p-4">
             <FileText className="size-5 shrink-0 text-muted-foreground" aria-hidden />
             <div className="min-w-0 flex-1">
@@ -66,12 +93,32 @@ function DocumentList({ token, unlockToken }: { token: string; unlockToken: stri
                 {documentKindLabel[d.kind]} · {d.fileName} · {formatBytes(d.sizeBytes)} · {formatDate(d.createdAt)}
               </p>
             </div>
+            {req?.status === "pending" ? (
+              <Button size="sm" onClick={() => setSigning({ requestId: req.id, documentId: d.id, title: d.title, fileName: d.fileName })}>
+                <PenLine aria-hidden /> Firma
+              </Button>
+            ) : null}
+            {req?.status === "signed" || isSignedCopy ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-brand-tint px-2.5 py-1 text-xs text-brand-deep">
+                <ShieldCheck aria-hidden className="size-3.5" /> {req?.signedAt ? `Firmato il ${formatDate(req.signedAt)}` : "Copia firmata"}
+              </span>
+            ) : null}
+            {req?.status === "expired" ? <span className="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">Firma scaduta: chiedi un nuovo invio</span> : null}
             <Button variant="outline" size="sm" disabled={busyId === d.id} onClick={() => void download(d)}>
               <Download aria-hidden /> {busyId === d.id ? "Scarico…" : "Scarica"}
             </Button>
           </li>
-        ))}
+          );
+        })}
       </ul>
+      {signing ? (
+        <SignDialog
+          title={signing.title}
+          onOpenDocument={() => download({ id: signing.documentId, fileName: signing.fileName })}
+          onSign={sign}
+          onClose={() => setSigning(null)}
+        />
+      ) : null}
       {error ? (
         <p role="alert" className="text-sm text-destructive">
           {error}

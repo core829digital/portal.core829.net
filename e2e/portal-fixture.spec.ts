@@ -97,6 +97,39 @@ test("la scheda introduttiva si chiude e resta chiusa", async ({ page }) => {
   await expect(page.getByText("Come funziona questo spazio")).toHaveCount(0);
 });
 
+// ---- Firma elettronica del cliente (comportamento inventato) ----
+
+test("firma: serve aver letto il documento, scritto il nome e accettato le due dichiarazioni; gli errori si vedono", async ({ page }) => {
+  await page.goto("/c/fixture/sign");
+  const dialog = page.getByRole("dialog");
+  const sign = dialog.getByRole("button", { name: "Firma il documento" });
+  await expect(sign).toBeDisabled(); // prima va letto il documento
+  await dialog.getByRole("button", { name: /Leggi il documento/ }).click();
+  await expect(page.getByTestId("log")).toContainText("letto");
+  await expect(sign).toBeEnabled();
+  await dialog.getByLabel("Nome e cognome").fill("Nome Sbagliato");
+  await sign.click();
+  await expect(dialog.getByText("Per firmare devi accettare entrambe le dichiarazioni.")).toBeVisible();
+  await expect(page.getByTestId("log")).not.toContainText("firma:");
+  const boxes = dialog.getByRole("checkbox");
+  await expect(boxes).toHaveCount(2);
+  await boxes.nth(0).check();
+  await boxes.nth(1).check();
+  await sign.click();
+  await expect(dialog.getByRole("alert")).toContainText("nome e cognome per esteso");
+  // Codice troppo vecchio: propone di ricaricare per chiederne uno nuovo.
+  await dialog.getByLabel("Nome e cognome").fill("Codice Vecchio");
+  await sign.click();
+  await expect(dialog.getByRole("button", { name: /richiedi un nuovo codice/i })).toBeVisible();
+  const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
+  expect(results.violations.map((v) => `${v.id}: ${v.help}`)).toEqual([]);
+  // Firma riuscita: la finestra si chiude.
+  await dialog.getByLabel("Nome e cognome").fill("Mario Rossi");
+  await sign.click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByTestId("log")).toContainText("firma:Mario Rossi");
+});
+
 // ---- Menu a tendina in stile core829.net ----
 
 test("portale cliente: il menu «Contatta CORE829» si apre, si naviga da tastiera e si chiude con Esc", async ({ page }) => {
@@ -301,9 +334,9 @@ test("editor documenti: la finestra di invio propone email del cliente, oggetto 
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByLabel("Destinatario")).toHaveValue("mario@caffe.it");
   await expect(dialog.getByLabel("Oggetto")).toHaveValue(/Master Services Agreement/);
-  await expect(dialog.getByRole("checkbox", { name: "PDF" })).toBeChecked();
+  await expect(dialog.getByRole("checkbox", { name: "PDF", exact: true })).toBeChecked();
   await expect(dialog.getByRole("checkbox", { name: /Word/ })).not.toBeChecked();
-  await dialog.getByRole("checkbox", { name: "PDF" }).uncheck();
+  await dialog.getByRole("checkbox", { name: "PDF", exact: true }).uncheck();
   await dialog.getByRole("button", { name: "Invia ora" }).click();
   await expect(page.getByText("Scegli almeno un formato da allegare.")).toBeVisible();
 });
@@ -413,8 +446,9 @@ test("editor PDF: l'invio e' solo PDF (nessuna scelta del Word)", async ({ page 
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByLabel("Destinatario")).toHaveValue("mario@caffe.it");
   await expect(dialog.getByText("In allegato: il PDF con i testi che hai aggiunto.")).toBeVisible();
-  // Nessuna scelta di formato: l'unica casella e' "firma e timbro", attiva di default.
-  await expect(dialog.getByRole("checkbox")).toHaveCount(1);
+  // Nessuna scelta di formato: restano "firma e timbro" (attiva) e "chiedi la firma del cliente" (spenta).
+  await expect(dialog.getByRole("checkbox")).toHaveCount(2);
+  await expect(dialog.getByRole("checkbox", { name: /firmare il PDF/ })).not.toBeChecked();
   await expect(dialog.getByRole("checkbox", { name: /firma e timbro/i })).toBeChecked();
   await expect(dialog.getByRole("checkbox", { name: /Word/ })).toHaveCount(0);
 });

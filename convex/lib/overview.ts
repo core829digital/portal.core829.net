@@ -60,7 +60,16 @@ export async function buildOverview(ctx: QueryCtx, clientId: Id<"clients">) {
     .order("desc")
     .take(24);
 
+  const requests = await ctx.db
+    .query("signatureRequests")
+    .withIndex("by_clientId", (q) => q.eq("clientId", client._id))
+    .order("desc")
+    .take(50);
+  const nowMs = Date.now();
+  const pendingSignatures = requests.filter((r) => (r.status === "pending" || r.status === "signing") && r.expiresAt > nowMs).length;
+
   return {
+    pendingSignatures,
     hasReports: published.some((r) => r.status === "published"),
     client: {
       displayName: client.displayName,

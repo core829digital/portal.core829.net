@@ -319,7 +319,7 @@ export const recordSent = internalMutation({
     actorId: v.string(),
     files: v.array(v.object({ storageId: v.id("_storage"), fileName: v.string(), mimeType: v.string(), sizeBytes: v.number() })),
   },
-  handler: async (ctx, args): Promise<null> => {
+  handler: async (ctx, args): Promise<Id<"documents">[]> => {
     const d = await ctx.db.get("docDrafts", args.draftId);
     if (!d) return fail("NOT_FOUND", "Bozza non trovata.");
     const documentIds: Id<"documents">[] = [];
@@ -349,6 +349,6 @@ export const recordSent = internalMutation({
       resourceId: d._id,
       metadata: { files: args.files.length },
     });
-    return null;
+    return documentIds;
   },
 });

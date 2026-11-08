@@ -333,6 +333,8 @@ export const sendDraft = action({
     formats: v.array(v.union(v.literal("pdf"), v.literal("docx"))),
     /** Firma e timbro CORE829 sul file (predefinito: si). I due loghi ci sono sempre. */
     withSeal: v.optional(v.boolean()),
+    /** Chiede al cliente di firmare il PDF nel portale (firma elettronica semplice). Il PDF viene sempre allegato. */
+    requestSignature: v.optional(v.boolean()),
   },
   handler: async (ctx, args): Promise<{ sentTo: string; attachments: number }> => {
     const { actorId } = await admin(ctx);
@@ -341,6 +343,7 @@ export const sendDraft = action({
     const subject = cleanText(args.subject, { field: "oggetto", min: 1, max: 150 });
     const message = cleanText(args.message, { field: "messaggio", max: 4000, multiline: true });
     const formats = [...new Set(args.formats)];
+    if (args.requestSignature === true && !formats.includes("pdf")) formats.push("pdf"); // la firma e' sul PDF
     if (formats.length === 0) return invalid("formato", "Scegli almeno un formato da allegare.");
 
     const draft = await ctx.runQuery(internal.docStudio.draftForAction, { draftId: args.draftId });
@@ -381,7 +384,11 @@ export const sendDraft = action({
     for (const g of generated) {
       files.push({ storageId: await storeBlob(ctx, g.bytes, g.mimeType), fileName: g.fileName, mimeType: g.mimeType, sizeBytes: g.bytes.length });
     }
-    await ctx.runMutation(internal.docStudio.recordSent, { draftId: args.draftId, to, actorId, files });
+    const documentIds = await ctx.runMutation(internal.docStudio.recordSent, { draftId: args.draftId, to, actorId, files });
+    if (args.requestSignature === true) {
+      const pdfIndex = generated.findIndex((g) => g.mimeType === PDF_MIME);
+      if (pdfIndex >= 0) await ctx.runMutation(internal.signatures.requestFromSend, { documentId: documentIds[pdfIndex], draftId: args.draftId, actorId });
+    }
     return { sentTo: to, attachments: generated.length };
   },
 });

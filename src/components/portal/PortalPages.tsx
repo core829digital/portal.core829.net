@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarClock, CircleDollarSign, FolderKanban, Repeat, TriangleAlert, Wallet } from "lucide-react";
+import { CalendarClock, CircleDollarSign, FolderKanban, PenLine, Repeat, TriangleAlert, Wallet } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 import {
   collectedByMonth,
@@ -147,7 +147,7 @@ function PageFrame({ kicker, title, description, children }: { kicker: string; t
 
 /** Panoramica: i blocchi scelti dall'amministratore (benvenuto, riepilogo, avvisi...) nell'ordine stabilito. */
 export function OverviewPage() {
-  const { data } = usePortal();
+  const { data, base } = usePortal();
   const blocks = (data.widgets as Widget[]).filter((w) => w.type === "welcome" || w.type === "onboarding" || w.type === "summary" || w.type === "notice" || w.type === "links" || w.type === "contact");
   return (
     <>
@@ -169,6 +169,14 @@ export function OverviewPage() {
             return null;
         }
       })}
+      {data.pendingSignatures > 0 ? (
+        <a href={`${base}/documents`} className="reveal flex items-center gap-3 rounded-2xl bg-brand-tint p-4 text-sm ring-1 ring-primary/25 hover:bg-brand-tint/70">
+          <PenLine aria-hidden className="size-5 shrink-0 text-brand" />
+          <span>
+            <strong>{data.pendingSignatures === 1 ? "Hai un documento da firmare." : `Hai ${data.pendingSignatures} documenti da firmare.`}</strong> Apri «Documenti» e premi «Firma».
+          </span>
+        </a>
+      ) : null}
       {blocks.length === 0 ? <PageHeader kicker="Panoramica" title={`Ciao ${data.client.contactName}`} /> : null}
       <Panel title="CORE829 SRL" description="A chi scrivere se hai bisogno di noi." index={12}>
         <CompanyDetails />

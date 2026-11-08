@@ -265,6 +265,34 @@ export default defineSchema({
     updatedBy: v.string(),
   }).index("by_kind", ["kind"]),
 
+  /**
+   * Richieste di firma elettronica (semplice) di un PDF da parte del cliente. Le prove (chi, quando, da dove, impronta del file)
+   * restano qui e nel certificato aggiunto al PDF firmato. "Scaduta" non e' uno stato salvato: si ricava da `expiresAt`.
+   */
+  signatureRequests: defineTable({
+    clientId: v.id("clients"),
+    documentId: v.id("documents"),
+    draftId: v.optional(v.id("docDrafts")),
+    status: v.union(v.literal("pending"), v.literal("signing"), v.literal("signed"), v.literal("revoked")),
+    signerEmail: v.string(),
+    createdAt: v.number(),
+    expiresAt: v.number(),
+    /** SHA-256 del PDF al momento della richiesta: se il file cambia, la firma non e' piu' possibile. */
+    docSha256: v.string(),
+    signedDocumentId: v.optional(v.id("documents")),
+    signedAt: v.optional(v.number()),
+    signedName: v.optional(v.string()),
+    ip: v.optional(v.string()),
+    userAgent: v.optional(v.string()),
+    /** Quando il cliente ha confermato il codice ricevuto via email (sessione di sblocco usata per firmare). */
+    otpVerifiedAt: v.optional(v.number()),
+    consentVersion: v.optional(v.string()),
+    signedSha256: v.optional(v.string()),
+  })
+    .index("by_clientId", ["clientId"])
+    .index("by_documentId", ["documentId"])
+    .index("by_status", ["status"]),
+
   auditLogs: defineTable({
     actorType: v.union(v.literal("admin"), v.literal("client"), v.literal("system")),
     actorId: v.optional(v.string()),

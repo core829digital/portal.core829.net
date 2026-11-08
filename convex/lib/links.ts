@@ -54,3 +54,25 @@ export async function requireUnlock(
     return fail("UNLOCK_REQUIRED", "Inserisci il codice ricevuto via email.");
   }
 }
+
+/**
+ * Come `requireUnlock`, ma la sessione deve essere RECENTE (codice confermato da poco): serve per le azioni che
+ * impegnano il cliente, come la firma. Restituisce quando e' stato confermato il codice.
+ */
+export async function requireFreshUnlock(
+  ctx: QueryCtx | MutationCtx,
+  link: Doc<"accessLinks">,
+  unlockToken: unknown,
+  maxAgeMs: number,
+  now: number,
+): Promise<number> {
+  if (!isWellFormedToken(unlockToken)) return fail("UNLOCK_REQUIRED", "Inserisci il codice ricevuto via email.");
+  const tokenHash = await hashUnlockToken(unlockToken);
+  const session = await ctx.db
+    .query("unlockSessions")
+    .withIndex("by_tokenHash", (q) => q.eq("tokenHash", tokenHash))
+    .unique();
+  if (!session || !timingSafeEqual(session.linkId, link._id)) return fail("UNLOCK_REQUIRED", "Inserisci il codice ricevuto via email.");
+  if (now - session._creationTime > maxAgeMs) return fail("UNLOCK_REQUIRED", "Per firmare serve un codice appena ricevuto: richiedine uno nuovo.");
+  return session._creationTime;
+}

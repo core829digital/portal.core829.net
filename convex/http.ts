@@ -93,6 +93,64 @@ http.route({
   }),
 });
 
+http.route({
+  path: "/portal/sign",
+  method: "OPTIONS",
+  handler: httpAction(async (_ctx, request) => {
+    return new Response(null, {
+      status: 204,
+      headers: { ...corsHeaders(request.headers.get("Origin"), env.SITE_URL), "Access-Control-Allow-Methods": "POST", "Access-Control-Allow-Headers": "Content-Type", "Access-Control-Max-Age": "600" },
+    });
+  }),
+});
+
+/**
+ * Firma elettronica del cliente. Passa da qui (e non da una funzione Convex normale) per registrare come prova
+ * l'indirizzo IP e il browser della sottoscrizione. Ogni richiesta e' autorizzata da capo (link + codice recente + richiesta del cliente).
+ * Gli errori attesi (nome, consenso, scadenza...) tornano con un messaggio leggibile; gli altri sono generici.
+ */
+http.route({
+  path: "/portal/sign",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const cors = corsHeaders(request.headers.get("Origin"), env.SITE_URL);
+    const json = (status: number, body: Record<string, unknown>) =>
+      new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", "Cache-Control": "no-store", ...cors } });
+    const text = await request.text();
+    if (text.length > MAX_BODY_CHARS) return json(400, { ok: false, error: "Richiesta non valida." });
+    let body: Record<string, unknown>;
+    try {
+      const parsed: unknown = JSON.parse(text);
+      if (typeof parsed !== "object" || parsed === null) throw new Error("x");
+      body = parsed as Record<string, unknown>;
+    } catch {
+      return json(400, { ok: false, error: "Richiesta non valida." });
+    }
+    const { token, unlockToken, requestId, fullName, consent, consentVersion } = body;
+    if (typeof token !== "string" || typeof unlockToken !== "string" || typeof requestId !== "string" || typeof fullName !== "string" || consent !== true || typeof consentVersion !== "string") {
+      return json(400, { ok: false, error: "Richiesta non valida." });
+    }
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || request.headers.get("x-real-ip") || "sconosciuto";
+    try {
+      const done = await ctx.runAction(internal.signActions.sign, {
+        token,
+        unlockToken,
+        requestId: requestId as Id<"signatureRequests">,
+        fullName,
+        consent: true,
+        consentVersion,
+        ip: ip.slice(0, 64),
+        userAgent: (request.headers.get("user-agent") ?? "sconosciuto").slice(0, 200),
+      });
+      return json(200, { ok: true, signedDocumentId: done.signedDocumentId });
+    } catch (error) {
+      const data = (error as { data?: { code?: string; message?: string } }).data;
+      if (data?.code === "UNLOCK_REQUIRED" || data?.code === "BAD_STATE" || data?.code === "NOT_FOUND") return json(409, { ok: false, code: data.code, error: data.message ?? "Non è stato possibile firmare." });
+      return json(500, { ok: false, error: "Non è stato possibile firmare. Riprova tra poco." });
+    }
+  }),
+});
+
 const MAX_WEBHOOK_BYTES = 64 * 1024;
 
 /**

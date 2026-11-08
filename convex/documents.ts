@@ -150,6 +150,16 @@ export const remove = mutation({
     if (sentDrafts.length > 0 && args.confirmSent !== true) {
       return fail("BAD_STATE", "Questo documento è stato inviato al cliente. Conferma l'eliminazione per cancellarlo.");
     }
+    // Un documento firmato (o la copia firmata) e' una prova: stessa regola, conferma esplicita.
+    const signedRequests = (
+      await ctx.db
+        .query("signatureRequests")
+        .withIndex("by_clientId", (q) => q.eq("clientId", document.clientId))
+        .take(500)
+    ).filter((r) => r.status === "signed" && (r.documentId === args.documentId || r.signedDocumentId === args.documentId));
+    if (signedRequests.length > 0 && args.confirmSent !== true) {
+      return fail("BAD_STATE", "Questo documento è stato firmato dal cliente. Conferma l'eliminazione per cancellarlo.");
+    }
     for (const d of sentDrafts) {
       await ctx.db.patch("docDrafts", d._id, { documentIds: (d.documentIds ?? []).filter((id) => id !== args.documentId) });
     }

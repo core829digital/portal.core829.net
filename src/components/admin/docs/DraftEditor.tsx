@@ -26,7 +26,7 @@ const PAGE_SIZE = 40;
 
 type Content = { paragraphs: DocParagraph[]; fields: DocField[] };
 
-export type SendInput = { to: string; subject: string; message: string; formats: ("pdf" | "docx")[]; withSeal: boolean };
+export type SendInput = { to: string; subject: string; message: string; formats: ("pdf" | "docx")[]; withSeal: boolean; requestSignature: boolean };
 
 export function SendDialog({
   pdfOnly = false,
@@ -62,6 +62,7 @@ export function SendDialog({
         message: String(form.get("message") ?? ""),
         formats,
         withSeal: form.get("withSeal") === "on",
+        requestSignature: form.get("requestSignature") === "on",
       });
       onClose();
     } catch (error) {
@@ -110,6 +111,13 @@ export function SendDialog({
             <span>
               Aggiungi firma e timbro di CORE829 SRL
               <span className="block text-xs text-muted-foreground">I due loghi CORE829 ci sono sempre. Firma e timbro vengono dall&apos;archivio privato (menu Documenti → Firma e timbro).</span>
+            </span>
+          </label>
+          <label className="flex items-start gap-2 text-sm">
+            <input type="checkbox" name="requestSignature" className="mt-0.5 size-4" />
+            <span>
+              Chiedi al cliente di firmare il PDF nel portale
+              <span className="block text-xs text-muted-foreground">Firma elettronica semplice con codice via email: nome, data, ora e IP restano come prova, con un certificato in coda al PDF. Vale 30 giorni.</span>
             </span>
           </label>
           <DialogFooter>
