@@ -476,3 +476,58 @@ html[data-onboarding-seen] [data-onboarding] {
     transform: none;
   }
 }
+
+/* ---- Animazioni della landing: tre tipi diversi, ognuno con un compito ---- */
+/* 1. Titolo: le parole salgono da dietro una maschera. */
+.word-mask {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: top;
+  padding-bottom: 0.12em;
+  margin-bottom: -0.12em;
+}
+.word-rise {
+  display: inline-block;
+  animation: word-rise 0.9s var(--ease-out-expo) both;
+  animation-delay: calc(var(--w, 0) * 90ms + 120ms);
+}
+@keyframes word-rise {
+  from { transform: translateY(110%); }
+  to { transform: none; }
+}
+/* 2. Passi numerati: entrano uno dopo l'altro da sinistra. */
+.step-in {
+  animation: step-in 0.7s var(--ease-out-expo) both;
+  animation-delay: calc(var(--s, 0) * 140ms + 700ms);
+}
+@keyframes step-in {
+  from { opacity: 0; transform: translateX(-14px); }
+  to { opacity: 1; transform: none; }
+}
+/* 3. Schede: un riflesso morbido segue il cursore (solo con mouse). */
+.spotlight {
+  position: relative;
+  --mx: 50%;
+  --my: 0%;
+}
+.spotlight::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  background: radial-gradient(420px circle at var(--mx) var(--my), var(--spot, rgb(255 255 255 / 0.12)), transparent 60%);
+}
+.spotlight-light { --spot: rgb(221 26 43 / 0.09); }
+@media (hover: hover) and (pointer: fine) {
+  .spotlight:hover::before { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .word-rise,
+  .step-in {
+    animation: none !important;
+  }
+  .spotlight::before { display: none; }
+}

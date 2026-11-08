@@ -523,3 +523,19 @@ test("panoramica: 8 indicatori su una sola riga, «Incassato» il piu' grande, n
   expect(boxes.every((b) => b.sw <= b.cw + 1)).toBe(true); // nessun contenuto che esce dalla scheda
   expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBe(false);
 });
+
+test("panoramica del portale: tra indicatori e pannelli c'e' lo stesso spazio che tra gli altri blocchi (niente sezioni incollate)", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/c/fixture");
+  const kpis = page.getByRole("list", { name: "Riepilogo" });
+  await expect(kpis).toBeVisible();
+  const gaps = await page.evaluate(() => {
+    const list = document.querySelector('[role="list"][aria-label="Riepilogo"]') as HTMLElement;
+    const sections = [...document.querySelectorAll("section[aria-label]")] as HTMLElement[];
+    const first = sections[0];
+    const k = list.getBoundingClientRect();
+    const f = first.getBoundingClientRect();
+    return { kpiToPanel: Math.round(f.top - k.bottom) };
+  });
+  expect(gaps.kpiToPanel).toBeGreaterThanOrEqual(16);
+});

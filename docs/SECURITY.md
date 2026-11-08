@@ -159,3 +159,21 @@ del portale; ogni download finisce nel registro di audit. Provato: tre protezion
 - **Da attivare nel pannello Vercel (non si puo' fare da codice):** Firewall con limite di richieste per indirizzo IP
   (consigliato su `/c` e `/admin/login`) e blocco del metodo TRACE.
 
+
+
+## Revisione OWASP Top 10 (novembre 2026)
+
+| Punto | Esito | Prova |
+|---|---|---|
+| A01 Accessi | Ogni funzione pubblica di Convex richiama un controllo (admin, team, link, sblocco) | `convex/authCoverage.test.ts` fallisce se se ne aggiunge una senza controllo; Centro notifiche: controllo prima di ogni lettura |
+| A02 Crittografia | Invariato (HSTS, hash SHA-256, confronto a tempo costante). Le email ai clienti non contengono mai link personali o codici | `notifications.test.ts` |
+| A03 Injection / XSS | Testi di clienti nelle email a noi sono escapati; i pulsanti puntano solo a percorsi interni (`//evil.example` scartato) | `notifications.test.ts` |
+| A04 Design | Anti-ripetizione e opt-out per cliente sulle notifiche; una notifica non fa mai fallire l'azione che la genera | `notifications.test.ts` |
+| A05 Configurazione | CSP con nonce, header, `no-store` sulle pagine cliente: invariati e testati; nessuna nuova origine esterna | `csp.test.ts`, e2e |
+| A06 Componenti | `npm audit --omit=dev`: 0 vulnerabilita' | CI |
+| A07 Autenticazione | Invariato (5 tentativi, scadenze). Troppi tentativi = avviso email a noi | `notifications.test.ts` |
+| A08 Integrita' | Webhook firmati; nessuna dipendenza nuova aggiunta in questo ciclo | CI |
+| A09 Log | Ogni email automatica e' registrata (stato, motivo, destinatario); impostazioni cambiate = riga di audit | Centro notifiche |
+| A10 SSRF | Il server chiama solo Resend con indirizzo fisso; nessun URL scelto dall'utente | revisione del codice |
+
+Prestazioni: LCP < 2,5 s e CLS < 0,1 verificati nel browser su landing, spazio cliente, login, fatture e indicatori; peso JavaScript sotto il tetto (`npm run check:bundle`). Le animazioni usano solo `transform` e `opacity` e si fermano con «riduci animazioni».

@@ -71,7 +71,7 @@ function ClientMetrics({ data }: { data: PortalData }) {
   const year = new Date(now).getUTCFullYear();
 
   return (
-    <>
+    <div className="space-y-6">
       <KpiGrid label="Riepilogo">
         <Kpi index={0} tone="accent" icon={Wallet} label={`Pagato nel ${year}`} value={<CountUp value={m.paidYear} format={money} />} hint={`${money(m.paidTotal)} in totale`} />
         <Kpi
@@ -124,7 +124,7 @@ function ClientMetrics({ data }: { data: PortalData }) {
           )}
         </Panel>
       </div>
-    </>
+    </div>
   );
 }
 

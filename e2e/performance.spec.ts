@@ -35,7 +35,7 @@ async function measure(page: Page, path: string) {
   return { ...m, jsBytes };
 }
 
-for (const [name, path] of [["home", "/"], ["spazio cliente con tutti i blocchi", "/c/fixture"], ["login amministratore", "/admin/login"]] as const) {
+for (const [name, path] of [["home", "/"], ["spazio cliente con tutti i blocchi", "/c/fixture"], ["login amministratore", "/admin/login"], ["fatture con stato economico animato", "/c/fixture/billing"], ["indicatori della panoramica", "/c/fixture/kpi"]] as const) {
   test(`${name}: LCP sotto 2,5 s e nessun salto di layout (CLS sotto 0,1)`, async ({ page }) => {
     const m = await measure(page, path);
     test.info().annotations.push({ type: "metriche", description: `LCP ${m.lcp.toFixed(0)} ms, CLS ${m.cls.toFixed(3)}, JS trasferito ${(m.jsBytes / 1024).toFixed(0)} KB` });

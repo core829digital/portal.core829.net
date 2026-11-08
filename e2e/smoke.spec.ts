@@ -201,3 +201,13 @@ test.describe("accessibilita' (WCAG 2 A e AA)", () => {
     });
   }
 });
+
+test("landing: il titolo animato parola per parola resta leggibile (spazi, un solo titolo, nome accessibile)", async ({ page }) => {
+  await page.goto("/");
+  const h1 = page.getByRole("heading", { level: 1 });
+  await expect(h1).toHaveAccessibleName("Il tuo spazio con CORE829");
+  await page.waitForTimeout(1600); // fine dell'animazione
+  const visible = await h1.evaluate((el) => (el.querySelector("[aria-hidden]") as HTMLElement).innerText);
+  expect(visible).toBe("Il tuo spazio con CORE829");
+  expect(await page.getByRole("heading", { level: 1 }).count()).toBe(1);
+});

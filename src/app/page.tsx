@@ -3,6 +3,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { CompanyDetails } from "@/components/brand/CompanyDetails";
 import { LandingNav } from "@/components/brand/LandingNav";
+import { SplitWords } from "@/components/brand/SplitWords";
+import { SpotlightCard } from "@/components/brand/SpotlightCard";
 import { ContactCtas } from "@/components/brand/ContactCtas";
 import NeuralNoise from "@/components/brand/NeuralNoise";
 import { COMPANY } from "@/lib/company";
@@ -30,8 +32,8 @@ export default function Home() {
             <span aria-hidden className="size-1.5 rounded-full bg-primary" />
             Portale clienti
           </p>
-          <h1 className="reveal font-display text-3xl leading-[1.08] tracking-tight text-white sm:text-5xl lg:text-6xl" style={{ "--i": 2 } as React.CSSProperties}>
-            Il tuo spazio con CORE829
+          <h1 className="font-display text-3xl leading-[1.08] tracking-tight text-white sm:text-5xl lg:text-6xl">
+            <SplitWords text="Il tuo spazio con CORE829" startAt={2} />
           </h1>
           <p className="reveal mt-5 max-w-xl text-base leading-7 text-on-ink-muted sm:text-lg" style={{ "--i": 3 } as React.CSSProperties}>
             Progetti, fatture, abbonamenti e documenti in un unico posto, sempre aggiornati. Nessun account e nessuna password da ricordare.
@@ -39,9 +41,9 @@ export default function Home() {
         </div>
 
         <div className="grid gap-4 lg:grid-cols-2">
-          <section
+          <SpotlightCard
             aria-labelledby="gia-cliente"
-            className="reveal flex flex-col gap-4 rounded-3xl bg-white/[0.06] p-6 ring-1 ring-white/15 backdrop-blur-md sm:p-8"
+            className="reveal spotlight-dark flex flex-col gap-4 rounded-3xl bg-white/[0.06] p-6 ring-1 ring-white/15 backdrop-blur-md sm:p-8"
             style={{ "--i": 4 } as React.CSSProperties}
           >
             <KeyRound aria-hidden className="size-6 text-white" />
@@ -49,11 +51,11 @@ export default function Home() {
               Sei già cliente?
             </h2>
             <ol className="space-y-3 text-sm leading-6 text-on-ink-muted">
-              <li className="flex gap-3">
+              <li className="step-in flex gap-3" style={{ "--s": 0 } as React.CSSProperties}>
                 <span className="font-mono text-xs text-white">01</span>
                 Apri il link personale che ti abbiamo inviato via email o WhatsApp.
               </li>
-              <li className="flex gap-3">
+              <li className="step-in flex gap-3" style={{ "--s": 1 } as React.CSSProperties}>
                 <span className="font-mono text-xs text-white">02</span>
                 Vedi subito progetti, fatture e abbonamenti. Per i documenti ti mandiamo un codice via email.
               </li>
@@ -61,11 +63,11 @@ export default function Home() {
             <p className="mt-auto text-sm text-on-ink-muted">
               Non trovi il link? Scrivici con uno dei contatti qui accanto e te ne inviamo subito uno nuovo.
             </p>
-          </section>
+          </SpotlightCard>
 
-          <section
+          <SpotlightCard
             aria-labelledby="non-cliente"
-            className="reveal flex flex-col gap-4 rounded-3xl bg-white p-6 text-foreground ring-1 ring-white/20 sm:p-8"
+            className="reveal spotlight-light flex flex-col gap-4 rounded-3xl bg-white p-6 text-foreground ring-1 ring-white/20 sm:p-8"
             style={{ "--i": 5 } as React.CSSProperties}
           >
             <Sparkles aria-hidden className="size-6 text-brand" />
@@ -76,7 +78,7 @@ export default function Home() {
               Siti web, software su misura, marketing e servizi digitali per eventi. Raccontaci il tuo progetto: ti rispondiamo con un piano chiaro e un preventivo trasparente.
             </p>
             <ContactCtas className="mt-auto" />
-          </section>
+          </SpotlightCard>
         </div>
 
         <section
