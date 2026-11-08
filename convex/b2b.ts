@@ -88,11 +88,11 @@ export const notifyAdmins = internalAction({
     const title = args.created ? "Nuova trattativa dal B2B: cliente creato" : "Trattativa dal B2B per un cliente già presente";
     const text = `${title}.\nTrattativa: ${args.dealId}\n${link ? `Crea il contratto: ${link}` : "Apri il portale e crea il contratto dai modelli."}`;
     const html =
-      `<div style="font-family:Arial,Helvetica,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#1f2937">` +
-      `<p style="font-size:13px;letter-spacing:2px;color:#c2410c;font-weight:bold;margin:0">CORE829</p>` +
+      `<div style="font-family:Arial,Helvetica,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#111217">` +
+      `<p style="font-size:13px;letter-spacing:2px;color:#b8132a;font-weight:bold;margin:0">CORE829</p>` +
       `<p style="font-size:16px;line-height:24px"><strong>${escapeHtml(title)}</strong></p>` +
       `<p style="font-size:14px;line-height:22px">Trattativa: ${escapeHtml(args.dealId)}</p>` +
-      (link ? `<p><a href="${escapeHtml(link)}" style="color:#dd1a2b">Crea il contratto dai modelli</a></p>` : "") +
+      (link ? `<p><a href="${escapeHtml(link)}" style="color:#b8132a">Crea il contratto dai modelli</a></p>` : "") +
       `</div>`;
     for (const to of admins) {
       try {

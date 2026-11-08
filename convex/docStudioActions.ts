@@ -363,10 +363,10 @@ export const sendDraft = action({
     if (generated.reduce((n, g) => n + g.bytes.length, 0) > MAX_ATTACH_TOTAL) return invalid("allegati", "Gli allegati superano i 30 MB.");
 
     const html =
-      `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1f2937">` +
-      `<p style="font-size:13px;letter-spacing:2px;color:#c2410c;font-weight:bold;margin:0">CORE829</p>` +
+      `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#111217">` +
+      `<p style="font-size:13px;letter-spacing:2px;color:#b8132a;font-weight:bold;margin:0">CORE829</p>` +
       `<p style="font-size:16px;line-height:24px;white-space:pre-wrap">${escapeHtml(message)}</p>` +
-      `<p style="font-size:13px;line-height:20px;color:#6b7280">In allegato: ${generated.map((g) => escapeHtml(g.fileName)).join(", ")}.<br/>CORE829 SRL · Str. Mihai Eminescu 10, Roman, Romania · CUI/CIF 54616345</p>` +
+      `<p style="font-size:13px;line-height:20px;color:#4a5160">In allegato: ${generated.map((g) => escapeHtml(g.fileName)).join(", ")}.<br/>CORE829 SRL · Str. Mihai Eminescu 10, Roman, Romania · CUI/CIF 54616345</p>` +
       `</div>`;
 
     await sendEmail(env.RESEND_API_KEY, {

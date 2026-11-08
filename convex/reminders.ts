@@ -132,8 +132,8 @@ export const recordSent = internalMutation({
 
 function layout(inner: string): string {
   return (
-    `<div style="font-family:Arial,Helvetica,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#1f2937">` +
-    `<p style="font-size:13px;letter-spacing:2px;color:#c2410c;font-weight:bold;margin:0">CORE829</p>` +
+    `<div style="font-family:Arial,Helvetica,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#111217">` +
+    `<p style="font-size:13px;letter-spacing:2px;color:#b8132a;font-weight:bold;margin:0">CORE829</p>` +
     inner +
     `</div>`
   );
@@ -165,9 +165,9 @@ export const send = internalAction({
           `<p style="font-size:16px;line-height:24px">Buongiorno,</p>` +
             `<p style="font-size:16px;line-height:24px">un promemoria dal team CORE829: il pagamento di <strong>${escapeHtml(amount)}</strong> per ` +
             `<strong>${escapeHtml(claimed.subscriptionName)}</strong> è in scadenza il <strong>${escapeHtml(date)}</strong>.</p>` +
-            `<p style="font-size:14px;line-height:21px;color:#6b7280">Puoi consultare importi e documenti nel tuo portale clienti con il link personale che ti abbiamo inviato. ` +
+            `<p style="font-size:14px;line-height:21px;color:#4a5160">Puoi consultare importi e documenti nel tuo portale clienti con il link personale che ti abbiamo inviato. ` +
             `Se hai già provveduto, ignora questo messaggio. Per qualsiasi domanda rispondi a questa email.</p>` +
-            `<p style="font-size:14px;line-height:21px;color:#6b7280">Grazie,<br/>CORE829 SRL</p>`,
+            `<p style="font-size:14px;line-height:21px;color:#4a5160">Grazie,<br/>CORE829 SRL</p>`,
         ),
       });
     } catch {
@@ -191,7 +191,7 @@ export const send = internalAction({
               `Abbonamento: ${claimed.subscriptionName}\nImporto: ${amount}\nScadenza: ${date}`,
             html: layout(
               `<p style="font-size:16px;line-height:24px">Promemoria inviato a <strong>${escapeHtml(claimed.clientName)}</strong> (${escapeHtml(claimed.clientEmail)}).</p>` +
-                `<p style="font-size:14px;line-height:22px;color:#374151">Abbonamento: ${escapeHtml(claimed.subscriptionName)}<br/>` +
+                `<p style="font-size:14px;line-height:22px;color:#111217">Abbonamento: ${escapeHtml(claimed.subscriptionName)}<br/>` +
                 `Importo: ${escapeHtml(amount)}<br/>Scadenza: ${escapeHtml(date)}</p>`,
             ),
           });

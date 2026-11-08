@@ -21,7 +21,7 @@ import { cn } from "cn";
 type PageSize = { width: number; height: number };
 type Note = PdfAnnotation & { id: string };
 
-const COLOR_CSS: Record<AnnotationColor, string> = { black: "#141414", graphite: "#4a4a4a", red: "#dd1a2b", blue: "#1a40b3" };
+const COLOR_CSS: Record<AnnotationColor, string> = { black: "#141414", graphite: "#4a4a4a", red: "#ef233c", blue: "#1a40b3" };
 const COLOR_LABEL: Record<AnnotationColor, string> = { black: "Nero", graphite: "Grigio", red: "Rosso", blue: "Blu" };
 const SIZES = [8, 9, 10, 11, 12, 14, 16, 18, 24, 32];
 

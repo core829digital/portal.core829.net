@@ -36,11 +36,11 @@ const ResendOtp = Email({
       subject: `Il tuo codice di accesso CORE829: ${token}`,
       text: `Il tuo codice di accesso al portale CORE829 è ${token}.\n\nVale 10 minuti. Se non l'hai richiesto tu, ignora questa email.`,
       html:
-        `<div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#1f2937">` +
-        `<p style="font-size:13px;letter-spacing:2px;color:#c2410c;font-weight:bold;margin:0">CORE829</p>` +
+        `<div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#111217">` +
+        `<p style="font-size:13px;letter-spacing:2px;color:#b8132a;font-weight:bold;margin:0">CORE829</p>` +
         `<p style="font-size:16px;line-height:24px">Il tuo codice di accesso al portale è:</p>` +
         `<p style="font-size:32px;letter-spacing:6px;font-weight:bold;margin:16px 0">${code}</p>` +
-        `<p style="font-size:14px;line-height:21px;color:#6b7280">Vale 10 minuti. Se non l'hai richiesto tu, ignora questa email.</p>` +
+        `<p style="font-size:14px;line-height:21px;color:#4a5160">Vale 10 minuti. Se non l'hai richiesto tu, ignora questa email.</p>` +
         `</div>`,
     });
   },

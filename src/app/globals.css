@@ -40,9 +40,9 @@
   --color-brand-deep: var(--brand-red-deep);
   --color-brand-tint: var(--brand-tint);
   --color-surface: var(--surface);
-  --color-ink: #0b0b0c;
-  --color-on-ink: #f5f5f5;
-  --color-on-ink-muted: #a1a1a6;
+  --color-ink: #111217;
+  --color-on-ink: #f2f5f8;
+  --color-on-ink-muted: #a9b2be;
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -83,50 +83,55 @@
 }
 
 :root {
-  /* Design token CORE829 (da core829.net): bianco, graphite, rosso come accento. */
-  --brand-red: #dd1a2b;
-  --brand-red-deep: #c4121f; /* testo rosso su fondi tenui: contrasto >= 4.5:1 */
-  --brand-tint: #fdeced; /* rosato tenue per stati attivi e card in evidenza */
-  --surface: #f7f7f7;
+  /* Palette CORE829 (nuovo brand): Obsidian Black #111217, Ice Grey #DFE5EB, Racing Red #EF233C.
+     Il Racing Red puro (4,22:1 su bianco) e' per superfici grandi e grafica; per pulsanti e testo piccolo si usa
+     #E52139 (stesso aspetto, contrasto 4,56:1) e #B8132A per il rosso scritto su fondi chiari/grigi (>= 5:1). */
+  --obsidian: #111217;
+  --ice-grey: #dfe5eb;
+  --racing-red: #ef233c;
+  --brand-red: #ef233c;
+  --brand-red-deep: #b8132a;
+  --brand-tint: #fdecef; /* rosato tenue per stati attivi e card in evidenza */
+  --surface: #f2f5f8; /* Ice Grey schiarito */
 
   --background: #ffffff;
-  --foreground: #1a1a1a;
+  --foreground: #111217;
   --card: #ffffff;
-  --card-foreground: #1a1a1a;
+  --card-foreground: #111217;
   --popover: #ffffff;
-  --popover-foreground: #1a1a1a;
-  --primary: #dd1a2b;
+  --popover-foreground: #111217;
+  --primary: #e52139;
   --primary-foreground: #ffffff;
-  --secondary: #f7f7f7;
-  --secondary-foreground: #1a1a1a;
-  --muted: #f7f7f7;
-  --muted-foreground: #5a5a5a;
-  --accent: #f3f3f3;
-  --accent-foreground: #1a1a1a;
-  --destructive: #c4121f;
-  --border: #e5e5e5;
-  --input: #e5e5e5;
-  --ring: #dd1a2b;
-  --chart-1: #dd1a2b;
-  --chart-2: #f08a93;
-  --chart-3: #1a1a1a;
-  --chart-4: #8a8a8a;
-  --chart-5: #fbd5d9;
+  --secondary: #f2f5f8;
+  --secondary-foreground: #111217;
+  --muted: #f2f5f8;
+  --muted-foreground: #4a5160;
+  --accent: #ebeff3;
+  --accent-foreground: #111217;
+  --destructive: #b8132a;
+  --border: #dfe5eb;
+  --input: #dfe5eb;
+  --ring: #ef233c;
+  --chart-1: #ef233c;
+  --chart-2: #f58a98;
+  --chart-3: #111217;
+  --chart-4: #8b95a3;
+  --chart-5: #dfe5eb;
   --radius: 0.875rem;
   --sidebar: #ffffff;
-  --sidebar-foreground: #1a1a1a;
-  --sidebar-primary: #dd1a2b;
+  --sidebar-foreground: #111217;
+  --sidebar-primary: #e52139;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #fdeced;
-  --sidebar-accent-foreground: #c4121f;
-  --sidebar-border: #e5e5e5;
-  --sidebar-ring: #dd1a2b;
-  --shadow-soft: 0 1px 2px rgba(10, 10, 10, 0.04), 0 8px 24px -12px rgba(10, 10, 10, 0.12);
-  --shadow-lift: 0 2px 4px rgba(10, 10, 10, 0.05), 0 18px 40px -16px rgba(10, 10, 10, 0.2);
+  --sidebar-accent: #fdecef;
+  --sidebar-accent-foreground: #b8132a;
+  --sidebar-border: #dfe5eb;
+  --sidebar-ring: #ef233c;
+  --shadow-soft: 0 1px 2px rgba(17, 18, 23, 0.04), 0 8px 24px -12px rgba(17, 18, 23, 0.12);
+  --shadow-lift: 0 2px 4px rgba(17, 18, 23, 0.05), 0 18px 40px -16px rgba(17, 18, 23, 0.2);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
+  --background: #111217;
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
   --card-foreground: oklch(0.985 0 0);

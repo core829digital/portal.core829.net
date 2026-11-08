@@ -31,11 +31,11 @@ export const deliver = internalAction({
       subject: `Il tuo codice per vedere i documenti: ${issued.code}`,
       text: `Ciao, il tuo codice per vedere i documenti di ${issued.displayName} nel portale CORE829 è ${issued.code}.\n\nVale 10 minuti. Se non l'hai richiesto tu, ignora questa email: nessuno può vedere i tuoi documenti senza questo codice.`,
       html:
-        `<div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#1f2937">` +
-        `<p style="font-size:13px;letter-spacing:2px;color:#c2410c;font-weight:bold;margin:0">CORE829</p>` +
+        `<div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#111217">` +
+        `<p style="font-size:13px;letter-spacing:2px;color:#b8132a;font-weight:bold;margin:0">CORE829</p>` +
         `<p style="font-size:16px;line-height:24px">Il tuo codice per vedere i documenti di <strong>${name}</strong>:</p>` +
         `<p style="font-size:32px;letter-spacing:6px;font-weight:bold;margin:16px 0">${code}</p>` +
-        `<p style="font-size:14px;line-height:21px;color:#6b7280">Vale 10 minuti. Se non l'hai richiesto tu, ignora questa email: nessuno può vedere i tuoi documenti senza questo codice.</p>` +
+        `<p style="font-size:14px;line-height:21px;color:#4a5160">Vale 10 minuti. Se non l'hai richiesto tu, ignora questa email: nessuno può vedere i tuoi documenti senza questo codice.</p>` +
         `</div>`,
     });
     return null;

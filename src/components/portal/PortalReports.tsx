@@ -45,7 +45,7 @@ export function ReportView({ report }: { report: ReportData }) {
                   value={formatMetricValue(m.value, m.unit)}
                   hint={
                     d ? (
-                      <span className={cn("inline-flex items-center gap-1", d.direction === "up" && "text-emerald-700", d.direction === "down" && "text-red-700")}>
+                      <span className={cn("inline-flex items-center gap-1", d.direction === "up" && "text-emerald-700", d.direction === "down" && "text-brand-deep")}>
                         {d.direction === "up" ? <ArrowUp aria-hidden className="size-3" /> : d.direction === "down" ? <ArrowDown aria-hidden className="size-3" /> : <Minus aria-hidden className="size-3" />}
                         {d.text} sul mese prima{m.note ? ` · ${m.note}` : ""}
                       </span>
@@ -104,7 +104,7 @@ export function ReportsBrowser({
               type="button"
               aria-pressed={m.month === selected}
               onClick={() => onSelect(m.month)}
-              className={cn("min-h-9 rounded-full px-3.5 text-sm capitalize ring-1 transition-colors", m.month === selected ? "bg-brand text-white ring-brand" : "ring-foreground/15 hover:bg-muted")}
+              className={cn("min-h-9 rounded-full px-3.5 text-sm capitalize ring-1 transition-colors", m.month === selected ? "bg-primary text-white ring-brand" : "ring-foreground/15 hover:bg-muted")}
             >
               {monthLabel(m.month)}
             </button>
