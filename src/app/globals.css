@@ -232,6 +232,49 @@ html {
 @keyframes dash-sweep {
   from { stroke-dasharray: 0 100; }
 }
+/* Segnaposto di caricamento: un riflesso scorre da sinistra a destra (transform: nessun ridisegno del layout). */
+@keyframes skeleton-shimmer {
+  to { transform: translateX(100%); }
+}
+.skeleton {
+  position: relative;
+  overflow: hidden;
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, color-mix(in oklab, var(--color-background, #fff) 70%, transparent), transparent);
+  animation: skeleton-shimmer 1.6s ease-in-out infinite;
+}
+/* Blocchi con animazioni: in pausa finche' non sono visibili (vedi useSeen). */
+[data-seen="false"],
+[data-seen="false"] * {
+  animation-play-state: paused !important;
+}
+
+/* Entrata di pagina e di elenco: breve e morbida, solo opacita' e transform. */
+@keyframes page-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+.page-in {
+  animation: page-rise 0.45s var(--ease-out-expo) both;
+}
+.stagger > * {
+  animation: page-rise 0.5s var(--ease-out-expo) both;
+  animation-delay: calc(min(var(--n, 0), 12) * 35ms);
+}
+.stagger > :nth-child(1) { --n: 0; }
+.stagger > :nth-child(2) { --n: 1; }
+.stagger > :nth-child(3) { --n: 2; }
+.stagger > :nth-child(4) { --n: 3; }
+.stagger > :nth-child(5) { --n: 4; }
+.stagger > :nth-child(6) { --n: 5; }
+.stagger > :nth-child(7) { --n: 6; }
+.stagger > :nth-child(8) { --n: 7; }
+.stagger > :nth-child(n + 9) { --n: 8; }
 .reveal {
   animation: dash-rise 0.7s var(--ease-out-expo) both;
   animation-delay: calc(var(--i, 0) * 70ms);
@@ -262,7 +305,10 @@ html {
   .draw-line,
   .grow-y,
   .grow-x,
-  .ring-sweep {
+  .ring-sweep,
+  .skeleton::after,
+  .page-in,
+  .stagger > * {
     animation: none !important;
   }
 }
@@ -394,5 +440,39 @@ html[data-onboarding-seen] [data-onboarding] {
   .btn-glass {
     border: 1px solid ButtonText;
     forced-color-adjust: auto;
+  }
+}
+
+/* Interazioni: ogni elemento cliccabile risponde con una transizione breve; il tocco "preme" il pulsante.
+   Dentro @layer base: le classi di Tailwind (utility) hanno sempre la precedenza. */
+@layer base {
+  a,
+  button,
+  summary,
+  [role="button"],
+  [role="tab"],
+  input,
+  select,
+  textarea {
+    transition-property: color, background-color, border-color, box-shadow, opacity, transform;
+    transition-duration: 180ms;
+    transition-timing-function: var(--ease-out-expo);
+  }
+  button:not(:disabled):active,
+  [role="button"]:active,
+  [role="tab"]:active {
+    transform: scale(0.97);
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  button:not(:disabled):active,
+  [role="button"]:active,
+  [role="tab"]:active {
+    transform: none;
   }
 }

@@ -70,7 +70,7 @@ export function NotificationsLog({ clientId, showFilters = true }: { clientId?: 
           <Bell aria-hidden className="mx-auto mb-2 size-5" /> Nessuna notifica con questi filtri.
         </p>
       ) : (
-        <ul className="divide-y overflow-hidden rounded-2xl bg-card ring-1 ring-foreground/10 shadow-(--shadow-soft)">
+        <ul className="stagger divide-y overflow-hidden rounded-2xl bg-card ring-1 ring-foreground/10 shadow-(--shadow-soft)">
           {rows.map((r) => {
             const expanded = open === r._id;
             return (

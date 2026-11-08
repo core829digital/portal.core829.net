@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import type { Id } from "@convex/_generated/dataModel";
-import { DraftRouter } from "@/components/admin/docs/DraftRouter";
+import dynamic from "next/dynamic";
+import { EditorSkeleton } from "@/components/ui/page-skeletons";
+
+// L'editor (PDF, Word, anteprime) e' la parte piu' pesante: si scarica solo quando serve.
+const DraftRouter = dynamic(() => import("@/components/admin/docs/DraftRouter").then((m) => m.DraftRouter), { loading: () => <EditorSkeleton /> });
 
 export const metadata: Metadata = { title: "Documento" };
 

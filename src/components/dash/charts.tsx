@@ -2,6 +2,7 @@
 
 import { useId, useState, type CSSProperties } from "react";
 import { cn } from "cn";
+import { CountUp } from "@/components/dash/CountUp";
 
 export type Point = { label: string; value: number };
 
@@ -179,7 +180,7 @@ export function Ring({ value, label, caption }: { value: number; label: string; 
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="font-display text-2xl tabular-nums">{safe}%</span>
+        <span className="font-display text-2xl tabular-nums"><CountUp value={safe} format={(n) => `${n}%`} durationMs={1200} delayMs={150} /></span>
         {caption ? <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">{caption}</span> : null}
       </div>
     </div>

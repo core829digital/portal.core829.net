@@ -54,7 +54,7 @@ export function SignaturesPage() {
                 <th className="px-4 py-2" />
               </tr>
             </thead>
-            <tbody className="divide-y">
+            <tbody className="stagger divide-y">
               {rows.map((r) => (
                 <tr key={r.id}>
                   <td className="max-w-56 truncate px-4 py-3 font-medium">{r.title}</td>

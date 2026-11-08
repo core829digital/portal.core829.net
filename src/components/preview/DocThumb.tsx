@@ -37,6 +37,7 @@ export function DocThumb({
   const [boxRef, inView] = useInView<HTMLButtonElement>();
   const [state, setState] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [imageSrc, setImageSrc] = useState<string | null>(null);
+  const [imageLoaded, setImageLoaded] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const cache = useRef<string | Blob | null>(null);
   const resolveRef = useRef(resolve);
@@ -104,12 +105,12 @@ export function DocThumb({
           </span>
         ) : (
           <>
-            {state !== "ready" ? <span aria-hidden className="absolute inset-0 animate-pulse bg-foreground/5" /> : null}
+            {state !== "ready" || (kind === "image" && !imageLoaded) ? <span aria-hidden className="skeleton absolute inset-0 bg-foreground/5" /> : null}
             {kind === "image" && imageSrc ? (
               // eslint-disable-next-line @next/next/no-img-element -- miniatura di un file privato (indirizzo temporaneo o blob)
-              <img src={imageSrc} alt="" loading="lazy" decoding="async" className="absolute inset-0 size-full object-cover" onError={() => setState("error")} />
+              <img src={imageSrc} alt="" loading="lazy" decoding="async" className={cn("absolute inset-0 size-full object-cover transition-[opacity,transform] duration-500 ease-out", imageLoaded ? "scale-100 opacity-100" : "scale-[1.03] opacity-0")} onLoad={() => setImageLoaded(true)} onError={() => setState("error")} />
             ) : null}
-            {kind === "pdf" ? <canvas ref={canvasRef} aria-hidden className={cn("absolute left-1/2 top-0 h-auto max-w-none -translate-x-1/2", state === "ready" ? "opacity-100" : "opacity-0")} /> : null}
+            {kind === "pdf" ? <canvas ref={canvasRef} aria-hidden className={cn("absolute left-1/2 top-0 h-auto max-w-none -translate-x-1/2 transition-[opacity,filter] duration-500 ease-out", state === "ready" ? "opacity-100 blur-0" : "opacity-0 blur-[2px]")} /> : null}
           </>
         )}
       </button>

@@ -5,7 +5,10 @@ import { ExternalLink } from "lucide-react";
 import type { ReactNode } from "react";
 import { api } from "@convex/_generated/api";
 import type { Widget } from "@convex/lib/widgets";
+import { StackBar } from "@/components/dash/charts";
+import { CountUp } from "@/components/dash/CountUp";
 import { PageHeader } from "@/components/dash/DashShell";
+import { Panel } from "@/components/dash/Kpi";
 import { ProgressBar } from "@/components/ProgressBar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -117,6 +120,35 @@ export function ProjectsWidget({ data }: { data: PortalData }) {
   );
 }
 
+/** Stato economico in un colpo d'occhio: importo ancora da pagare (che scorre fino al valore) e ripartizione delle fatture. */
+function BillingSummary({ invoices, outstandingCents }: { invoices: PortalData["billing"]["invoices"]; outstandingCents: number }) {
+  const sum = (status: string) => invoices.filter((i) => i.status === status).reduce((t, i) => t + i.amountCents, 0);
+  const paid = sum("paid");
+  const open = sum("sent");
+  const overdue = sum("overdue");
+  return (
+    <Panel title="Il tuo stato economico" description={outstandingCents === 0 ? "Non c'è nulla da pagare. Grazie!" : "Importo ancora da pagare e ripartizione delle fatture."}>
+      <div className="grid items-center gap-5 sm:grid-cols-[auto_1fr] sm:gap-8">
+        <div>
+          <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">Da pagare</p>
+          <p className="mt-1 font-display text-3xl leading-none tracking-tight">
+            <CountUp value={outstandingCents} format={formatCents} />
+          </p>
+        </div>
+        <StackBar
+          ariaLabel="Ripartizione delle fatture per stato"
+          format={formatCents}
+          segments={[
+            { label: "Pagate", value: paid, color: "var(--chart-1)" },
+            { label: "Da pagare", value: open, color: "var(--chart-2)" },
+            { label: "Scadute", value: overdue, color: "var(--chart-3)" },
+          ]}
+        />
+      </div>
+    </Panel>
+  );
+}
+
 export function BillingWidget({ data }: { data: PortalData }) {
   const { outstandingCents, invoices } = data.billing;
   return (
@@ -125,8 +157,8 @@ export function BillingWidget({ data }: { data: PortalData }) {
         <Empty>Non ci sono ancora fatture.</Empty>
       ) : (
         <>
-          {outstandingCents === 0 ? <p className="text-sm text-muted-foreground">Non c&apos;è nulla da pagare. Grazie!</p> : null}
-          <ul className="divide-y rounded-2xl bg-card ring-1 ring-foreground/10">
+          <BillingSummary invoices={invoices} outstandingCents={outstandingCents} />
+          <ul className="stagger divide-y rounded-2xl bg-card ring-1 ring-foreground/10">
             {invoices.map((invoice) => (
               <li key={invoice.id} className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 p-4">
                 <div>

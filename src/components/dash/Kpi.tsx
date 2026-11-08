@@ -1,7 +1,10 @@
+"use client";
+
 import type { LucideIcon } from "lucide-react";
 import { ArrowDownRight, ArrowUpRight } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
 import { cn } from "cn";
+import { useSeen } from "@/lib/useSeen";
 
 export type KpiTone = "default" | "accent" | "warn";
 
@@ -109,8 +112,10 @@ export function Panel({
   className?: string;
   index?: number;
 }) {
+  const seen = useSeen<HTMLElement>();
   return (
     <section
+      {...seen}
       aria-label={title}
       className={cn("reveal flex min-w-0 flex-col gap-4 rounded-2xl bg-card p-4 ring-1 ring-foreground/10 shadow-(--shadow-soft) sm:p-5", className)}
       style={{ "--i": index } as CSSProperties}
