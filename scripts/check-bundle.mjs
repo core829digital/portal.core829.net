@@ -12,7 +12,8 @@ import { gzipSync } from "node:zlib";
 // Tetto sul totale dei file JS del client (tutte le pagine insieme), in KB gzip. Si alza solo con una decisione consapevole.
 // 480 -> 520 KB (nov 2026): editor con anteprima live, import Excel, report mensili, modelli. Il portale cliente carica solo le sue pagine.
 // 520 -> 580 KB: backoffice del sito Andromedia (solo pagine admin: il cliente non le scarica).
-const BUDGET_TOTAL_KB = Number(process.env.BUNDLE_BUDGET_KB ?? 580);
+// 580 -> 620 KB: menu a tendina in stile core829.net (Base UI Menu, ~28 KB gzip: tastiera, focus e posizionamento gia' gestiti e testati).
+const BUDGET_TOTAL_KB = Number(process.env.BUNDLE_BUDGET_KB ?? 620);
 
 function walk(dir) {
   const out = [];
