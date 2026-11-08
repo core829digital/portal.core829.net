@@ -295,6 +295,31 @@ export default defineSchema({
     .index("by_documentId", ["documentId"])
     .index("by_status", ["status"]),
 
+  /** Ticket di assistenza: il cliente scrive dal portale, CORE829 risponde dal pannello. */
+  tickets: defineTable({
+    clientId: v.id("clients"),
+    subject: v.string(),
+    category: v.union(v.literal("question"), v.literal("issue"), v.literal("request"), v.literal("billing")),
+    status: v.union(v.literal("open"), v.literal("in_progress"), v.literal("waiting_client"), v.literal("closed")),
+    createdAt: v.number(),
+    lastMessageAt: v.number(),
+    lastMessageBy: v.union(v.literal("client"), v.literal("admin")),
+    messageCount: v.number(),
+    closedAt: v.optional(v.number()),
+  })
+    .index("by_clientId_and_lastMessageAt", ["clientId", "lastMessageAt"])
+    .index("by_status_and_lastMessageAt", ["status", "lastMessageAt"]),
+
+  ticketMessages: defineTable({
+    ticketId: v.id("tickets"),
+    clientId: v.id("clients"),
+    author: v.union(v.literal("client"), v.literal("admin")),
+    body: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_ticketId_and_createdAt", ["ticketId", "createdAt"])
+    .index("by_clientId_and_author_and_createdAt", ["clientId", "author", "createdAt"]),
+
   /** Richieste arrivate dal modulo contatti di core829.net (il sito le invia firmate). */
   siteMessages: defineTable({
     name: v.string(),

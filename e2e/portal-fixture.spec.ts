@@ -9,7 +9,7 @@ test("con il consenso esplicito (E2E_FIXTURES=1) la pagina di prova esiste", asy
   expect((await request.get("/c/fixture")).status()).toBe(200);
 });
 
-const PAGES = ["/c/fixture", "/c/fixture/projects", "/c/fixture/billing", "/c/fixture/subscriptions", "/c/fixture/documents"] as const;
+const PAGES = ["/c/fixture", "/c/fixture/projects", "/c/fixture/billing", "/c/fixture/subscriptions", "/c/fixture/documents", "/c/fixture/support"] as const;
 
 for (const path of PAGES) {
   test(`accessibilita' di ${path}: nessuna violazione WCAG 2 A/AA`, async ({ page }) => {
@@ -30,7 +30,7 @@ test("menu laterale: ogni voce e' una pagina, la corrente e' segnalata, non ci s
   await page.goto("/c/fixture");
   if (isMobile) await page.getByRole("button", { name: "Apri il menu" }).click();
   const nav = page.getByRole("navigation", { name: "Pagine" });
-  await expect(nav.getByRole("link")).toHaveText(["Panoramica", "Progetti", "Fatture", "Abbonamenti", "Documenti", "Report"]);
+  await expect(nav.getByRole("link")).toHaveText(["Panoramica", "Progetti", "Fatture", "Abbonamenti", "Documenti", "Report", "Assistenza"]);
   await expect(nav.getByRole("link", { name: "Panoramica" })).toHaveAttribute("aria-current", "page");
   await nav.getByRole("link", { name: "Fatture" }).click();
   await expect(page).toHaveURL(/\/c\/fixture\/billing$/);
@@ -538,4 +538,17 @@ test("panoramica del portale: tra indicatori e pannelli c'e' lo stesso spazio ch
     return { kpiToPanel: Math.round(f.top - k.bottom) };
   });
   expect(gaps.kpiToPanel).toBeGreaterThanOrEqual(16);
+});
+
+test("assistenza: elenco, conversazione e nuova richiesta sono navigabili da tastiera e leggibili", async ({ page }) => {
+  await page.goto("/c/fixture/support");
+  await expect(page.getByRole("list", { name: "Richieste di assistenza" }).getByRole("button")).toHaveCount(3);
+  await page.getByRole("button", { name: /Il sito non carica la home/ }).click();
+  await expect(page.getByRole("list", { name: "Conversazione" }).getByRole("listitem")).not.toHaveCount(0);
+  await page.getByLabel("La tua risposta").fill("Tutto a posto, grazie!");
+  await expect(page.getByRole("button", { name: "Invia", exact: true })).toBeEnabled();
+  await page.getByRole("button", { name: "Nuova" }).click();
+  await expect(page.getByLabel("Oggetto")).toBeVisible();
+  await expect(page.getByLabel("Tipo di richiesta")).toBeVisible();
+  await expect(page.getByLabel("Messaggio")).toBeVisible();
 });

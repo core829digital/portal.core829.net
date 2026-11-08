@@ -12,6 +12,7 @@ import {
   FileText,
   Globe,
   Inbox,
+  LifeBuoy,
   FolderKanban,
   LayoutDashboard,
   LayoutTemplate,
@@ -45,6 +46,7 @@ function Frame({ children }: { children: ReactNode }) {
   const params = useParams<{ clientId?: string }>();
   const clientId = params.clientId && CONVEX_ID.test(params.clientId) ? (params.clientId as Id<"clients">) : null;
   const client = useQuery(api.clients.get, clientId ? { clientId } : "skip");
+  const waiting = useQuery(api.tickets.waitingCount, {});
 
   const groups: NavGroup[] = [
     { items: [{ href: "/admin", label: "Panoramica", icon: LayoutDashboard, exact: true }] },
@@ -80,6 +82,7 @@ function Frame({ children }: { children: ReactNode }) {
       id: "lavoro",
       label: "Lavoro e incassi",
       items: [
+        { href: "/admin/tickets", label: "Ticket di assistenza", icon: LifeBuoy, ...(waiting ? { badge: waiting } : {}) },
         { href: "/admin/projects", label: "Progetti", icon: FolderKanban },
         { href: "/admin/invoices", label: "Fatture", icon: Receipt },
         { href: "/admin/subscriptions", label: "Abbonamenti", icon: Repeat },

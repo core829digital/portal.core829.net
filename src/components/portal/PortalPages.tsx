@@ -20,6 +20,7 @@ import { enabledPages } from "@/components/portal/PortalChrome";
 import { PortalContextProvider, usePortal } from "@/components/portal/PortalContext";
 import { PortalDocuments } from "@/components/portal/PortalDocuments";
 import { PortalReports } from "@/components/portal/PortalReports";
+import { PortalSupport } from "@/components/portal/PortalSupport";
 import {
   BillingWidget,
   ContactWidget,
@@ -211,6 +212,15 @@ export function SubscriptionsPage() {
   return (
     <PageFrame kicker="Servizi" title="Abbonamenti" description="I servizi attivi, il costo e il prossimo rinnovo.">
       <SubscriptionsWidget data={data} />
+    </PageFrame>
+  );
+}
+
+export function SupportPage() {
+  const { token } = usePortal();
+  return (
+    <PageFrame kicker="Aiuto" title="Assistenza" description="Scrivici una richiesta e segui le risposte qui, senza perderti tra le email.">
+      <PortalSupport token={token} />
     </PageFrame>
   );
 }

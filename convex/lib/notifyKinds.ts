@@ -135,7 +135,54 @@ export const NOTIFY_KINDS = {
       body: `Il pagamento di ${d.amount} per «${d.name}» è in scadenza il ${d.date}.`,
     }),
   },
+  ticket_admin_reply: {
+    audience: "client",
+    label: "Risposta alla tua richiesta di assistenza",
+    description: "Quando rispondiamo a un ticket di assistenza.",
+    defaultEnabled: true,
+    render: (d) => ({
+      subject: `Risposta alla tua richiesta: ${d.subject}`,
+      heading: "Abbiamo risposto alla tua richiesta",
+      body: `${d.excerpt}\n\nPer continuare la conversazione apri il tuo link personale e vai in «Assistenza».`,
+    }),
+  },
+  ticket_closed: {
+    audience: "client",
+    label: "Richiesta di assistenza chiusa",
+    description: "Quando chiudiamo un ticket di assistenza.",
+    defaultEnabled: true,
+    render: (d) => ({
+      subject: `Richiesta chiusa: ${d.subject}`,
+      heading: "La tua richiesta è stata chiusa",
+      body: `Abbiamo chiuso la richiesta «${d.subject}». Se ti serve ancora aiuto, apri «Assistenza» nel tuo spazio e rispondi: la riapriamo subito.`,
+    }),
+  },
   // ---- Verso l'amministrazione ----
+  ticket_new: {
+    audience: "admin",
+    label: "Nuovo ticket di assistenza",
+    description: "Quando un cliente apre una richiesta di assistenza dal portale.",
+    defaultEnabled: true,
+    render: (d) => ({
+      subject: `Nuovo ticket da ${d.client}: ${d.subject}`,
+      heading: "Nuovo ticket di assistenza",
+      body: `${d.client} · ${d.category}\n\n${d.subject}\n\n${d.excerpt}`,
+      ctaLabel: "Apri i ticket",
+    }),
+  },
+  ticket_client_reply: {
+    audience: "admin",
+    label: "Il cliente ha risposto a un ticket",
+    description: "Quando un cliente scrive in un ticket esistente (una email ogni 10 minuti al massimo per ticket).",
+    defaultEnabled: true,
+    dedupeMs: 10 * MIN,
+    render: (d) => ({
+      subject: `${d.client} ha risposto: ${d.subject}`,
+      heading: "Nuova risposta del cliente",
+      body: `${d.client} ha scritto nel ticket «${d.subject}»:\n\n${d.excerpt}`,
+      ctaLabel: "Apri i ticket",
+    }),
+  },
   site_message: {
     audience: "admin",
     label: "Nuova richiesta dal sito",

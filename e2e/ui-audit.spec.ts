@@ -19,6 +19,7 @@ const PAGES = [
   "/c/fixture/sign",
   "/c/fixture/previews",
   "/c/fixture/kpi",
+  "/c/fixture/support",
 ] as const;
 
 async function audit(page: Page) {
@@ -81,7 +82,7 @@ for (const path of PAGES) {
   });
 }
 
-for (const path of ["/c/fixture", "/c/fixture/billing"] as const) {
+for (const path of ["/c/fixture", "/c/fixture/billing", "/c/fixture/support"] as const) {
   test(`omogeneita' UI su telefono: ${path}`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 800 });
     await page.goto(path);

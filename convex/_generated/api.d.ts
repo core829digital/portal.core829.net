@@ -86,6 +86,7 @@ import type * as signatures from "../signatures.js";
 import type * as site from "../site.js";
 import type * as siteMail from "../siteMail.js";
 import type * as subscriptions from "../subscriptions.js";
+import type * as tickets from "../tickets.js";
 import type * as webhooks from "../webhooks.js";
 
 declare const fullApi: ApiFromModules<{
@@ -162,6 +163,7 @@ declare const fullApi: ApiFromModules<{
   site: typeof site;
   siteMail: typeof siteMail;
   subscriptions: typeof subscriptions;
+  tickets: typeof tickets;
   webhooks: typeof webhooks;
 }>;
 

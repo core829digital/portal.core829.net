@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart3, FileText, FolderKanban, LayoutDashboard, Receipt, Repeat } from "lucide-react";
+import { BarChart3, FileText, FolderKanban, LayoutDashboard, LifeBuoy, Receipt, Repeat } from "lucide-react";
 import type { ReactNode } from "react";
 import type { Widget } from "@convex/lib/widgets";
 import { DashShell, type NavGroup } from "@/components/dash/DashShell";
@@ -30,6 +30,7 @@ export function PortalChrome({ data, token, base, children }: { data: PortalData
     ...(pages.subscriptions ? [{ href: `${base}/subscriptions`, label: "Abbonamenti", icon: Repeat }] : []),
     ...(pages.documents ? [{ href: `${base}/documents`, label: "Documenti", icon: FileText }] : []),
     ...(pages.reports ? [{ href: `${base}/reports`, label: "Report", icon: BarChart3 }] : []),
+    { href: `${base}/support`, label: "Assistenza", icon: LifeBuoy },
   ];
   const groups: NavGroup[] = [{ items }];
 
@@ -42,7 +43,7 @@ export function PortalChrome({ data, token, base, children }: { data: PortalData
         footer={
           <div className="space-y-1 px-3 text-xs text-muted-foreground">
             <p className="truncate font-medium text-foreground">{data.client.displayName}</p>
-            <p className="font-mono text-[10px] uppercase tracking-[0.18em]">Solo lettura</p>
+            <p className="font-mono text-[10px] uppercase tracking-[0.18em]">Spazio riservato</p>
             <p>Per qualsiasi dubbio rispondi al messaggio con cui hai ricevuto questo link.</p>
           </div>
         }
