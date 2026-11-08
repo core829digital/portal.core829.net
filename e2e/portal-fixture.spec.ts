@@ -191,6 +191,22 @@ test("menu a gruppi: si apre e si chiude, ricorda la scelta, il gruppo della pag
   expect(results.violations.map((v) => `${v.id}: ${v.help}`)).toEqual([]);
 });
 
+// ---- Nessuna zona bianca in fondo alle pagine (bug: la tabella nascosta del grafico allungava la pagina) ----
+
+for (const path of ["/c/fixture/site", "/c/fixture/chart", "/c/fixture", "/c/fixture/billing"]) {
+  test(`${path}: la pagina finisce dove finisce il contenuto (nessuna zona bianca scrollando)`, async ({ page }) => {
+    await page.goto(path);
+    await page.waitForTimeout(1800);
+    const { scrollHeight, contentBottom, viewport } = await page.evaluate(() => {
+      const root = document.getElementById("contenuto") ?? document.body;
+      const last = root.lastElementChild as HTMLElement | null;
+      return { scrollHeight: document.documentElement.scrollHeight, contentBottom: (last ? last.getBoundingClientRect().bottom : 0) + window.scrollY, viewport: window.innerHeight };
+    });
+    // Margine ragionevole: spaziatura finale del contenuto (non centinaia di pixel vuoti).
+    expect(scrollHeight - Math.max(contentBottom, viewport)).toBeLessThan(120);
+  });
+}
+
 // ---- Grafico ad area: la linea deve arrivare fino all'ultimo mese ----
 
 test("grafico incassi: la linea e l'area arrivano fino a novembre (ultimo punto) e il punto attivo e' l'ultimo", async ({ page }) => {

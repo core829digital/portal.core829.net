@@ -17,9 +17,16 @@ import { SITE_URL } from "@/lib/contact";
 const n = (x: number) => new Intl.NumberFormat("it-IT").format(x);
 
 /** Panoramica del sito core829.net: visite (solo con consenso agli analytics), richieste dal modulo contatti, SEO e avviso. */
+export type SiteOverviewData = NonNullable<ReturnType<typeof useQuery<typeof api.site.overview>>>;
+
 export function SiteOverview() {
   const [days, setDays] = useState(30);
   const data = useQuery(api.site.overview, { days });
+  return <SiteOverviewView data={data} days={days} setDays={setDays} />;
+}
+
+/** Solo la parte grafica (i dati arrivano da fuori): serve anche alle prove nel browser con dati inventati. */
+export function SiteOverviewView({ data, days, setDays }: { data: SiteOverviewData | undefined; days: number; setDays: (d: number) => void }) {
   return (
     <>
       <PageHeader

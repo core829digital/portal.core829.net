@@ -97,7 +97,8 @@ export function AreaChart({
           </span>
         ))}
       </div>
-      <table className="sr-only">
+      <div className="sr-only">
+        <table>
         <caption>{ariaLabel}</caption>
         <tbody>
           {points.map((p, i) => (
@@ -108,6 +109,7 @@ export function AreaChart({
           ))}
         </tbody>
       </table>
+      </div>
     </figure>
   );
 }
@@ -134,7 +136,8 @@ export function BarChart({ points, format, ariaLabel }: { points: Point[]; forma
           </span>
         ))}
       </div>
-      <table className="sr-only">
+      <div className="sr-only">
+        <table>
         <caption>{ariaLabel}</caption>
         <tbody>
           {points.map((p, i) => (
@@ -145,6 +148,7 @@ export function BarChart({ points, format, ariaLabel }: { points: Point[]; forma
           ))}
         </tbody>
       </table>
+      </div>
     </figure>
   );
 }
