@@ -4,7 +4,11 @@ import type { LucideIcon } from "lucide-react";
 import { ArrowDownRight, ArrowUpRight } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
 import { cn } from "cn";
+import { AnimDelay } from "@/components/dash/animDelay";
 import { useSeen } from "@/lib/useSeen";
+
+/** Ritardo (ms) con cui entra la scheda numero `index`: deve coincidere con `.reveal` in globals.css (250 + 110 per scheda). */
+export const cardDelay = (index: number) => 250 + index * 110;
 
 export type KpiTone = "default" | "accent" | "warn";
 
@@ -58,7 +62,7 @@ export function Kpi({
         </span>
         {Icon && !compact ? <Icon aria-hidden className={cn("size-4 shrink-0", accent ? "text-primary-foreground" : "text-brand")} /> : null}
       </div>
-      <div className={cn("font-display leading-none tracking-tight tabular-nums", compact ? "text-[clamp(0.8rem,1.35cqi,1.15rem)]" : hero ? "text-[clamp(1.15rem,2.7cqi,2.25rem)]" : "text-2xl sm:text-[1.7rem]")}>{value}</div>
+      <div className={cn("font-display leading-none tracking-tight tabular-nums", compact ? "text-[clamp(0.8rem,1.35cqi,1.15rem)]" : hero ? "text-[clamp(1.15rem,2.7cqi,2.25rem)]" : "text-2xl sm:text-[1.7rem]")}><AnimDelay ms={cardDelay(index) + 350}>{value}</AnimDelay></div>
       <div className={cn("flex flex-wrap items-center gap-x-2", compact ? "min-h-4 text-[11px] leading-tight" : "min-h-5 text-xs")}>
         {typeof delta === "number" ? (
           <span
@@ -118,7 +122,7 @@ export function Panel({
       {...seen}
       aria-label={title}
       className={cn("reveal flex min-w-0 flex-col gap-4 rounded-2xl bg-card p-4 ring-1 ring-foreground/10 shadow-(--shadow-soft) sm:p-5", className)}
-      style={{ "--i": index } as CSSProperties}
+      style={{ "--i": index, "--pd": `${cardDelay(index)}ms` } as CSSProperties}
     >
       <header className="flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -127,7 +131,7 @@ export function Panel({
         </div>
         {action}
       </header>
-      {children}
+      <AnimDelay ms={cardDelay(index) + 450}>{children}</AnimDelay>
     </section>
   );
 }

@@ -25,3 +25,9 @@ blocchi con bordo/ombra a distanza < 8 px, titoli a contatto con il contenuto, p
 Verificato con prova di mutazione: togliendo `space-y-6` da `PageIn` il controllo fallisce.
 
 Ogni nuova pagina va aggiunta all'elenco `PAGES` di quel file.
+
+## Regia delle animazioni (Panoramica e pagine con schede)
+Ordine fisso, perché l'occhio possa seguire ogni passaggio: **pagina** (0–450 ms) → **schede** una dopo l'altra (da 250 ms, ogni 110 ms) → **numeri** (partono quando la scheda è già comparsa) → **grafici, barre, anello** (450 ms dopo la loro scheda). Tutto finisce entro 3,5 s.
+- Il ritardo delle schede è in `cardDelay()` (`components/dash/Kpi.tsx`) e deve coincidere con `.reveal` in `globals.css`.
+- I numeri (`CountUp`) leggono il ritardo dalla scheda che li contiene; non impostarlo a mano.
+- `e2e/animation-timeline.spec.ts` misura la sequenza reale nel browser e il conteggio dei numeri.

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useSyncExternalStore } from "react";
+import { useAnimDelay } from "@/components/dash/animDelay";
 import { useInView } from "@/lib/useInView";
 
 const QUERY = "(prefers-reduced-motion: reduce)";
@@ -20,11 +21,13 @@ const easeOut = (t: number) => 1 - Math.pow(1 - t, 4);
  *  - scrive direttamente nel testo, senza ridisegnare React a ogni fotogramma (fluido anche su telefoni lenti);
  *  - il valore corretto e' sempre presente per gli screen reader; con "riduci animazioni" si vede subito.
  */
-export function CountUp({ value, format, durationMs = 1100, delayMs = 0 }: { value: number; format: (n: number) => string; durationMs?: number; delayMs?: number }) {
+export function CountUp({ value, format, durationMs = 1300, delayMs }: { value: number; format: (n: number) => string; durationMs?: number; delayMs?: number }) {
   const reduced = useSyncExternalStore(subscribe, () => window.matchMedia(QUERY).matches, () => true);
   const [boxRef, seen] = useInView<HTMLSpanElement>("0px");
   const textRef = useRef<HTMLSpanElement>(null);
   const shown = useRef(0); // ultimo numero mostrato
+  const inherited = useAnimDelay();
+  const delay = delayMs ?? inherited;
   const formatRef = useRef(format);
 
   useEffect(() => {
@@ -46,7 +49,7 @@ export function CountUp({ value, format, durationMs = 1100, delayMs = 0 }: { val
     let raf = 0;
     let start = 0;
     const tick = (now: number) => {
-      if (!start) start = now + delayMs;
+      if (!start) start = now + (from === 0 ? delay : 0); // i cambi dal vivo partono subito
       const t = Math.min(1, Math.max(0, (now - start) / total));
       shown.current = from + (value - from) * easeOut(t);
       node.textContent = formatRef.current(Math.round(shown.current));
@@ -55,7 +58,7 @@ export function CountUp({ value, format, durationMs = 1100, delayMs = 0 }: { val
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [value, durationMs, delayMs, reduced, seen]);
+  }, [value, durationMs, delay, reduced, seen]);
 
   return (
     <span ref={boxRef}>

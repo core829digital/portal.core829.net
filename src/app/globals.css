@@ -275,29 +275,35 @@ html {
 .stagger > :nth-child(7) { --n: 6; }
 .stagger > :nth-child(8) { --n: 7; }
 .stagger > :nth-child(n + 9) { --n: 8; }
+/* Regia della pagina: prima entra la pagina (0-450 ms), poi le schede una dopo l'altra (ogni 110 ms),
+   poi i numeri e i grafici DENTRO le schede, quando la scheda e' gia' visibile. Cosi' l'occhio segue ogni passaggio. */
+.page-in {
+  --reveal-base: 250ms;
+}
 .reveal {
-  animation: dash-rise 0.7s var(--ease-out-expo) both;
-  animation-delay: calc(var(--i, 0) * 70ms);
+  animation: dash-rise 0.8s var(--ease-out-expo) both;
+  animation-delay: calc(var(--reveal-base, 0ms) + var(--i, 0) * 110ms);
 }
 .fade-in {
   animation: dash-fade 0.5s ease both;
   animation-delay: calc(var(--i, 0) * 70ms);
 }
+/* I grafici partono quando la loro scheda (--pd = ritardo della scheda) e' gia' in vista. */
 .draw-line {
-  animation: chart-reveal 1.4s var(--ease-out-expo) 0.15s both;
+  animation: chart-reveal 1.8s var(--ease-out-expo) calc(var(--pd, 0ms) + 450ms) both;
 }
 .grow-y {
   transform-origin: bottom;
-  animation: dash-grow-y 0.9s var(--ease-out-expo) both;
-  animation-delay: calc(var(--i, 0) * 60ms + 150ms);
+  animation: dash-grow-y 1.1s var(--ease-out-expo) both;
+  animation-delay: calc(var(--pd, 0ms) + 450ms + var(--i, 0) * 80ms);
 }
 .grow-x {
   transform-origin: left;
-  animation: dash-grow-x 0.9s var(--ease-out-expo) both;
-  animation-delay: calc(var(--i, 0) * 60ms + 150ms);
+  animation: dash-grow-x 1.1s var(--ease-out-expo) both;
+  animation-delay: calc(var(--pd, 0ms) + 450ms + var(--i, 0) * 80ms);
 }
 .ring-sweep {
-  animation: dash-sweep 1.2s var(--ease-out-expo) 0.15s both;
+  animation: dash-sweep 1.5s var(--ease-out-expo) calc(var(--pd, 0ms) + 450ms) both;
 }
 @media (prefers-reduced-motion: reduce) {
   .reveal,
