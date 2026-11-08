@@ -79,3 +79,7 @@ Da fare **dopo** i passi di `docs/SETUP.md` (chiavi Convex Auth, variabili, prim
 2. Documenti → Modelli → **Installa i modelli CORE829** (una volta sola; sicuro da ripetere). Importa il MSA dal tuo file Word.
 3. Completa la scheda dei clienti (sede, P. IVA, PEC, rappresentante legale): più dati hai, più documenti escono già compilati.
 4. Clienti → Report mensili: vedi `docs/REPORTS.md`.
+
+## 10. Backoffice del sito Andromedia Web
+
+Imposta su Convex (produzione) del portale `AW_CONVEX_URL` e `AW_CONVEX_GUARD` come descritto in `docs/SITE.md`, poi apri *Sito Andromedia Web → Panoramica* nell'area admin: se vedi i numeri, il ponte funziona.

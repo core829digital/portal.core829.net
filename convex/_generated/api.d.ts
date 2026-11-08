@@ -59,6 +59,7 @@ import type * as lib_reportData from "../lib/reportData.js";
 import type * as lib_reports from "../lib/reports.js";
 import type * as lib_resend from "../lib/resend.js";
 import type * as lib_sheets from "../lib/sheets.js";
+import type * as lib_siteBridge from "../lib/siteBridge.js";
 import type * as lib_templates from "../lib/templates.js";
 import type * as lib_text from "../lib/text.js";
 import type * as lib_validators from "../lib/validators.js";
@@ -73,6 +74,8 @@ import type * as projects from "../projects.js";
 import type * as reminders from "../reminders.js";
 import type * as reportExport from "../reportExport.js";
 import type * as reports from "../reports.js";
+import type * as site from "../site.js";
+import type * as siteActions from "../siteActions.js";
 import type * as subscriptions from "../subscriptions.js";
 import type * as webhooks from "../webhooks.js";
 
@@ -123,6 +126,7 @@ declare const fullApi: ApiFromModules<{
   "lib/reports": typeof lib_reports;
   "lib/resend": typeof lib_resend;
   "lib/sheets": typeof lib_sheets;
+  "lib/siteBridge": typeof lib_siteBridge;
   "lib/templates": typeof lib_templates;
   "lib/text": typeof lib_text;
   "lib/validators": typeof lib_validators;
@@ -137,6 +141,8 @@ declare const fullApi: ApiFromModules<{
   reminders: typeof reminders;
   reportExport: typeof reportExport;
   reports: typeof reports;
+  site: typeof site;
+  siteActions: typeof siteActions;
   subscriptions: typeof subscriptions;
   webhooks: typeof webhooks;
 }>;
