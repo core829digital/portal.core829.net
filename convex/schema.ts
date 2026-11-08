@@ -297,6 +297,22 @@ export default defineSchema({
     .index("by_documentId", ["documentId"])
     .index("by_status", ["status"]),
 
+  /** Approvazione di un documento (es. preventivo) da parte del cliente: approva o chiede modifiche. Decisione definitiva. */
+  approvalRequests: defineTable({
+    clientId: v.id("clients"),
+    documentId: v.id("documents"),
+    message: v.optional(v.string()),
+    status: v.union(v.literal("pending"), v.literal("approved"), v.literal("changes_requested"), v.literal("revoked")),
+    createdAt: v.number(),
+    expiresAt: v.number(),
+    decidedAt: v.optional(v.number()),
+    decidedName: v.optional(v.string()),
+    comment: v.optional(v.string()),
+  })
+    .index("by_clientId", ["clientId"])
+    .index("by_documentId", ["documentId"])
+    .index("by_status", ["status"]),
+
   /** Scadenze inserite a mano dall'amministratore (dominio, hosting, contratto...). Le altre sono ricavate dai dati. */
   deadlines: defineTable({
     title: v.string(),

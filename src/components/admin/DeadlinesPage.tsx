@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery } from "convex/react";
-import { CalendarClock, Check, Plus, Receipt, Repeat, PenLine, Trash2, Wrench } from "lucide-react";
+import { CalendarClock, Check, CircleCheck, Plus, Receipt, Repeat, PenLine, Trash2, Wrench } from "lucide-react";
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { api } from "@convex/_generated/api";
@@ -20,8 +20,8 @@ import { errorMessage } from "@/lib/errors";
 import { toast } from "@/lib/toast";
 
 const DAY = 86_400_000;
-const ICON = { invoice: Receipt, subscription: Repeat, signature: PenLine, manual: Wrench } as const;
-const KIND_LABEL = { invoice: "Fattura", subscription: "Rinnovo", signature: "Firma", manual: "Scadenza" } as const;
+const ICON = { invoice: Receipt, subscription: Repeat, signature: PenLine, approval: CircleCheck, manual: Wrench } as const;
+const KIND_LABEL = { invoice: "Fattura", subscription: "Rinnovo", signature: "Firma", approval: "Approvazione", manual: "Scadenza" } as const;
 const CATEGORY_LABEL = { domain: "Dominio", hosting: "Hosting", contract: "Contratto", other: "Altro" } as const;
 
 function daysLabel(at: number, now: number): string {
@@ -112,7 +112,7 @@ function Row({ item, now }: { item: DeadlineItem; now: number }) {
   const setDone = useMutation(api.deadlines.setDone);
   const remove = useMutation(api.deadlines.remove);
   const Icon = ICON[item.kind];
-  const href = item.kind === "invoice" ? `/admin/clients/${item.clientId}/invoices` : item.kind === "subscription" ? `/admin/clients/${item.clientId}/subscriptions` : item.kind === "signature" ? "/admin/signatures" : item.clientId ? `/admin/clients/${item.clientId}` : null;
+  const href = item.kind === "invoice" ? `/admin/clients/${item.clientId}/invoices` : item.kind === "subscription" ? `/admin/clients/${item.clientId}/subscriptions` : item.kind === "signature" ? "/admin/signatures" : item.kind === "approval" ? "/admin/approvals" : item.clientId ? `/admin/clients/${item.clientId}` : null;
   return (
     <li className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3">
       <Icon aria-hidden className="size-4 shrink-0 text-muted-foreground" />

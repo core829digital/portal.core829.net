@@ -1,7 +1,7 @@
 "use client";
 
 import { useConvex, useMutation, useQuery } from "convex/react";
-import { Download, Eye, EyeOff, PenLine, Trash2, Upload } from "lucide-react";
+import { CircleCheck, Download, Eye, EyeOff, PenLine, Trash2, Upload } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { api } from "@convex/_generated/api";
 import type { Doc, Id } from "@convex/_generated/dataModel";
@@ -161,6 +161,7 @@ export function DocumentsPanel({ clientId }: { clientId: Id<"clients"> }) {
   const setVisibility = useMutation(api.documents.setVisibility);
   const removeDocument = useMutation(api.documents.remove);
   const requestSignature = useMutation(api.signatures.requestForDocument);
+  const requestApproval = useMutation(api.approvals.request);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [toDelete, setToDelete] = useState<Document | null>(null);
   const [toDeleteSent, setToDeleteSent] = useState<Document | null>(null);
@@ -234,6 +235,19 @@ export function DocumentsPanel({ clientId }: { clientId: Id<"clients"> }) {
                           }}
                         >
                           <PenLine aria-hidden /> Richiedi firma
+                        </Button>
+                      ) : null}
+                      {d.scanStatus === "clean" && !d.title.endsWith("— firmato") ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            void requestApproval({ documentId: d._id })
+                              .then(() => toast.success("Richiesta di approvazione inviata: il cliente la trova in Documenti."))
+                              .catch((e: unknown) => toast.error(errorMessage(e)));
+                          }}
+                        >
+                          <CircleCheck aria-hidden /> Richiedi approvazione
                         </Button>
                       ) : null}
                       {d.scanStatus === "clean" ? (

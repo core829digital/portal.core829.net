@@ -101,6 +101,18 @@ describe("scadenziario", () => {
     expect(items.filter((i) => i.kind === "signature")).toHaveLength(1);
   });
 
+  it("include le approvazioni in attesa (non scadute)", async () => {
+    const h = await track();
+    await h.t.run(async (ctx) => {
+      const storageId = await ctx.storage.store(new Blob(["x"]));
+      const documentId = await ctx.db.insert("documents", { clientId: h.clientA, kind: "quote", title: "Preventivo", storageId, fileName: "p.pdf", mimeType: "application/pdf", sizeBytes: 1, scanStatus: "clean", visibleToClient: true });
+      await ctx.db.insert("approvalRequests", { clientId: h.clientA, documentId, status: "pending", createdAt: NOW, expiresAt: NOW + 8 * DAY });
+      await ctx.db.insert("approvalRequests", { clientId: h.clientA, documentId, status: "approved", createdAt: NOW, expiresAt: NOW + 8 * DAY });
+    });
+    const items = await h.admin.query(api.deadlines.overview, { nowMs: NOW });
+    expect(items.filter((i) => i.kind === "approval").map((i) => i.title)).toEqual(["Approvazione in attesa: Preventivo"]);
+  });
+
   it("solo gli amministratori; titolo e data validati; un cliente inesistente è rifiutato", async () => {
     const h = await track();
     for (const who of [h.stranger, h.t] as (typeof h.t)[]) {

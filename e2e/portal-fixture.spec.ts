@@ -552,3 +552,20 @@ test("assistenza: elenco, conversazione e nuova richiesta sono navigabili da tas
   await expect(page.getByLabel("Tipo di richiesta")).toBeVisible();
   await expect(page.getByLabel("Messaggio")).toBeVisible();
 });
+
+test("approvazione: la finestra e' accessibile, chiede il nome e, per le modifiche, la descrizione", async ({ page }) => {
+  await page.goto("/c/fixture/approval");
+  await page.getByRole("button", { name: "Richiedi modifiche" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByText("Ti chiediamo l'ok entro fine mese.")).toBeVisible();
+  const results = await new AxeBuilder({ page }).include('[role="dialog"]').withTags(["wcag2a", "wcag2aa"]).analyze();
+  expect(results.violations.map((v) => `${v.id}: ${v.help}`)).toEqual([]);
+  await dialog.getByLabel("Nome e cognome").fill("Al");
+  await dialog.getByLabel("Cosa vuoi cambiare").fill("Togliere il dominio dal prezzo.");
+  await dialog.getByRole("button", { name: "Invia la richiesta" }).click();
+  await expect(dialog.getByRole("alert")).toHaveText("Scrivi il tuo nome e cognome.");
+  await dialog.getByLabel("Nome e cognome").fill("Mario Rossi");
+  await dialog.getByRole("button", { name: "Invia la richiesta" }).click();
+  await expect(page.getByRole("status")).toHaveText("changes:Mario Rossi:Togliere il dominio dal prezzo.");
+});

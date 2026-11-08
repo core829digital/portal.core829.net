@@ -20,7 +20,7 @@ const MANUAL_REMINDER_DAYS = 7;
 
 const category = v.union(v.literal("domain"), v.literal("hosting"), v.literal("contract"), v.literal("other"));
 
-export type DeadlineKind = "invoice" | "subscription" | "signature" | "manual";
+export type DeadlineKind = "invoice" | "subscription" | "signature" | "approval" | "manual";
 export type DeadlineItem = {
   key: string;
   kind: DeadlineKind;
@@ -63,6 +63,12 @@ export const overview = query({
       if (r.expiresAt < args.nowMs || r.expiresAt > limit) continue;
       const doc = await ctx.db.get("documents", r.documentId);
       items.push({ key: `sig:${r._id}`, kind: "signature", title: `Firma in attesa: ${doc?.title ?? "documento"}`, clientId: r.clientId, clientName: await nameOf(r.clientId), at: r.expiresAt, amountCents: null, manualId: null, category: null, notes: null });
+    }
+    const approvals = await ctx.db.query("approvalRequests").withIndex("by_status", (q) => q.eq("status", "pending")).take(200);
+    for (const r of approvals) {
+      if (r.expiresAt < args.nowMs || r.expiresAt > limit) continue;
+      const doc = await ctx.db.get("documents", r.documentId);
+      items.push({ key: `apr:${r._id}`, kind: "approval", title: `Approvazione in attesa: ${doc?.title ?? "documento"}`, clientId: r.clientId, clientName: await nameOf(r.clientId), at: r.expiresAt, amountCents: null, manualId: null, category: null, notes: null });
     }
     const manual = await ctx.db.query("deadlines").withIndex("by_done_and_dueAt", (q) => q.eq("done", false).lt("dueAt", limit)).take(200);
     for (const d of manual) items.push({ key: `man:${d._id}`, kind: "manual", title: d.title, clientId: d.clientId ?? null, clientName: await nameOf(d.clientId), at: d.dueAt, amountCents: null, manualId: d._id, category: d.category, notes: d.notes ?? null });

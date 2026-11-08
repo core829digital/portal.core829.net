@@ -15,6 +15,7 @@ import type {
 } from "convex/server";
 import type * as accessLinks from "../accessLinks.js";
 import type * as admins from "../admins.js";
+import type * as approvals from "../approvals.js";
 import type * as auth from "../auth.js";
 import type * as b2b from "../b2b.js";
 import type * as brand from "../brand.js";
@@ -93,6 +94,7 @@ import type * as webhooks from "../webhooks.js";
 declare const fullApi: ApiFromModules<{
   accessLinks: typeof accessLinks;
   admins: typeof admins;
+  approvals: typeof approvals;
   auth: typeof auth;
   b2b: typeof b2b;
   brand: typeof brand;

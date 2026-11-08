@@ -1,11 +1,13 @@
 "use client";
 
 import { useMutation, useQuery } from "convex/react";
-import { Download, Lock, PenLine, ShieldCheck } from "lucide-react";
+import { CircleCheck, Download, Lock, MessageSquareWarning, PenLine, ShieldCheck } from "lucide-react";
 import { useState, type FormEvent, type ReactNode } from "react";
 import { api } from "@convex/_generated/api";
+import type { Id } from "@convex/_generated/dataModel";
 import { ErrorBoundary } from "@/components/portal/ErrorBoundary";
 import { DocThumb } from "@/components/preview/DocThumb";
+import { ApprovalDialog, type ApprovalDecision } from "@/components/portal/ApprovalDialog";
 import { SignDialog, type SignOutcome } from "@/components/portal/SignDialog";
 import { useConvexSiteUrl } from "@/components/portal/PortalProvider";
 import { Button } from "@/components/ui/button";
@@ -13,12 +15,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { downloadFileName, formatBytes, formatDate } from "@/lib/format";
 import { documentKindLabel } from "@/lib/labels";
+import { errorMessage } from "@/lib/errors";
 
 type Phase = "locked" | "code" | "unlocked";
 
 function DocumentList({ token, unlockToken }: { token: string; unlockToken: string }) {
   const documents = useQuery(api.portal.documents, { token, unlockToken });
   const requests = useQuery(api.signatures.forClient, { token, unlockToken });
+  const [nowMs] = useState(() => Math.floor(Date.now() / 3_600_000) * 3_600_000);
+  const approvals = useQuery(api.approvals.forClient, { token, unlockToken, nowMs });
+  const decide = useMutation(api.approvals.decide);
+  const [deciding, setDeciding] = useState<{ requestId: Id<"approvalRequests">; title: string; mode: ApprovalDecision; message: string | null } | null>(null);
   const siteUrl = useConvexSiteUrl();
   const [signing, setSigning] = useState<{ requestId: string; documentId: string; title: string; fileName: string } | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -98,6 +105,7 @@ function DocumentList({ token, unlockToken }: { token: string; unlockToken: stri
       <ul className="divide-y rounded-lg border">
         {documents.map((d) => {
           const req = requests?.find((r) => r.documentId === d.id);
+          const apr = approvals?.find((r) => r.documentId === d.id && r.status !== "expired");
           const isSignedCopy = requests?.some((r) => r.signedDocumentId === d.id) ?? false;
           return (
           <li key={d.id} className="flex flex-wrap items-center gap-3 p-4">
@@ -108,6 +116,22 @@ function DocumentList({ token, unlockToken }: { token: string; unlockToken: stri
                 {documentKindLabel[d.kind]} · {d.fileName} · {formatBytes(d.sizeBytes)} · {formatDate(d.createdAt)}
               </p>
             </div>
+            {apr?.status === "pending" ? (
+              <>
+                <Button size="sm" onClick={() => setDeciding({ requestId: apr.id, title: d.title, mode: "approve", message: apr.message })}>
+                  <CircleCheck aria-hidden /> Approva
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setDeciding({ requestId: apr.id, title: d.title, mode: "changes", message: apr.message })}>
+                  <MessageSquareWarning aria-hidden /> Richiedi modifiche
+                </Button>
+              </>
+            ) : null}
+            {apr?.status === "approved" ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-brand-tint px-2.5 py-1 text-xs text-brand-deep">
+                <CircleCheck aria-hidden className="size-3.5" /> {apr.decidedAt ? `Approvato il ${formatDate(apr.decidedAt)}` : "Approvato"}
+              </span>
+            ) : null}
+            {apr?.status === "changes_requested" ? <span className="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">Modifiche richieste: ti inviamo una nuova versione</span> : null}
             {req?.status === "pending" ? (
               <Button size="sm" onClick={() => setSigning({ requestId: req.id, documentId: d.id, title: d.title, fileName: d.fileName })}>
                 <PenLine aria-hidden /> Firma
@@ -126,6 +150,23 @@ function DocumentList({ token, unlockToken }: { token: string; unlockToken: stri
           );
         })}
       </ul>
+      {deciding ? (
+        <ApprovalDialog
+          title={deciding.title}
+          mode={deciding.mode}
+          message={deciding.message}
+          onClose={() => setDeciding(null)}
+          onDecide={async ({ fullName, comment }) => {
+            try {
+              await decide({ token, unlockToken, requestId: deciding.requestId, decision: deciding.mode, fullName, comment: comment || undefined });
+              setDeciding(null);
+              return null;
+            } catch (e) {
+              return errorMessage(e);
+            }
+          }}
+        />
+      ) : null}
       {signing ? (
         <SignDialog
           title={signing.title}

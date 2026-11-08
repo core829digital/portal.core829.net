@@ -135,6 +135,17 @@ export const NOTIFY_KINDS = {
       body: `Il pagamento di ${d.amount} per «${d.name}» è in scadenza il ${d.date}.`,
     }),
   },
+  approval_requested: {
+    audience: "client",
+    label: "Documento da approvare",
+    description: "Quando chiediamo al cliente di approvare un documento (es. un preventivo).",
+    defaultEnabled: true,
+    render: (d) => ({
+      subject: `Da approvare: ${d.title}`,
+      heading: "Ti chiediamo di approvare un documento",
+      body: `Abbiamo caricato «${d.title}» e ci serve la tua approvazione.${d.note ? `\n\n${d.note}` : ""}\n\nApri il tuo link personale, vai in «Documenti» e scegli «Approva» oppure «Richiedi modifiche». La richiesta è valida fino al ${d.until}.`,
+    }),
+  },
   invoice_due_soon: {
     audience: "client",
     label: "Fattura in scadenza",
@@ -169,6 +180,30 @@ export const NOTIFY_KINDS = {
     }),
   },
   // ---- Verso l'amministrazione ----
+  approval_approved: {
+    audience: "admin",
+    label: "Il cliente ha approvato",
+    description: "Quando un cliente approva un documento.",
+    defaultEnabled: true,
+    render: (d) => ({
+      subject: `${d.client} ha approvato: ${d.title}`,
+      heading: "Documento approvato",
+      body: `${d.name} (${d.client}) ha approvato «${d.title}».${d.comment ? `\n\nNota del cliente:\n${d.comment}` : ""}`,
+      ctaLabel: "Apri le approvazioni",
+    }),
+  },
+  approval_changes: {
+    audience: "admin",
+    label: "Il cliente chiede modifiche",
+    description: "Quando un cliente non approva e chiede modifiche a un documento.",
+    defaultEnabled: true,
+    render: (d) => ({
+      subject: `${d.client} chiede modifiche: ${d.title}`,
+      heading: "Modifiche richieste",
+      body: `${d.name} (${d.client}) chiede modifiche a «${d.title}»:\n\n${d.comment}`,
+      ctaLabel: "Apri le approvazioni",
+    }),
+  },
   deadline_due: {
     audience: "admin",
     label: "Scadenza in arrivo",
