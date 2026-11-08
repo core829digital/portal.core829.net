@@ -22,6 +22,7 @@ import type * as brandActions from "../brandActions.js";
 import type * as clients from "../clients.js";
 import type * as crons from "../crons.js";
 import type * as dashboard from "../dashboard.js";
+import type * as deadlines from "../deadlines.js";
 import type * as docStudio from "../docStudio.js";
 import type * as docStudioActions from "../docStudioActions.js";
 import type * as documentScan from "../documentScan.js";
@@ -99,6 +100,7 @@ declare const fullApi: ApiFromModules<{
   clients: typeof clients;
   crons: typeof crons;
   dashboard: typeof dashboard;
+  deadlines: typeof deadlines;
   docStudio: typeof docStudio;
   docStudioActions: typeof docStudioActions;
   documentScan: typeof documentScan;

@@ -160,6 +160,16 @@ export const list = query({
   },
 });
 
+/** Elenco leggero (id e nome) per i menu di scelta del cliente. */
+export const options = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+    const rows = await ctx.db.query("clients").order("desc").take(300);
+    return rows.map((c) => ({ id: c._id, name: c.displayName }));
+  },
+});
+
 export const get = query({
   args: { clientId: v.id("clients") },
   handler: async (ctx, args) => {

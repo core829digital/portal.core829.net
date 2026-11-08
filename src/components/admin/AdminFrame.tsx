@@ -4,6 +4,7 @@ import { useAuthActions } from "@convex-dev/auth/react";
 import { useQuery } from "convex/react";
 import {
   Activity,
+  CalendarClock,
   BarChart3,
   Bell,
   CreditCard,
@@ -82,6 +83,7 @@ function Frame({ children }: { children: ReactNode }) {
       id: "lavoro",
       label: "Lavoro e incassi",
       items: [
+        { href: "/admin/deadlines", label: "Scadenziario", icon: CalendarClock },
         { href: "/admin/tickets", label: "Ticket di assistenza", icon: LifeBuoy, ...(waiting ? { badge: waiting } : {}) },
         { href: "/admin/projects", label: "Progetti", icon: FolderKanban },
         { href: "/admin/invoices", label: "Fatture", icon: Receipt },

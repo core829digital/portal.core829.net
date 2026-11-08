@@ -13,4 +13,6 @@ crons.interval("pulizia eventi webhook", { hours: 6 }, internal.maintenance.expi
 
 crons.interval("promemoria di rinnovo abbonamenti", { hours: 3 }, internal.reminders.run, {});
 
+crons.interval("promemoria di scadenza (fatture e scadenziario)", { hours: 6 }, internal.deadlines.sendReminders, {});
+
 export default crons;

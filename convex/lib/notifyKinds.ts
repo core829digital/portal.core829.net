@@ -135,6 +135,17 @@ export const NOTIFY_KINDS = {
       body: `Il pagamento di ${d.amount} per «${d.name}» è in scadenza il ${d.date}.`,
     }),
   },
+  invoice_due_soon: {
+    audience: "client",
+    label: "Fattura in scadenza",
+    description: "Promemoria gentile 3 giorni prima della scadenza di una fattura non ancora pagata.",
+    defaultEnabled: true,
+    render: (d) => ({
+      subject: `Promemoria: fattura ${d.number} in scadenza il ${d.due}`,
+      heading: "Una fattura sta per scadere",
+      body: `La fattura ${d.number} di ${d.amount} scade il ${d.due}. Se hai già provveduto, ignora questo messaggio.`,
+    }),
+  },
   ticket_admin_reply: {
     audience: "client",
     label: "Risposta alla tua richiesta di assistenza",
@@ -158,6 +169,18 @@ export const NOTIFY_KINDS = {
     }),
   },
   // ---- Verso l'amministrazione ----
+  deadline_due: {
+    audience: "admin",
+    label: "Scadenza in arrivo",
+    description: "Promemoria per le scadenze inserite nello Scadenziario (7 giorni prima).",
+    defaultEnabled: true,
+    render: (d) => ({
+      subject: `Scadenza in arrivo: ${d.title} (${d.date})`,
+      heading: "Una scadenza si avvicina",
+      body: `${d.title}${d.client ? ` — ${d.client}` : ""}\nScade il ${d.date}.${d.notes ? `\n\n${d.notes}` : ""}`,
+      ctaLabel: "Apri lo scadenziario",
+    }),
+  },
   ticket_new: {
     audience: "admin",
     label: "Nuovo ticket di assistenza",

@@ -119,6 +119,8 @@ export default defineSchema({
     /** Nota visibile al cliente (es. causale). */
     note: v.optional(v.string()),
     visibleToClient: v.boolean(),
+    /** Quando e' partito il promemoria «scade tra pochi giorni»: evita invii doppi. */
+    dueReminderSentAt: v.optional(v.number()),
   })
     .index("by_clientId", ["clientId"])
     .index("by_clientId_and_status", ["clientId", "status"])
@@ -294,6 +296,20 @@ export default defineSchema({
     .index("by_clientId", ["clientId"])
     .index("by_documentId", ["documentId"])
     .index("by_status", ["status"]),
+
+  /** Scadenze inserite a mano dall'amministratore (dominio, hosting, contratto...). Le altre sono ricavate dai dati. */
+  deadlines: defineTable({
+    title: v.string(),
+    dueAt: v.number(),
+    clientId: v.optional(v.id("clients")),
+    category: v.union(v.literal("domain"), v.literal("hosting"), v.literal("contract"), v.literal("other")),
+    notes: v.optional(v.string()),
+    done: v.boolean(),
+    doneAt: v.optional(v.number()),
+    /** Promemoria all'amministrazione gia' inviato (una volta sola). */
+    reminderSentAt: v.optional(v.number()),
+  })
+    .index("by_done_and_dueAt", ["done", "dueAt"]),
 
   /** Ticket di assistenza: il cliente scrive dal portale, CORE829 risponde dal pannello. */
   tickets: defineTable({
