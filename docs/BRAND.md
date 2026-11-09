@@ -28,3 +28,11 @@ Le differenze tra `#EF233C` e `#E52139` sono quasi invisibili all'occhio; la reg
 
 ## Come cambiare un colore
 Cambia il token in `globals.css` (mai un valore sparso nei componenti), poi lancia i test: quello dei contrasti fallisce se la leggibilità peggiora.
+
+## Logo, icone e immagini di condivisione
+Si rigenerano tutti insieme con `python3 scripts/brand/generate_assets.py <cartella-con-i-4-repository>` (Pillow + numpy; font Inter e JetBrains Mono).
+- **Logo scuro** (`core829-logo.webp`, `829black trsp.webp`): marchio in Obsidian Black `#111217` (prima nero puro). Il logo bianco non cambia.
+- **Icone** (favicon, `icon.png`, `apple-icon.png`, icone del manifest): tessera Obsidian con marchio bianco e margini sicuri. Le icone precedenti avevano il marchio **tagliato ai bordi**.
+- **Immagini di condivisione** 1200×630: portale e sito su Obsidian con alone Racing Red e griglia Ice Grey; bookings su Racing Red con i due marchi.
+- Il marchio non viene ridisegnato: si usa la maschera del logo bianco ufficiale.
+- Le piattaforme (WhatsApp, LinkedIn, Facebook) tengono l'anteprima in cache: per vedere subito la nuova usa il loro «debugger» / «aggiorna anteprima».
