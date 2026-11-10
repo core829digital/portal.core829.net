@@ -113,6 +113,8 @@ export async function buildOverview(ctx: QueryCtx, clientId: Id<"clients">) {
         status: i.status,
         paidAt: i.paidAt ?? null,
         note: i.note ?? null,
+        // Il servizio a cui si riferisce il pagamento (lo stesso nome dell'abbonamento, cosi' il cliente li riconosce).
+        subscriptionName: i.subscriptionId ? (subscriptions.find((s) => s._id === i.subscriptionId)?.name ?? null) : null,
       })),
     },
   };

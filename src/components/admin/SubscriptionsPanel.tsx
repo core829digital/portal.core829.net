@@ -22,6 +22,8 @@ type Subscription = Doc<"subscriptions">;
 
 function CreateSubscriptionDialog({ open, onClose, clientId }: { open: boolean; onClose: () => void; clientId: Id<"clients"> }) {
   const create = useMutation(api.subscriptions.create);
+  const projects = useQuery(api.projects.listByClient, { clientId });
+  const documents = useQuery(api.documents.listByClient, { clientId });
   const [pending, setPending] = useState(false);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -36,12 +38,16 @@ function CreateSubscriptionDialog({ open, onClose, clientId }: { open: boolean; 
     if (startedAt === null) return void toast.error("Controlla la data di inizio.");
     if (interval !== "month" && interval !== "year") return;
     const description = String(form.get("description") ?? "").trim();
+    const projectId = String(form.get("projectId") ?? "");
+    const contractDocumentId = String(form.get("contractDocumentId") ?? "");
     setPending(true);
     try {
       await create({
         clientId,
         name: String(form.get("name") ?? ""),
         description: description === "" ? undefined : description,
+        projectId: projectId === "" ? undefined : (projectId as Id<"projects">),
+        contractDocumentId: contractDocumentId === "" ? undefined : (contractDocumentId as Id<"documents">),
         amountCents,
         interval,
         startedAt,
@@ -74,6 +80,28 @@ function CreateSubscriptionDialog({ open, onClose, clientId }: { open: boolean; 
               <NativeSelect id="interval" name="interval" defaultValue="year">
                 <option value="month">Mensile</option>
                 <option value="year">Annuale</option>
+              </NativeSelect>
+            </Field>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field id="projectId" label="Progetto" hint="Facoltativo.">
+              <NativeSelect id="projectId" name="projectId" defaultValue="">
+                <option value="">Nessuno</option>
+                {(projects ?? []).map((p) => (
+                  <option key={p._id} value={p._id}>
+                    {p.name}
+                  </option>
+                ))}
+              </NativeSelect>
+            </Field>
+            <Field id="contractDocumentId" label="Contratto" hint="Facoltativo.">
+              <NativeSelect id="contractDocumentId" name="contractDocumentId" defaultValue="">
+                <option value="">Nessuno</option>
+                {(documents ?? []).map((d) => (
+                  <option key={d._id} value={d._id}>
+                    {d.title}
+                  </option>
+                ))}
               </NativeSelect>
             </Field>
           </div>
@@ -143,6 +171,11 @@ export function SubscriptionsPanel({ clientId }: { clientId: Id<"clients"> }) {
                   <TableCell>
                     <div className="font-medium">{s.name}</div>
                     {s.description ? <div className="text-xs text-muted-foreground">{s.description}</div> : null}
+                    {s.projectName || s.contractTitle ? (
+                      <div className="text-xs text-muted-foreground">
+                        {[s.projectName ? `Progetto: ${s.projectName}` : null, s.contractTitle ? `Contratto: ${s.contractTitle}` : null].filter(Boolean).join(" · ")}
+                      </div>
+                    ) : null}
                   </TableCell>
                   <TableCell className="text-right tabular-nums">
                     {formatCents(s.amountCents)} <span className="text-xs text-muted-foreground">{intervalLabel[s.interval]}</span>

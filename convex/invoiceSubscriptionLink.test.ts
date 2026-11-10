@@ -98,4 +98,14 @@ describe("fattura ↔ abbonamento", () => {
     expect(items).toHaveLength(1);
     expect(items[0].kind).toBe("invoice");
   });
+
+  it("abbonamento: progetto e contratto devono essere dello stesso cliente", async () => {
+    const h = await setup();
+    const projB = await h.t.run((ctx) => ctx.db.insert("projects", { clientId: h.b, name: "Sito B", status: "in_progress", progress: 0 }));
+    const projA = await h.t.run((ctx) => ctx.db.insert("projects", { clientId: h.a, name: "Sito A", status: "in_progress", progress: 0 }));
+    const base = { clientId: h.a, name: "Hosting", amountCents: 100, interval: "month" as const, startedAt: NOW };
+    expect(await code(h.admin.mutation(api.subscriptions.create, { ...base, projectId: projB }))).toBe("NOT_FOUND");
+    await h.admin.mutation(api.subscriptions.create, { ...base, projectId: projA });
+    expect((await h.admin.query(api.subscriptions.listByClient, { clientId: h.a }))[0].projectName).toBe("Sito A");
+  });
 });

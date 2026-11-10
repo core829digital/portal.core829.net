@@ -157,10 +157,16 @@ export const invoices = query({
             .withIndex("by_status_and_dueAt", (q) => q.eq("status", args.status as Doc<"invoices">["status"]))
             .order("desc")
             .take(300);
+    const subNames = new Map<string, string>();
+    for (const i of rows) {
+      if (!i.subscriptionId || subNames.has(i.subscriptionId)) continue;
+      subNames.set(i.subscriptionId, (await ctx.db.get("subscriptions", i.subscriptionId))?.name ?? "Abbonamento eliminato");
+    }
     return rows.map((i) => ({
       id: i._id,
       clientId: i.clientId,
       clientName: names.get(i.clientId) ?? "Cliente",
+      subscriptionName: i.subscriptionId ? (subNames.get(i.subscriptionId) ?? null) : null,
       number: i.number,
       issuedAt: i.issuedAt,
       dueAt: i.dueAt,
@@ -184,10 +190,18 @@ export const subscriptions = query({
             .query("subscriptions")
             .withIndex("by_status_and_nextRenewalAt", (q) => q.eq("status", args.status as Doc<"subscriptions">["status"]))
             .take(300);
-    return rows.map((s) => ({
+    const linked = await Promise.all(
+      rows.map(async (s) => {
+        const inv = await ctx.db.query("invoices").withIndex("by_subscriptionId", (q) => q.eq("subscriptionId", s._id)).take(100);
+        return { count: inv.length, open: inv.filter((i) => i.status === "sent" || i.status === "overdue").length };
+      }),
+    );
+    return rows.map((s, idx) => ({
       id: s._id,
       clientId: s.clientId,
       clientName: names.get(s.clientId) ?? "Cliente",
+      linkedInvoices: linked[idx].count,
+      openInvoices: linked[idx].open,
       name: s.name,
       amountCents: s.amountCents,
       interval: s.interval,

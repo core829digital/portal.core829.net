@@ -78,6 +78,7 @@ export function InvoicesOverview() {
               <TableRow>
                 <TableHead>Numero</TableHead>
                 <TableHead>Cliente</TableHead>
+                <TableHead>Abbonamento</TableHead>
                 <TableHead>Emessa</TableHead>
                 <TableHead>Scadenza</TableHead>
                 <TableHead className="text-right">Importo</TableHead>
@@ -91,6 +92,7 @@ export function InvoicesOverview() {
                   <TableCell>
                     <ClientLink id={i.clientId} name={i.clientName} />
                   </TableCell>
+                  <TableCell>{i.subscriptionName ?? <span className="text-xs text-muted-foreground">Singolo</span>}</TableCell>
                   <TableCell>{formatDate(i.issuedAt)}</TableCell>
                   <TableCell>{formatDate(i.dueAt)}</TableCell>
                   <TableCell className="text-right tabular-nums">{formatCents(i.amountCents)}</TableCell>
@@ -142,6 +144,7 @@ export function SubscriptionsOverview() {
                 <TableHead>Cliente</TableHead>
                 <TableHead className="text-right">Importo</TableHead>
                 <TableHead>Prossimo rinnovo</TableHead>
+                <TableHead>Fatture collegate</TableHead>
                 <TableHead>Stato</TableHead>
               </TableRow>
             </TableHeader>
@@ -156,6 +159,9 @@ export function SubscriptionsOverview() {
                     {formatCents(s.amountCents)} <span className="text-xs text-muted-foreground">{intervalLabel[s.interval]}</span>
                   </TableCell>
                   <TableCell>{formatDate(s.nextRenewalAt)}</TableCell>
+                  <TableCell className="text-sm">
+                    {s.linkedInvoices === 0 ? <span className="text-xs text-muted-foreground">Nessuna</span> : `${s.linkedInvoices}${s.openInvoices > 0 ? ` · ${s.openInvoices} da saldare` : " · saldate"}`}
+                  </TableCell>
                   <TableCell>
                     <Badge variant={s.status === "active" ? "default" : "secondary"}>{subscriptionStatusLabel[s.status]}</Badge>
                   </TableCell>

@@ -1,6 +1,6 @@
 import { v } from "convex/values";
-import type { Doc } from "./_generated/dataModel";
-import { mutation, query } from "./_generated/server";
+import type { Doc, Id } from "./_generated/dataModel";
+import { mutation, query, type QueryCtx } from "./_generated/server";
 import { audit } from "./lib/audit";
 import { requireAdmin } from "./lib/auth";
 import { fail } from "./lib/errors";
@@ -10,11 +10,25 @@ import { subscriptionInterval, subscriptionStatus } from "./lib/validators";
 const nullableString = v.optional(v.union(v.string(), v.null()));
 const nullableNumber = v.optional(v.union(v.number(), v.null()));
 
+/** Progetto e contratto devono appartenere allo stesso cliente dell'abbonamento. */
+async function assertSameClientLinks(ctx: QueryCtx, clientId: Id<"clients">, projectId?: Id<"projects"> | null, documentId?: Id<"documents"> | null) {
+  if (projectId) {
+    const p = await ctx.db.get("projects", projectId);
+    if (!p || p.clientId !== clientId) fail("NOT_FOUND", "Progetto non trovato.");
+  }
+  if (documentId) {
+    const d = await ctx.db.get("documents", documentId);
+    if (!d || d.clientId !== clientId) fail("NOT_FOUND", "Documento non trovato.");
+  }
+}
+
 export const create = mutation({
   args: {
     clientId: v.id("clients"),
     name: v.string(),
     description: v.optional(v.string()),
+    projectId: v.optional(v.id("projects")),
+    contractDocumentId: v.optional(v.id("documents")),
     amountCents: v.number(),
     interval: subscriptionInterval,
     startedAt: v.number(),
@@ -25,8 +39,11 @@ export const create = mutation({
     const client = await ctx.db.get("clients", args.clientId);
     if (!client) return fail("NOT_FOUND", "Cliente non trovato.");
 
+    await assertSameClientLinks(ctx, args.clientId, args.projectId, args.contractDocumentId);
     const subscriptionId = await ctx.db.insert("subscriptions", {
       clientId: args.clientId,
+      projectId: args.projectId,
+      contractDocumentId: args.contractDocumentId,
       name: cleanText(args.name, { field: "nome abbonamento", min: 1, max: 120 }),
       description:
         args.description === undefined
@@ -57,6 +74,8 @@ export const update = mutation({
     subscriptionId: v.id("subscriptions"),
     name: v.optional(v.string()),
     description: nullableString,
+    projectId: v.optional(v.union(v.id("projects"), v.null())),
+    contractDocumentId: v.optional(v.union(v.id("documents"), v.null())),
     amountCents: v.optional(v.number()),
     interval: v.optional(subscriptionInterval),
     nextRenewalAt: nullableNumber,
@@ -73,6 +92,9 @@ export const update = mutation({
       patch.description =
         args.description === null ? undefined : cleanText(args.description, { field: "descrizione", max: 500, multiline: true });
     }
+    await assertSameClientLinks(ctx, subscription.clientId, args.projectId, args.contractDocumentId);
+    if (args.projectId !== undefined) patch.projectId = args.projectId ?? undefined;
+    if (args.contractDocumentId !== undefined) patch.contractDocumentId = args.contractDocumentId ?? undefined;
     if (args.amountCents !== undefined) patch.amountCents = assertCents(args.amountCents);
     if (args.interval !== undefined) patch.interval = args.interval;
     if (args.nextRenewalAt !== undefined) {
@@ -136,8 +158,12 @@ export const listByClient = query({
       subs.map(async (s) => {
         const linked = await ctx.db.query("invoices").withIndex("by_subscriptionId", (q) => q.eq("subscriptionId", s._id)).order("desc").take(100);
         const open = linked.filter((i) => i.status === "sent" || i.status === "overdue");
+        const project = s.projectId ? await ctx.db.get("projects", s.projectId) : null;
+        const contract = s.contractDocumentId ? await ctx.db.get("documents", s.contractDocumentId) : null;
         return {
           ...s,
+          projectName: project?.name,
+          contractTitle: contract?.title,
           linkedCount: linked.length,
           openCount: open.length,
           openCents: open.reduce((t, i) => t + i.amountCents, 0),

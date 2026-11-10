@@ -163,6 +163,7 @@ export function BillingWidget({ data }: { data: PortalData }) {
               <li key={invoice.id} className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 p-4">
                 <div>
                   <p className="font-medium">Fattura {invoice.number}</p>
+                  {invoice.subscriptionName ? <p className="text-sm text-muted-foreground">Abbonamento: {invoice.subscriptionName}</p> : null}
                   <p className="text-sm text-muted-foreground">
                     Emessa il {formatDate(invoice.issuedAt)}
                     {invoice.status === "paid" && invoice.paidAt ? ` · pagata il ${formatDate(invoice.paidAt)}` : ` · scade il ${formatDate(invoice.dueAt)}`}

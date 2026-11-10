@@ -34,3 +34,10 @@ Il promemoria delle 10:30 del giorno prima è **l'unico** che i clienti ricevono
 - Nelle email al cliente di questo flusso **non compare mai la parola «fattura»** (c'è un test che lo verifica): gli elementi sono «Pagamento n. …» e «Rinnovo abbonamento …».
 - Resta un promemoria **interno** (solo per noi) per le scadenze manuali dello scadenziario, 7 giorni prima.
 - Le email-evento «emessa / pagata / scaduta» restano e si possono spegnere dal Centro notifiche.
+
+## Collegamento pagamenti ↔ abbonamenti
+- Ogni pagamento (fattura) può essere **collegato a un abbonamento** dello stesso cliente: alla creazione («Abbonamento») o dopo, dal menu nella tabella (vale anche sui pagamenti già saldati, per sistemare lo storico).
+- Se un pagamento collegato è in scadenza lo stesso giorno del rinnovo, il promemoria delle 10:30 mostra **una sola riga** (il pagamento), non due.
+- **Storico:** nella scheda Fatture del cliente compare un riquadro «Collega» quando un pagamento ha lo stesso importo di **un solo** abbonamento: un clic li collega. Nei casi dubbi non propone nulla.
+- Nell'elenco abbonamenti: quante fatture sono collegate, quante da saldare, ultimo incasso. Negli elenchi globali e nel portale cliente ogni fattura mostra l'abbonamento.
+- Gli abbonamenti possono essere collegati anche a un **progetto** e a un **contratto** (documento) dello stesso cliente.

@@ -136,6 +136,10 @@ export default defineSchema({
     clientId: v.id("clients"),
     name: v.string(),
     description: v.optional(v.string()),
+    /** Progetto da cui nasce il servizio (es. il sito a cui si riferisce l'hosting). Stesso cliente. */
+    projectId: v.optional(v.id("projects")),
+    /** Contratto/accordo firmato che regola l'abbonamento (un documento dello stesso cliente). */
+    contractDocumentId: v.optional(v.id("documents")),
     amountCents: v.number(),
     currency,
     interval: subscriptionInterval,
