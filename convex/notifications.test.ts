@@ -192,9 +192,9 @@ describe("regole", () => {
     expect(r.reason).not.toContain("secret");
   });
 
-  it("il flusso già inviato altrove (promemoria) lascia solo la traccia", async () => {
+  it("il flusso già inviato altrove lascia solo la traccia", async () => {
     const { clientId, rows, send } = await setup();
-    await send("subscription_renewal", { clientId, data: { amount: "€ 10,00", date: "1 dic", name: "Hosting" }, logOnly: true });
+    await send("invoice_paid", { clientId, data: { number: "F", amount: "€ 10,00", due: "" }, logOnly: true });
     expect(fetchMock).not.toHaveBeenCalled();
     expect((await rows())[0]).toMatchObject({ status: "sent", reason: expect.stringContaining("flusso dedicato") });
   });

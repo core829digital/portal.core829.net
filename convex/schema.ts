@@ -141,6 +141,7 @@ export default defineSchema({
     nextRenewalAt: v.optional(v.number()),
     cancelledAt: v.optional(v.number()),
     /** Se presente, il cliente riceve un promemoria email questo numero di giorni prima del rinnovo (e l'admin una conferma). */
+    /** (Non piu' usato: l'unico promemoria e' quello delle 10:30 del giorno prima. Resta per non invalidare i dati esistenti.) */
     reminderDaysBefore: v.optional(v.number()),
     /** Rinnovo (`nextRenewalAt`) per cui il promemoria e' gia' stato inviato: evita invii doppi. */
     lastReminderForRenewalAt: v.optional(v.number()),

@@ -96,12 +96,16 @@ describe("promemoria automatico: il giorno prima, dalle 10:30 ora italiana", () 
     const a = mailsTo("a@esempio.it");
     expect(a).toHaveLength(1);
     expect(a[0].subject).toBe("Promemoria di pagamento: scadenza domani");
-    expect(a[0].text).toContain("Fattura 2026/001 · 390,00 € · scade il 11/11/2026");
+    expect(a[0].text).toContain("Pagamento n. 2026/001 · 390,00 € · scade il 11/11/2026");
     expect(a[0].text).toContain("Rinnovo: Server dedicato · 65,00 € · scade il 11/11/2026");
     expect(a[0].text).toContain("costi aggiuntivi");
     expect(a[0].text).toContain("ricostruire il server da capo");
     expect(a[0].text).toContain(PAYMENT_NOTICE);
     for (const escluso of ["2026/002", "2026/003", "2026/004", "2026/005", "2026/006", "Annullato"]) expect(a[0].text).not.toContain(escluso);
+    // Mai la parola «fattura» nelle email ai clienti (non tutti gli abbonamenti passano da una fattura).
+    for (const m of fetchMock.mock.calls.map((c) => JSON.parse(String(c[1].body)) as { subject: string; text: string; html: string })) {
+      expect(`${m.subject} ${m.text} ${m.html}`).not.toMatch(/fattur/i);
+    }
     expect(mailsTo("b@esempio.it")).toHaveLength(1);
     expect(mailsTo("b@esempio.it")[0].text).toContain("Hosting sito");
     expect(mailsTo("b@esempio.it")[0].text).not.toContain("Server dedicato"); // niente dati di un altro cliente
@@ -196,9 +200,9 @@ describe("invio a mano con un clic", () => {
     expect(p.autoEnabled).toBe(true);
     expect(p.clients.map((c) => c.name)).toEqual(["Cliente a", "Cliente b"]);
     const a = p.clients[0];
-    expect(a.items.map((i) => i.label)).toEqual(["Fattura 2026/002", "Fattura 2026/001", "Rinnovo: Server dedicato", "Fattura 2026/003"].sort((x, y) => 0)); // ordine per data, poi inserimento
+    expect(a.items.map((i) => i.label)).toEqual(["Pagamento n. 2026/002", "Pagamento n. 2026/001", "Rinnovo: Server dedicato", "Pagamento n. 2026/003"]); // ordine per data, poi inserimento
     expect(a.totalCents).toBe(1_000 + 39_000 + 6_500 + 1_000);
-    expect((await h.admin.query(api.paymentReminders.preview, { nowMs: NOW, days: 1 })).clients[0].items.map((i) => i.label)).not.toContain("Fattura 2026/003");
+    expect((await h.admin.query(api.paymentReminders.preview, { nowMs: NOW, days: 1 })).clients[0].items.map((i) => i.label)).not.toContain("Pagamento n. 2026/003");
   });
 
   it("«invia a tutti»: un'email a ogni cliente con scadenze; il secondo clic non crea doppioni", async () => {

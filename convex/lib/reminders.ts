@@ -1,5 +1,5 @@
 /**
- * Calcoli puri per i promemoria di rinnovo degli abbonamenti (nessun accesso a database o orologio:
+ * Calcoli puri per le date di rinnovo degli abbonamenti e per la formattazione di date e importi (nessun accesso a database o orologio:
  * l'ora arriva dal chiamante, cosi' tutto e' testabile).
  * Le date di rinnovo sono timestamp a mezzanotte UTC del giorno di scadenza.
  */
@@ -7,9 +7,6 @@
 export const DAY_MS = 24 * 60 * 60 * 1000;
 
 export type Interval = "month" | "year";
-
-/** Giorni massimi di anticipo ammessi per un promemoria. */
-export const MAX_REMINDER_DAYS = 30;
 
 function daysInMonth(year: number, monthIndex: number): number {
   return new Date(Date.UTC(year, monthIndex + 1, 0)).getUTCDate();
@@ -40,22 +37,6 @@ export function advanceRenewal(nextRenewalAt: number, interval: Interval, now: n
   // Limite di sicurezza: 10 anni di rinnovi mensili.
   for (let i = 0; i < 120 && next + DAY_MS < now; i++) next = addInterval(next, interval, anchorDay);
   return next;
-}
-
-export type ReminderState = {
-  nextRenewalAt?: number;
-  reminderDaysBefore?: number;
-  lastReminderForRenewalAt?: number;
-};
-
-/** True se per questo rinnovo il promemoria va inviato adesso e non e' ancora stato inviato. */
-export function isReminderDue(state: ReminderState, now: number): boolean {
-  const { nextRenewalAt, reminderDaysBefore, lastReminderForRenewalAt } = state;
-  if (nextRenewalAt === undefined || reminderDaysBefore === undefined) return false;
-  if (lastReminderForRenewalAt === nextRenewalAt) return false;
-  const opensAt = nextRenewalAt - reminderDaysBefore * DAY_MS;
-  // Nessun promemoria per un rinnovo gia' passato da oltre un giorno (sarebbe fuorviante).
-  return now >= opensAt && now < nextRenewalAt + DAY_MS;
 }
 
 /** Data come gg/mm/aaaa (UTC), senza dipendere da Intl o dal fuso del server. */

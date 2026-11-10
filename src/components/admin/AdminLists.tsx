@@ -117,7 +117,7 @@ export function SubscriptionsOverview() {
       <PageHeader
         kicker="Gestione"
         title="Abbonamenti"
-        description="Ricavi ricorrenti di tutti i clienti. Il promemoria email al cliente parte automaticamente dove indicato."
+        description="Ricavi ricorrenti di tutti i clienti. Il promemoria di pagamento parte da solo il giorno prima della scadenza, alle 10:30."
         actions={
           <NativeSelect aria-label="Filtra per stato" value={status} onChange={(e) => setStatus(e.target.value as SubStatus | "all")} className="w-44">
             <option value="all">Tutti gli stati</option>
@@ -142,7 +142,6 @@ export function SubscriptionsOverview() {
                 <TableHead>Cliente</TableHead>
                 <TableHead className="text-right">Importo</TableHead>
                 <TableHead>Prossimo rinnovo</TableHead>
-                <TableHead>Promemoria</TableHead>
                 <TableHead>Stato</TableHead>
               </TableRow>
             </TableHeader>
@@ -157,7 +156,6 @@ export function SubscriptionsOverview() {
                     {formatCents(s.amountCents)} <span className="text-xs text-muted-foreground">{intervalLabel[s.interval]}</span>
                   </TableCell>
                   <TableCell>{formatDate(s.nextRenewalAt)}</TableCell>
-                  <TableCell>{s.reminderDaysBefore ? `${s.reminderDaysBefore} giorni prima` : "—"}</TableCell>
                   <TableCell>
                     <Badge variant={s.status === "active" ? "default" : "secondary"}>{subscriptionStatusLabel[s.status]}</Badge>
                   </TableCell>

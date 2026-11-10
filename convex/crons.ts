@@ -11,9 +11,9 @@ crons.interval("controlli dei file rimasti in sospeso", { minutes: 15 }, interna
 
 crons.interval("pulizia eventi webhook", { hours: 6 }, internal.maintenance.expireWebhookEvents, {});
 
-crons.interval("promemoria di rinnovo abbonamenti", { hours: 3 }, internal.reminders.run, {});
+crons.interval("avanzamento delle date di rinnovo degli abbonamenti", { hours: 3 }, internal.reminders.run, {});
 
-crons.interval("promemoria di scadenza (fatture e scadenziario)", { hours: 6 }, internal.deadlines.sendReminders, {});
+crons.interval("promemoria interno per le scadenze dello scadenziario", { hours: 6 }, internal.deadlines.sendReminders, {});
 
 // Ogni ora al minuto :30 (UTC e Roma hanno scarto di ore intere). La funzione spedisce solo dalle 10:30 alle 18:59 ORA DI ROMA,
 // quindi vale sia con l'ora solare sia con quella legale. Vedi convex/paymentReminders.ts.

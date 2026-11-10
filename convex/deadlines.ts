@@ -5,7 +5,7 @@ import { audit } from "./lib/audit";
 import { requireAdmin } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { notify } from "./lib/notify";
-import { formatDateIt, formatEuroIt } from "./lib/reminders";
+import { formatDateIt } from "./lib/reminders";
 import { assertTimestamp, cleanText } from "./lib/text";
 
 /**
@@ -15,7 +15,6 @@ import { assertTimestamp, cleanText } from "./lib/text";
 
 const DAY = 24 * 60 * 60 * 1000;
 const HORIZON_DAYS = 180;
-const INVOICE_REMINDER_DAYS = 3;
 const MANUAL_REMINDER_DAYS = 7;
 
 const category = v.union(v.literal("domain"), v.literal("hosting"), v.literal("contract"), v.literal("other"));
@@ -120,22 +119,13 @@ export const remove = mutation({
 });
 
 /**
- * Promemoria automatici (ogni 6 ore):
- *  - al CLIENTE: fattura visibile e non pagata che scade entro 3 giorni (una sola volta);
- *  - a NOI: scadenza manuale non conclusa entro 7 giorni (una sola volta).
+ * Promemoria INTERNO (ogni 6 ore): a noi, una volta sola, 7 giorni prima di una scadenza inserita a mano nello Scadenziario.
+ * I promemoria ai clienti NON partono da qui: l'unico e' quello delle 10:30 del giorno prima (convex/paymentReminders.ts).
  */
 export const sendReminders = internalMutation({
   args: {},
-  handler: async (ctx): Promise<{ invoices: number; deadlines: number }> => {
+  handler: async (ctx): Promise<{ deadlines: number }> => {
     const now = Date.now();
-    let invoices = 0;
-    const due = await ctx.db.query("invoices").withIndex("by_status_and_dueAt", (q) => q.eq("status", "sent").gt("dueAt", now).lt("dueAt", now + INVOICE_REMINDER_DAYS * DAY)).take(100);
-    for (const i of due) {
-      if (!i.visibleToClient || i.dueReminderSentAt !== undefined) continue;
-      await ctx.db.patch("invoices", i._id, { dueReminderSentAt: now });
-      await notify(ctx, "invoice_due_soon", { clientId: i.clientId, data: { number: i.number, amount: formatEuroIt(i.amountCents), due: formatDateIt(i.dueAt) }, dedupeSubject: i._id });
-      invoices++;
-    }
     let deadlines = 0;
     const soon = await ctx.db.query("deadlines").withIndex("by_done_and_dueAt", (q) => q.eq("done", false).lt("dueAt", now + MANUAL_REMINDER_DAYS * DAY)).take(100);
     for (const d of soon) {
@@ -145,6 +135,6 @@ export const sendReminders = internalMutation({
       await notify(ctx, "deadline_due", { clientId: d.clientId, data: { title: d.title, client: client?.displayName ?? "", date: formatDateIt(d.dueAt), notes: d.notes ?? "" }, ctaPath: "/admin/deadlines", dedupeSubject: d._id });
       deadlines++;
     }
-    return { invoices, deadlines };
+    return { deadlines };
   },
 });

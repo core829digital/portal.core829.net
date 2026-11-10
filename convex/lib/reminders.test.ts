@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addInterval, advanceRenewal, DAY_MS, formatDateIt, formatEuroIt, isReminderDue } from "./reminders";
+import { addInterval, advanceRenewal, formatDateIt, formatEuroIt } from "./reminders";
 
 const d = (y: number, m: number, day: number) => Date.UTC(y, m - 1, day);
 
@@ -27,24 +27,6 @@ describe("advanceRenewal", () => {
   });
   it("recupera piu' cicli persi", () => {
     expect(advanceRenewal(d(2026, 1, 11), "month", d(2026, 4, 20))).toBe(d(2026, 5, 11));
-  });
-});
-
-describe("isReminderDue", () => {
-  const base = { nextRenewalAt: d(2026, 11, 11), reminderDaysBefore: 3 };
-  it("scatta esattamente 3 giorni prima, non prima", () => {
-    expect(isReminderDue(base, d(2026, 11, 8) - 1)).toBe(false);
-    expect(isReminderDue(base, d(2026, 11, 8))).toBe(true);
-    expect(isReminderDue(base, d(2026, 11, 10))).toBe(true);
-  });
-  it("non scatta due volte per lo stesso rinnovo", () => {
-    expect(isReminderDue({ ...base, lastReminderForRenewalAt: d(2026, 11, 11) }, d(2026, 11, 9))).toBe(false);
-    expect(isReminderDue({ ...base, lastReminderForRenewalAt: d(2026, 10, 11) }, d(2026, 11, 9))).toBe(true);
-  });
-  it("non scatta senza data, senza anticipo o a rinnovo gia' passato da oltre un giorno", () => {
-    expect(isReminderDue({ reminderDaysBefore: 3 }, d(2026, 11, 9))).toBe(false);
-    expect(isReminderDue({ nextRenewalAt: d(2026, 11, 11) }, d(2026, 11, 9))).toBe(false);
-    expect(isReminderDue(base, d(2026, 11, 11) + DAY_MS)).toBe(false);
   });
 });
 

@@ -123,23 +123,12 @@ describe("scadenziario", () => {
     expect(await msg(h.admin.mutation(api.deadlines.create, { title: "Ok ok", dueAt: Number.NaN, category: "other" }))).not.toBe("OK");
   });
 
-  it("promemoria: la fattura che scade entro 3 giorni avvisa il cliente UNA volta; non quelle nascoste, pagate o lontane", async () => {
+  it("nessun promemoria parte verso i clienti da qui (l'unico e' quello delle 10:30 del giorno prima)", async () => {
     const h = await track();
-    const { t, clientA } = h;
-    await t.run(async (ctx) => {
-      const base = { clientId: clientA, issuedAt: NOW, amountCents: 5_000, currency: "EUR" as const };
-      await ctx.db.insert("invoices", { ...base, number: "S-1", dueAt: NOW + 2 * DAY, status: "sent", visibleToClient: true });
-      await ctx.db.insert("invoices", { ...base, number: "S-2", dueAt: NOW + 2 * DAY, status: "sent", visibleToClient: false });
-      await ctx.db.insert("invoices", { ...base, number: "S-3", dueAt: NOW + 2 * DAY, status: "paid", visibleToClient: true });
-      await ctx.db.insert("invoices", { ...base, number: "S-4", dueAt: NOW + 20 * DAY, status: "sent", visibleToClient: true });
-    });
-    expect(await t.mutation(internal.deadlines.sendReminders, {})).toEqual({ invoices: 1, deadlines: 0 });
-    expect(await t.mutation(internal.deadlines.sendReminders, {})).toEqual({ invoices: 0, deadlines: 0 });
-    await t.finishAllScheduledFunctions(vi.runAllTimers);
-    const mails = sent();
-    expect(mails).toHaveLength(1);
-    expect(mails[0].to).toEqual(["a@esempio.it"]);
-    expect(mails[0].subject).toContain("S-1");
+    await h.t.run((ctx) => ctx.db.insert("invoices", { clientId: h.clientA, issuedAt: NOW, amountCents: 5_000, currency: "EUR", number: "S-1", dueAt: NOW + 2 * DAY, status: "sent", visibleToClient: true }));
+    expect(await h.t.mutation(internal.deadlines.sendReminders, {})).toEqual({ deadlines: 0 });
+    await h.t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect(sent()).toHaveLength(0);
   });
 
   it("promemoria alla amministrazione per le scadenze manuali entro 7 giorni (una volta); le concluse no", async () => {
@@ -148,8 +137,8 @@ describe("scadenziario", () => {
     const done = await h.admin.mutation(api.deadlines.create, { title: "Fatto", dueAt: NOW + 2 * DAY, category: "other" });
     await h.admin.mutation(api.deadlines.setDone, { deadlineId: done, done: true });
     await h.admin.mutation(api.deadlines.create, { title: "Lontana", dueAt: NOW + 60 * DAY, category: "other" });
-    expect(await h.t.mutation(internal.deadlines.sendReminders, {})).toEqual({ invoices: 0, deadlines: 1 });
-    expect(await h.t.mutation(internal.deadlines.sendReminders, {})).toEqual({ invoices: 0, deadlines: 0 });
+    expect(await h.t.mutation(internal.deadlines.sendReminders, {})).toEqual({ deadlines: 1 });
+    expect(await h.t.mutation(internal.deadlines.sendReminders, {})).toEqual({ deadlines: 0 });
     await h.t.finishAllScheduledFunctions(vi.runAllTimers);
     const m = sent();
     expect(m).toHaveLength(1);

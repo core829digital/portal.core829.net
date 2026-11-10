@@ -128,21 +128,10 @@ export const NOTIFY_KINDS = {
       ctaLabel: OPEN_PORTAL,
     }),
   },
-  subscription_renewal: {
-    audience: "client",
-    label: "Promemoria di rinnovo",
-    description: "Promemoria prima del rinnovo di un abbonamento (inviato dal controllo periodico; qui si registra nel centro).",
-    defaultEnabled: true,
-    render: (d) => ({
-      subject: `Promemoria: pagamento di ${d.amount} in scadenza il ${d.date}`,
-      heading: "Promemoria di pagamento",
-      body: `Il pagamento di ${d.amount} per «${d.name}» è in scadenza il ${d.date}.`,
-    }),
-  },
   payment_reminder: {
     audience: "client",
     label: "Promemoria di pagamento",
-    description: "Il giorno prima della scadenza di una rata o di una fattura, alle 10:30 (ora italiana), con l'avviso sui costi aggiuntivi in caso di mancato pagamento. Interruttore = invio automatico; l'invio a mano dalla pagina «Promemoria di pagamento» funziona sempre.",
+    description: "L'unico promemoria ai clienti: il giorno prima della scadenza, alle 10:30 (ora italiana), con l'avviso sui costi aggiuntivi in caso di mancato pagamento. Interruttore = invio automatico; l'invio a mano dalla pagina «Promemoria di pagamento» funziona sempre.",
     defaultEnabled: true,
     dedupeMs: 20 * HOUR,
     render: (d) => ({
@@ -160,17 +149,6 @@ export const NOTIFY_KINDS = {
       subject: `Da approvare: ${d.title}`,
       heading: "Ti chiediamo di approvare un documento",
       body: `Abbiamo caricato «${d.title}» e ci serve la tua approvazione.${d.note ? `\n\n${d.note}` : ""}\n\nApri il tuo link personale, vai in «Documenti» e scegli «Approva» oppure «Richiedi modifiche». La richiesta è valida fino al ${d.until}.`,
-    }),
-  },
-  invoice_due_soon: {
-    audience: "client",
-    label: "Fattura in scadenza",
-    description: "Promemoria gentile 3 giorni prima della scadenza di una fattura non ancora pagata.",
-    defaultEnabled: true,
-    render: (d) => ({
-      subject: `Promemoria: fattura ${d.number} in scadenza il ${d.due}`,
-      heading: "Una fattura sta per scadere",
-      body: `La fattura ${d.number} di ${d.amount} scade il ${d.due}. Se hai già provveduto, ignora questo messaggio.`,
     }),
   },
   ticket_admin_reply: {

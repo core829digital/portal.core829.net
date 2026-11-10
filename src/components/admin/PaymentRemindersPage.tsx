@@ -57,13 +57,13 @@ export function PaymentRemindersPage() {
 
   return (
     <>
-      <PageHeader kicker="Lavoro e incassi" title="Promemoria di pagamento" description="Le email che ricordano ai clienti la scadenza di rate e fatture e avvisano dei costi aggiuntivi in caso di mancato pagamento." />
+      <PageHeader kicker="Lavoro e incassi" title="Promemoria di pagamento" description="L'unico promemoria che i clienti ricevono: ricorda la scadenza di rate e pagamenti e avvisa dei costi aggiuntivi in caso di mancato pagamento." />
 
       <Panel title="Invio automatico" description="Parte da solo, ogni giorno.">
         <div className="flex flex-wrap items-start gap-4">
           <BellRing aria-hidden className="mt-0.5 size-5 shrink-0 text-brand" />
           <p className="min-w-0 flex-1 text-sm leading-6">
-            Ogni giorno alle <b>10:30 (ora italiana)</b> il sistema scrive ai clienti che hanno una scadenza <b>il giorno dopo</b>: fatture inviate e rinnovi degli abbonamenti attivi. Una sola email per cliente, anche con più scadenze. Se il sistema era spento, recupera fino alle 18:59.
+            Ogni giorno alle <b>10:30 (ora italiana)</b> il sistema scrive ai clienti che hanno una scadenza <b>il giorno dopo</b>: pagamenti emessi e non ancora saldati e rinnovi degli abbonamenti attivi. Una sola email per cliente, anche con più scadenze. Se il sistema era spento, recupera fino alle 18:59.
           </p>
           <label className="flex items-center gap-2 text-sm font-medium">
             <input

@@ -194,7 +194,6 @@ export const subscriptions = query({
       status: s.status,
       startedAt: s.startedAt,
       nextRenewalAt: s.nextRenewalAt ?? null,
-      reminderDaysBefore: s.reminderDaysBefore ?? null,
     }));
   },
 });

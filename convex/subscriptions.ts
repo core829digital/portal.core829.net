@@ -4,8 +4,7 @@ import { mutation, query } from "./_generated/server";
 import { audit } from "./lib/audit";
 import { requireAdmin } from "./lib/auth";
 import { fail } from "./lib/errors";
-import { MAX_REMINDER_DAYS } from "./lib/reminders";
-import { assertCents, assertIntInRange, assertTimestamp, cleanText } from "./lib/text";
+import { assertCents, assertTimestamp, cleanText } from "./lib/text";
 import { subscriptionInterval, subscriptionStatus } from "./lib/validators";
 
 const nullableString = v.optional(v.union(v.string(), v.null()));
@@ -20,14 +19,9 @@ export const create = mutation({
     interval: subscriptionInterval,
     startedAt: v.number(),
     nextRenewalAt: v.optional(v.number()),
-    /** Giorni di anticipo del promemoria email al cliente (richiede `nextRenewalAt`). */
-    reminderDaysBefore: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const { actorId } = await requireAdmin(ctx);
-    if (args.reminderDaysBefore !== undefined && args.nextRenewalAt === undefined) {
-      return fail("BAD_STATE", "Per il promemoria serve la data del prossimo rinnovo.");
-    }
     const client = await ctx.db.get("clients", args.clientId);
     if (!client) return fail("NOT_FOUND", "Cliente non trovato.");
 
@@ -44,10 +38,6 @@ export const create = mutation({
       status: "active",
       startedAt: assertTimestamp(args.startedAt, "data di inizio"),
       nextRenewalAt: args.nextRenewalAt === undefined ? undefined : assertTimestamp(args.nextRenewalAt, "prossimo rinnovo"),
-      reminderDaysBefore:
-        args.reminderDaysBefore === undefined
-          ? undefined
-          : assertIntInRange(args.reminderDaysBefore, 1, MAX_REMINDER_DAYS, "giorni di anticipo"),
     });
     await audit(ctx, {
       actorType: "admin",
@@ -70,7 +60,6 @@ export const update = mutation({
     amountCents: v.optional(v.number()),
     interval: v.optional(subscriptionInterval),
     nextRenewalAt: nullableNumber,
-    reminderDaysBefore: nullableNumber,
   },
   handler: async (ctx, args) => {
     const { actorId } = await requireAdmin(ctx);
@@ -88,12 +77,6 @@ export const update = mutation({
     if (args.interval !== undefined) patch.interval = args.interval;
     if (args.nextRenewalAt !== undefined) {
       patch.nextRenewalAt = args.nextRenewalAt === null ? undefined : assertTimestamp(args.nextRenewalAt, "prossimo rinnovo");
-    }
-    if (args.reminderDaysBefore !== undefined) {
-      patch.reminderDaysBefore =
-        args.reminderDaysBefore === null
-          ? undefined
-          : assertIntInRange(args.reminderDaysBefore, 1, MAX_REMINDER_DAYS, "giorni di anticipo");
     }
 
     const fields = Object.keys(patch);

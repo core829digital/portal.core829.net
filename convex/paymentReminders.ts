@@ -11,7 +11,8 @@ import { isReminderWindow, romeDayStart } from "./lib/romeTime";
  * Promemoria di pagamento ai clienti.
  *  - AUTOMATICO: ogni giorno, dalle 10:30 (ora italiana), per le scadenze del GIORNO DOPO. Una sola email per cliente, con tutte le sue scadenze.
  *  - A MANO (un clic): l'amministratore invia a tutti i clienti con scadenze entro N giorni, oppure solo ad alcuni.
- * Scadenze = fatture inviate e non pagate + rinnovi degli abbonamenti attivi (le rate mensili).
+ * Scadenze = pagamenti in scadenza (emessi e non pagati) + rinnovi degli abbonamenti attivi (le rate mensili).
+ * NB: nelle email non compare mai la parola «fattura»: non tutti gli abbonamenti passano da una fattura.
  * Ogni email contiene l'avviso sui costi aggiuntivi in caso di mancato pagamento (PAYMENT_NOTICE).
  */
 
@@ -34,7 +35,7 @@ async function collectDue(ctx: QueryCtx | MutationCtx, from: number, to: number,
   for (const i of invoices) {
     if (!i.visibleToClient) continue;
     if (opts.onlyNotYetReminded && i.eveReminderSentAt !== undefined) continue;
-    push({ kind: "invoice", id: i._id, clientId: i.clientId, label: `Fattura ${i.number}`, dueAt: i.dueAt, amountCents: i.amountCents });
+    push({ kind: "invoice", id: i._id, clientId: i.clientId, label: `Pagamento n. ${i.number}`, dueAt: i.dueAt, amountCents: i.amountCents });
   }
   const subs = await ctx.db.query("subscriptions").withIndex("by_status_and_nextRenewalAt", (q) => q.eq("status", "active").gte("nextRenewalAt", from).lt("nextRenewalAt", to)).take(MAX_ROWS);
   for (const s of subs) {
