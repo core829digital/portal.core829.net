@@ -336,8 +336,14 @@ export default defineSchema({
     doneAt: v.optional(v.number()),
     /** Promemoria all'amministrazione gia' inviato (una volta sola). */
     reminderSentAt: v.optional(v.number()),
+    /** A cosa si riferisce (sempre dello stesso cliente). Se l'elemento si chiude (pagato/annullato) la scadenza si chiude da sola. */
+    invoiceId: v.optional(v.id("invoices")),
+    subscriptionId: v.optional(v.id("subscriptions")),
+    projectId: v.optional(v.id("projects")),
   })
-    .index("by_done_and_dueAt", ["done", "dueAt"]),
+    .index("by_done_and_dueAt", ["done", "dueAt"])
+    .index("by_invoiceId", ["invoiceId"])
+    .index("by_subscriptionId", ["subscriptionId"]),
 
   /** Ticket di assistenza: il cliente scrive dal portale, CORE829 risponde dal pannello. */
   tickets: defineTable({
@@ -350,6 +356,10 @@ export default defineSchema({
     lastMessageBy: v.union(v.literal("client"), v.literal("admin")),
     messageCount: v.number(),
     closedAt: v.optional(v.number()),
+    /** Di cosa parla la richiesta (sempre dello stesso cliente): un pagamento, un abbonamento, un progetto. Facoltativi. */
+    invoiceId: v.optional(v.id("invoices")),
+    subscriptionId: v.optional(v.id("subscriptions")),
+    projectId: v.optional(v.id("projects")),
   })
     .index("by_clientId_and_lastMessageAt", ["clientId", "lastMessageAt"])
     .index("by_status_and_lastMessageAt", ["status", "lastMessageAt"]),

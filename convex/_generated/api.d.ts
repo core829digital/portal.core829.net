@@ -61,6 +61,7 @@ import type * as lib_overview from "../lib/overview.js";
 import type * as lib_pdfAnnotations from "../lib/pdfAnnotations.js";
 import type * as lib_pdfAutofill from "../lib/pdfAutofill.js";
 import type * as lib_pdfStamp from "../lib/pdfStamp.js";
+import type * as lib_related from "../lib/related.js";
 import type * as lib_reminders from "../lib/reminders.js";
 import type * as lib_reportData from "../lib/reportData.js";
 import type * as lib_reports from "../lib/reports.js";
@@ -143,6 +144,7 @@ declare const fullApi: ApiFromModules<{
   "lib/pdfAnnotations": typeof lib_pdfAnnotations;
   "lib/pdfAutofill": typeof lib_pdfAutofill;
   "lib/pdfStamp": typeof lib_pdfStamp;
+  "lib/related": typeof lib_related;
   "lib/reminders": typeof lib_reminders;
   "lib/reportData": typeof lib_reportData;
   "lib/reports": typeof lib_reports;

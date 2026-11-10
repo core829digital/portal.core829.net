@@ -6,6 +6,7 @@ import { requireAdmin } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { requireUnlock, resolveLink } from "./lib/links";
 import { notify } from "./lib/notify";
+import { assertRelated, relatedLabels, type RelatedIds } from "./lib/related";
 import { cleanText } from "./lib/text";
 
 /**
@@ -33,6 +34,9 @@ async function assertCanWrite(ctx: MutationCtx, clientId: Id<"clients">, now: nu
   if (recent.length >= MAX_MESSAGES_PER_DAY) return fail("RATE_LIMITED", "Hai inviato molti messaggi oggi. Riprova domani o scrivici per email.");
 }
 
+const relatedArgs = { invoiceId: v.optional(v.id("invoices")), subscriptionId: v.optional(v.id("subscriptions")), projectId: v.optional(v.id("projects")) };
+const relatedOf = (t: Doc<"tickets">): RelatedIds => ({ invoiceId: t.invoiceId, subscriptionId: t.subscriptionId, projectId: t.projectId });
+
 const publicMessage = (m: Doc<"ticketMessages">) => ({ id: m._id, author: m.author, body: m.body, createdAt: m.createdAt });
 
 // ---------------------------------------------------------------- Cliente
@@ -47,7 +51,28 @@ export const portalList = query({
       .withIndex("by_clientId_and_lastMessageAt", (q) => q.eq("clientId", link.clientId))
       .order("desc")
       .take(100);
-    return rows.map((t) => ({ id: t._id, subject: t.subject, category: t.category, status: t.status, lastMessageAt: t.lastMessageAt, lastMessageBy: t.lastMessageBy, messageCount: t.messageCount }));
+    return await Promise.all(
+      rows.map(async (t) => ({ id: t._id, subject: t.subject, category: t.category, status: t.status, lastMessageAt: t.lastMessageAt, lastMessageBy: t.lastMessageBy, messageCount: t.messageCount, related: (await relatedLabels(ctx, relatedOf(t))).map((r) => r.label) })),
+    );
+  },
+});
+
+/** Cosa puo' scegliere il cliente come «riguarda»: solo cose che vede nel suo spazio. */
+export const portalRelatable = query({
+  args: { token: v.string(), unlockToken: v.string() },
+  handler: async (ctx, args) => {
+    const link = await resolveLink(ctx, args.token);
+    await requireUnlock(ctx, link, args.unlockToken);
+    const [invoices, subs, projects] = await Promise.all([
+      ctx.db.query("invoices").withIndex("by_clientId", (q) => q.eq("clientId", link.clientId)).order("desc").take(50),
+      ctx.db.query("subscriptions").withIndex("by_clientId", (q) => q.eq("clientId", link.clientId)).order("desc").take(50),
+      ctx.db.query("projects").withIndex("by_clientId", (q) => q.eq("clientId", link.clientId)).order("desc").take(50),
+    ]);
+    return {
+      invoices: invoices.filter((i) => i.visibleToClient && ["sent", "overdue", "paid"].includes(i.status)).map((i) => ({ id: i._id, label: `Fattura ${i.number}` })),
+      subscriptions: subs.filter((s) => s.status !== "cancelled").map((s) => ({ id: s._id, label: s.name })),
+      projects: projects.map((p) => ({ id: p._id, label: p.name })),
+    };
   },
 });
 
@@ -59,12 +84,12 @@ export const portalGet = query({
     const t = await ctx.db.get("tickets", args.ticketId);
     if (!t || t.clientId !== link.clientId) return fail("NOT_FOUND", "Richiesta non trovata.");
     const messages = await ctx.db.query("ticketMessages").withIndex("by_ticketId_and_createdAt", (q) => q.eq("ticketId", t._id)).take(500);
-    return { id: t._id, subject: t.subject, category: t.category, status: t.status, messages: messages.map(publicMessage) };
+    return { id: t._id, subject: t.subject, category: t.category, status: t.status, related: (await relatedLabels(ctx, relatedOf(t))).map((r) => r.label), messages: messages.map(publicMessage) };
   },
 });
 
 export const portalCreate = mutation({
-  args: { token: v.string(), unlockToken: v.string(), subject: v.string(), category, body: v.string() },
+  args: { token: v.string(), unlockToken: v.string(), subject: v.string(), category, body: v.string(), ...relatedArgs },
   handler: async (ctx, args): Promise<Id<"tickets">> => {
     const link = await resolveLink(ctx, args.token);
     await requireUnlock(ctx, link, args.unlockToken);
@@ -78,7 +103,10 @@ export const portalCreate = mutation({
       .take(50);
     if (open.filter((t) => t.status !== "closed").length >= MAX_OPEN_TICKETS) return fail("CONFLICT", `Hai già ${MAX_OPEN_TICKETS} richieste aperte. Aspetta una risposta o aggiungi un messaggio a una di quelle.`);
     await assertCanWrite(ctx, link.clientId, now);
-    const ticketId = await ctx.db.insert("tickets", { clientId: link.clientId, subject, category: args.category, status: "open", createdAt: now, lastMessageAt: now, lastMessageBy: "client", messageCount: 1 });
+    const related: RelatedIds = { invoiceId: args.invoiceId, subscriptionId: args.subscriptionId, projectId: args.projectId };
+    // Il cliente puo' collegare solo cose sue e visibili nel suo spazio.
+    await assertRelated(ctx, link.clientId, related, { forClient: true });
+    const ticketId = await ctx.db.insert("tickets", { clientId: link.clientId, subject, category: args.category, status: "open", createdAt: now, lastMessageAt: now, lastMessageBy: "client", messageCount: 1, ...related });
     await ctx.db.insert("ticketMessages", { ticketId, clientId: link.clientId, author: "client", body, createdAt: now });
     await audit(ctx, { actorType: "client", clientId: link.clientId, action: "ticket.created", resourceType: "ticket", resourceId: ticketId });
     const client = await ctx.db.get("clients", link.clientId);
@@ -120,7 +148,9 @@ export const list = query({
     const sorted = [...rows].sort((a, b) => b.lastMessageAt - a.lastMessageAt);
     const names = new Map<string, string>();
     for (const t of sorted) if (!names.has(t.clientId)) names.set(t.clientId, (await ctx.db.get("clients", t.clientId))?.displayName ?? "Cliente eliminato");
-    return sorted.map((t) => ({ id: t._id, clientId: t.clientId, clientName: names.get(t.clientId) ?? "", subject: t.subject, category: t.category, status: t.status, lastMessageAt: t.lastMessageAt, lastMessageBy: t.lastMessageBy, messageCount: t.messageCount }));
+    return await Promise.all(
+      sorted.map(async (t) => ({ id: t._id, clientId: t.clientId, clientName: names.get(t.clientId) ?? "", subject: t.subject, category: t.category, status: t.status, lastMessageAt: t.lastMessageAt, lastMessageBy: t.lastMessageBy, messageCount: t.messageCount, related: (await relatedLabels(ctx, relatedOf(t))).map((r) => r.label) })),
+    );
   },
 });
 
@@ -144,7 +174,22 @@ export const get = query({
       ctx.db.get("clients", t.clientId),
       ctx.db.query("ticketMessages").withIndex("by_ticketId_and_createdAt", (q) => q.eq("ticketId", t._id)).take(500),
     ]);
-    return { id: t._id, clientId: t.clientId, clientName: client?.displayName ?? "Cliente eliminato", clientEmail: client?.email ?? "", subject: t.subject, category: t.category, status: t.status, messages: messages.map(publicMessage) };
+    return { id: t._id, clientId: t.clientId, clientName: client?.displayName ?? "Cliente eliminato", clientEmail: client?.email ?? "", subject: t.subject, category: t.category, status: t.status, invoiceId: t.invoiceId ?? null, subscriptionId: t.subscriptionId ?? null, projectId: t.projectId ?? null, related: await relatedLabels(ctx, relatedOf(t)), messages: messages.map(publicMessage) };
+  },
+});
+
+/** L'amministratore collega (o scollega, con null) il ticket a un pagamento, un abbonamento, un progetto del cliente. */
+export const setLinks = mutation({
+  args: { ticketId: v.id("tickets"), invoiceId: v.union(v.id("invoices"), v.null()), subscriptionId: v.union(v.id("subscriptions"), v.null()), projectId: v.union(v.id("projects"), v.null()) },
+  handler: async (ctx, args): Promise<null> => {
+    const { actorId } = await requireAdmin(ctx);
+    const t = await ctx.db.get("tickets", args.ticketId);
+    if (!t) return fail("NOT_FOUND", "Ticket non trovato.");
+    const next: RelatedIds = { invoiceId: args.invoiceId ?? undefined, subscriptionId: args.subscriptionId ?? undefined, projectId: args.projectId ?? undefined };
+    await assertRelated(ctx, t.clientId, next);
+    await ctx.db.patch("tickets", t._id, next);
+    await audit(ctx, { actorType: "admin", actorId, clientId: t.clientId, action: "ticket.links_changed", resourceType: "ticket", resourceId: t._id });
+    return null;
   },
 });
 

@@ -41,3 +41,9 @@ Il promemoria delle 10:30 del giorno prima è **l'unico** che i clienti ricevono
 - **Storico:** nella scheda Fatture del cliente compare un riquadro «Collega» quando un pagamento ha lo stesso importo di **un solo** abbonamento: un clic li collega. Nei casi dubbi non propone nulla.
 - Nell'elenco abbonamenti: quante fatture sono collegate, quante da saldare, ultimo incasso. Negli elenchi globali e nel portale cliente ogni fattura mostra l'abbonamento.
 - Gli abbonamenti possono essere collegati anche a un **progetto** e a un **contratto** (documento) dello stesso cliente.
+
+## Ticket e scadenze collegati
+- **Ticket:** quando il cliente apre una richiesta può scegliere «Riguarda» (un suo pagamento, abbonamento o progetto: solo cose che vede nel suo spazio, mai bozze o abbonamenti annullati). Nell'area admin il ticket mostra cosa riguarda e lo si può collegare, cambiare o scollegare (anche con cose che il cliente non vede). Un collegamento a elementi di un altro cliente viene rifiutato.
+- **Scadenze manuali:** si possono collegare a una fattura, un abbonamento o un progetto (il cliente si ricava da solo, ed è sempre lo stesso). **Incassando o annullando la fattura, o annullando l'abbonamento, la scadenza collegata si chiude da sola.**
+- Nell'elenco dei ticket e nello Scadenziario il collegamento è scritto accanto al titolo.
+- Restano da fare: caricare il PDF della fattura dall'interfaccia (il campo esiste ma non c'è il pulsante).

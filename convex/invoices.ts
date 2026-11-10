@@ -6,6 +6,7 @@ import { requireAdmin } from "./lib/auth";
 import { INVOICE_TRANSITIONS, isInvoiceFinal } from "./lib/invoiceFlow";
 import { fail } from "./lib/errors";
 import { notify } from "./lib/notify";
+import { closeLinkedDeadlines } from "./deadlines";
 import { formatDateIt, formatEuroIt } from "./lib/reminders";
 import { assertCents, assertTimestamp, cleanText, invalid } from "./lib/text";
 import { invoiceStatus } from "./lib/validators";
@@ -151,6 +152,7 @@ export const setStatus = mutation({
       return fail("BAD_STATE", "Questo cambio di stato non è consentito.");
     }
     const patch: Partial<Doc<"invoices">> = { status: args.status };
+    if (args.status === "paid" || args.status === "cancelled") await closeLinkedDeadlines(ctx, { invoiceId: invoice._id });
     if (args.status === "paid") {
       patch.paidAt = args.paidAt === undefined ? Date.now() : assertTimestamp(args.paidAt, "data di pagamento");
     }

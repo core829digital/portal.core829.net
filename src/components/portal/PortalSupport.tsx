@@ -6,7 +6,7 @@ import { useState } from "react";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 import { UnlockGate } from "@/components/portal/PortalDocuments";
-import { NewTicketForm, ReplyBox, Thread, TicketList, TicketStatusBadge, type TicketRow } from "@/components/support/TicketViews";
+import { NewTicketForm, RelatedChips, ReplyBox, Thread, TicketList, TicketStatusBadge, type TicketRow } from "@/components/support/TicketViews";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { errorMessage } from "@/lib/errors";
@@ -25,6 +25,7 @@ function Conversation({ token, unlockToken, ticketId, onBack }: { token: string;
         <h2 className="min-w-0 flex-1 truncate text-lg font-semibold tracking-tight">{ticket.subject}</h2>
         <TicketStatusBadge status={ticket.status} side="client" />
       </div>
+      <RelatedChips labels={ticket.related} />
       <div className="rounded-2xl bg-card p-4 ring-1 ring-foreground/10 shadow-(--shadow-soft) sm:p-6">
         <Thread messages={ticket.messages} me="client" />
       </div>
@@ -45,6 +46,7 @@ function Conversation({ token, unlockToken, ticketId, onBack }: { token: string;
 function Tickets({ token, unlockToken }: { token: string; unlockToken: string }) {
   const rows = useQuery(api.tickets.portalList, { token, unlockToken });
   const create = useMutation(api.tickets.portalCreate);
+  const relatable = useQuery(api.tickets.portalRelatable, { token, unlockToken });
   const [selected, setSelected] = useState<Id<"tickets"> | null>(null);
   const [creating, setCreating] = useState(false);
 
@@ -53,9 +55,18 @@ function Tickets({ token, unlockToken }: { token: string; unlockToken: string })
     return (
       <NewTicketForm
         onCancel={() => setCreating(false)}
+        relatable={relatable}
         onCreate={async (v) => {
           try {
-            const id = await create({ token, unlockToken, ...v });
+            const { invoiceId, subscriptionId, projectId, ...rest } = v;
+            const id = await create({
+              token,
+              unlockToken,
+              ...rest,
+              invoiceId: invoiceId as Id<"invoices"> | undefined,
+              subscriptionId: subscriptionId as Id<"subscriptions"> | undefined,
+              projectId: projectId as Id<"projects"> | undefined,
+            });
             toast.success("Richiesta inviata. Ti rispondiamo il prima possibile.");
             setCreating(false);
             setSelected(id);

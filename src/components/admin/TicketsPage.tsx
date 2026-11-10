@@ -7,7 +7,7 @@ import { useState } from "react";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 import { PageHeader } from "@/components/dash/DashShell";
-import { CATEGORY_LABEL, ReplyBox, STATUS_LABEL, Thread, TicketList, TicketStatusBadge, type TicketRow, type TicketStatus } from "@/components/support/TicketViews";
+import { CATEGORY_LABEL, RelatedChips, ReplyBox, STATUS_LABEL, Thread, TicketList, TicketStatusBadge, type TicketRow, type TicketStatus } from "@/components/support/TicketViews";
 import { NativeSelect } from "@/components/admin/Field";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -26,6 +26,11 @@ function Detail({ ticketId, onBack }: { ticketId: Id<"tickets">; onBack: () => v
   const ticket = useQuery(api.tickets.get, { ticketId });
   const reply = useMutation(api.tickets.reply);
   const setStatus = useMutation(api.tickets.setStatus);
+  const setLinks = useMutation(api.tickets.setLinks);
+  const clientId = ticket?.clientId;
+  const invoices = useQuery(api.invoices.listByClient, clientId ? { clientId } : "skip");
+  const subscriptions = useQuery(api.subscriptions.listByClient, clientId ? { clientId } : "skip");
+  const projects = useQuery(api.projects.listByClient, clientId ? { clientId } : "skip");
   if (ticket === undefined) return <Skeleton className="h-72 w-full rounded-2xl" />;
   if (ticket === null) return <p className="rounded-2xl border border-dashed p-8 text-center text-sm text-muted-foreground">Ticket non trovato.</p>;
   return (
@@ -54,6 +59,43 @@ function Detail({ ticketId, onBack }: { ticketId: Id<"tickets">; onBack: () => v
             </option>
           ))}
         </NativeSelect>
+      </div>
+      <div className="space-y-3 rounded-2xl bg-card p-4 ring-1 ring-foreground/10 shadow-(--shadow-soft)">
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <span className="font-medium">Riguarda</span>
+          <RelatedChips labels={ticket.related.map((r) => r.label)} />
+          {ticket.related.length === 0 ? <span className="text-muted-foreground">nulla di collegato</span> : null}
+        </div>
+        <div className="grid gap-2 sm:grid-cols-3">
+          {(
+            [
+              ["invoiceId", "Fattura", ticket.invoiceId, (invoices ?? []).map((x) => ({ id: x._id as string, label: `${x.number} · ${x.status}` }))],
+              ["subscriptionId", "Abbonamento", ticket.subscriptionId, (subscriptions ?? []).map((x) => ({ id: x._id as string, label: x.name }))],
+              ["projectId", "Progetto", ticket.projectId, (projects ?? []).map((x) => ({ id: x._id as string, label: x.name }))],
+            ] as const
+          ).map(([key, label, current, options]) => (
+            <div key={key}>
+              <label htmlFor={`link-${key}`} className="mb-1 block text-xs text-muted-foreground">
+                {label}
+              </label>
+              <NativeSelect
+                id={`link-${key}`}
+                value={current ?? ""}
+                onChange={(e) => {
+                  const next = { invoiceId: ticket.invoiceId, subscriptionId: ticket.subscriptionId, projectId: ticket.projectId, [key]: e.target.value === "" ? null : e.target.value };
+                  void setLinks({ ticketId, ...next } as never).catch((err: unknown) => toast.error(errorMessage(err)));
+                }}
+              >
+                <option value="">Nessuno</option>
+                {options.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.label}
+                  </option>
+                ))}
+              </NativeSelect>
+            </div>
+          ))}
+        </div>
       </div>
       <div className="rounded-2xl bg-card p-4 ring-1 ring-foreground/10 shadow-(--shadow-soft) sm:p-6">
         <Thread messages={ticket.messages} me="admin" />

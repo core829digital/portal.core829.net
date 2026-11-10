@@ -9,7 +9,7 @@ const now = Date.UTC(2026, 10, 14, 9, 30);
 const rows: TicketRow[] = [
   { id: "t1", subject: "Il sito non carica la home", category: "issue", status: "waiting_client", lastMessageAt: now, messageCount: 3 },
   { id: "t2", subject: "Vorrei cambiare il logo nel footer", category: "request", status: "open", lastMessageAt: now - 86_400_000, messageCount: 1 },
-  { id: "t3", subject: "Fattura di ottobre", category: "billing", status: "closed", lastMessageAt: now - 5 * 86_400_000, messageCount: 4 },
+  { id: "t3", subject: "Fattura di ottobre", category: "billing", status: "closed", lastMessageAt: now - 5 * 86_400_000, messageCount: 4, related: ["Fattura 2026/014", "Abbonamento: Hosting e assistenza"] },
 ];
 const messages: TicketMessage[] = [
   { id: "m1", author: "client", body: "Da stamattina la home è bianca su telefono.", createdAt: now - 7_200_000 },
@@ -38,7 +38,7 @@ export default function Page() {
           <ReplyBox onSend={async () => undefined} />
         </div>
       ) : null}
-      {mode === "new" ? <NewTicketForm onCancel={() => setMode("list")} onCreate={async () => undefined} /> : null}
+      {mode === "new" ? <NewTicketForm onCancel={() => setMode("list")} onCreate={async () => undefined} relatable={{ invoices: [{ id: "i1", label: "Fattura 2026/014" }], subscriptions: [{ id: "s1", label: "Hosting e assistenza" }], projects: [{ id: "p1", label: "Sito vetrina" }] }} /> : null}
     </>
   );
 }

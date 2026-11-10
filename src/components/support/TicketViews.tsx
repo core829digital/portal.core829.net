@@ -24,7 +24,24 @@ export const STATUS_LABEL = {
 
 const STATUS_VARIANT: Record<TicketStatus, "default" | "secondary" | "outline"> = { open: "default", in_progress: "secondary", waiting_client: "outline", closed: "outline" };
 
-export type TicketRow = { id: string; subject: string; category: TicketCategory; status: TicketStatus; lastMessageAt: number; messageCount: number; clientName?: string };
+export type TicketRow = { id: string; subject: string; category: TicketCategory; status: TicketStatus; lastMessageAt: number; messageCount: number; clientName?: string; related?: string[] };
+
+export type Relatable = { invoices: { id: string; label: string }[]; subscriptions: { id: string; label: string }[]; projects: { id: string; label: string }[] };
+export type TicketRelatedIds = { invoiceId?: string; subscriptionId?: string; projectId?: string };
+
+/** «Riguarda»: i collegamenti del ticket (pagamento, abbonamento, progetto). */
+export function RelatedChips({ labels }: { labels?: string[] }) {
+  if (!labels || labels.length === 0) return null;
+  return (
+    <span className="flex flex-wrap gap-1.5" aria-label="Riguarda">
+      {labels.map((l) => (
+        <Badge key={l} variant="secondary">
+          {l}
+        </Badge>
+      ))}
+    </span>
+  );
+}
 
 export function TicketStatusBadge({ status, side }: { status: TicketStatus; side: "client" | "admin" }) {
   return <Badge variant={STATUS_VARIANT[status]}>{STATUS_LABEL[side][status]}</Badge>;
@@ -42,7 +59,8 @@ export function TicketList({ rows, side, selectedId, onSelect, empty }: { rows: 
               <span className="block truncate text-sm font-medium">{r.subject}</span>
               <span className="block truncate text-xs text-muted-foreground">
                 {r.clientName ? `${r.clientName} · ` : ""}
-                {CATEGORY_LABEL[r.category]} · {r.messageCount} {r.messageCount === 1 ? "messaggio" : "messaggi"} · {formatDateTime(r.lastMessageAt)}
+                {CATEGORY_LABEL[r.category]}
+                {r.related && r.related.length > 0 ? ` · ${r.related.join(", ")}` : ""} · {r.messageCount} {r.messageCount === 1 ? "messaggio" : "messaggi"} · {formatDateTime(r.lastMessageAt)}
               </span>
             </span>
             <TicketStatusBadge status={r.status} side={side} />
@@ -116,14 +134,24 @@ export function ReplyBox({ onSend, canClose, disabled }: { onSend: (body: string
 }
 
 /** Modulo «Nuova richiesta» del portale. */
-export function NewTicketForm({ onCreate, onCancel }: { onCreate: (v: { subject: string; category: TicketCategory; body: string }) => Promise<void>; onCancel: () => void }) {
+export function NewTicketForm({ onCreate, onCancel, relatable }: { onCreate: (v: { subject: string; category: TicketCategory; body: string } & TicketRelatedIds) => Promise<void>; onCancel: () => void; relatable?: Relatable }) {
   const [pending, setPending] = useState(false);
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const f = new FormData(event.currentTarget);
     setPending(true);
     try {
-      await onCreate({ subject: String(f.get("subject") ?? ""), category: String(f.get("category")) as TicketCategory, body: String(f.get("body") ?? "") });
+      // «Riguarda» e' un'unica scelta con prefisso: inv: / sub: / prj:
+      const about = String(f.get("about") ?? "");
+      const [kind, id] = about.split(":");
+      await onCreate({
+        subject: String(f.get("subject") ?? ""),
+        category: String(f.get("category")) as TicketCategory,
+        body: String(f.get("body") ?? ""),
+        ...(id && kind === "inv" ? { invoiceId: id } : {}),
+        ...(id && kind === "sub" ? { subscriptionId: id } : {}),
+        ...(id && kind === "prj" ? { projectId: id } : {}),
+      });
     } finally {
       setPending(false);
     }
@@ -142,6 +170,40 @@ export function NewTicketForm({ onCreate, onCancel }: { onCreate: (v: { subject:
           ))}
         </NativeSelect>
       </Field>
+      {relatable && relatable.invoices.length + relatable.subscriptions.length + relatable.projects.length > 0 ? (
+        <Field id="about" label="Riguarda (facoltativo)" hint="Se la richiesta è su un pagamento, un abbonamento o un progetto, sceglilo: ci aiuta a risponderti più in fretta.">
+          <NativeSelect id="about" name="about" defaultValue="">
+            <option value="">Niente di specifico</option>
+            {relatable.invoices.length > 0 ? (
+              <optgroup label="Pagamenti">
+                {relatable.invoices.map((x) => (
+                  <option key={x.id} value={`inv:${x.id}`}>
+                    {x.label}
+                  </option>
+                ))}
+              </optgroup>
+            ) : null}
+            {relatable.subscriptions.length > 0 ? (
+              <optgroup label="Abbonamenti">
+                {relatable.subscriptions.map((x) => (
+                  <option key={x.id} value={`sub:${x.id}`}>
+                    {x.label}
+                  </option>
+                ))}
+              </optgroup>
+            ) : null}
+            {relatable.projects.length > 0 ? (
+              <optgroup label="Progetti">
+                {relatable.projects.map((x) => (
+                  <option key={x.id} value={`prj:${x.id}`}>
+                    {x.label}
+                  </option>
+                ))}
+              </optgroup>
+            ) : null}
+          </NativeSelect>
+        </Field>
+      ) : null}
       <Field id="body" label="Messaggio" hint="Più dettagli ci dai, più in fretta risolviamo.">
         <Textarea id="body" name="body" required minLength={3} maxLength={4000} rows={5} />
       </Field>

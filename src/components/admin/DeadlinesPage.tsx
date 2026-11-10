@@ -36,6 +36,10 @@ function NewDeadline({ onClose }: { onClose: () => void }) {
   const create = useMutation(api.deadlines.create);
   const clients = useQuery(api.clients.options, {});
   const [pending, setPending] = useState(false);
+  const [clientId, setClientId] = useState("");
+  const invoices = useQuery(api.invoices.listByClient, clientId ? { clientId: clientId as Id<"clients"> } : "skip");
+  const subscriptions = useQuery(api.subscriptions.listByClient, clientId ? { clientId: clientId as Id<"clients"> } : "skip");
+  const projects = useQuery(api.projects.listByClient, clientId ? { clientId: clientId as Id<"clients"> } : "skip");
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const f = new FormData(event.currentTarget);
@@ -43,8 +47,12 @@ function NewDeadline({ onClose }: { onClose: () => void }) {
     if (dueAt === null) return toast.error("Scegli una data valida.");
     setPending(true);
     try {
-      const clientId = String(f.get("clientId") ?? "");
+      const about = String(f.get("about") ?? "");
+      const [kind, linkId] = about.split(":");
       await create({
+        ...(linkId && kind === "inv" ? { invoiceId: linkId as Id<"invoices"> } : {}),
+        ...(linkId && kind === "sub" ? { subscriptionId: linkId as Id<"subscriptions"> } : {}),
+        ...(linkId && kind === "prj" ? { projectId: linkId as Id<"projects"> } : {}),
         title: String(f.get("title") ?? ""),
         dueAt,
         category: String(f.get("category")) as keyof typeof CATEGORY_LABEL,
@@ -82,7 +90,7 @@ function NewDeadline({ onClose }: { onClose: () => void }) {
             </Field>
           </div>
           <Field id="clientId" label="Cliente (facoltativo)">
-            <NativeSelect id="clientId" name="clientId" defaultValue="">
+            <NativeSelect id="clientId" name="clientId" value={clientId} onChange={(e) => setClientId(e.target.value)}>
               <option value="">Nessuno</option>
               {options.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -91,6 +99,40 @@ function NewDeadline({ onClose }: { onClose: () => void }) {
               ))}
             </NativeSelect>
           </Field>
+          {clientId ? (
+            <Field id="about" label="Collega a (facoltativo)" hint="Se il pagamento viene incassato o l'abbonamento annullato, la scadenza si chiude da sola.">
+              <NativeSelect id="about" name="about" defaultValue="">
+                <option value="">Niente di specifico</option>
+                {(invoices ?? []).filter((x) => x.status === "sent" || x.status === "overdue" || x.status === "draft").length > 0 ? (
+                  <optgroup label="Fatture da incassare">
+                    {(invoices ?? []).filter((x) => x.status === "sent" || x.status === "overdue" || x.status === "draft").map((x) => (
+                      <option key={x._id} value={`inv:${x._id}`}>
+                        {x.number} · {formatCents(x.amountCents)}
+                      </option>
+                    ))}
+                  </optgroup>
+                ) : null}
+                {(subscriptions ?? []).filter((x) => x.status !== "cancelled").length > 0 ? (
+                  <optgroup label="Abbonamenti">
+                    {(subscriptions ?? []).filter((x) => x.status !== "cancelled").map((x) => (
+                      <option key={x._id} value={`sub:${x._id}`}>
+                        {x.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                ) : null}
+                {(projects ?? []).length > 0 ? (
+                  <optgroup label="Progetti">
+                    {(projects ?? []).map((x) => (
+                      <option key={x._id} value={`prj:${x._id}`}>
+                        {x.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                ) : null}
+              </NativeSelect>
+            </Field>
+          ) : null}
           <Field id="notes" label="Note" hint="Appaiono nell'email di promemoria.">
             <Textarea id="notes" name="notes" maxLength={1000} rows={3} />
           </Field>
@@ -130,6 +172,7 @@ function Row({ item, now }: { item: DeadlineItem; now: number }) {
           {KIND_LABEL[item.kind]}
           {item.category ? ` · ${CATEGORY_LABEL[item.category]}` : ""}
           {item.clientName ? ` · ${item.clientName}` : ""}
+          {item.related.length > 0 ? ` · ${item.related.join(", ")}` : ""}
           {item.notes ? ` · ${item.notes}` : ""}
         </span>
       </span>

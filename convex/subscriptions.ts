@@ -4,6 +4,7 @@ import { mutation, query, type QueryCtx } from "./_generated/server";
 import { audit } from "./lib/audit";
 import { requireAdmin } from "./lib/auth";
 import { fail } from "./lib/errors";
+import { closeLinkedDeadlines } from "./deadlines";
 import { assertCents, assertTimestamp, cleanText } from "./lib/text";
 import { subscriptionInterval, subscriptionStatus } from "./lib/validators";
 
@@ -127,6 +128,7 @@ export const setStatus = mutation({
     if (subscription.status === "cancelled") return fail("BAD_STATE", "Abbonamento già annullato.");
     const patch: Partial<Doc<"subscriptions">> = { status: args.status };
     if (args.status === "cancelled") {
+      await closeLinkedDeadlines(ctx, { subscriptionId: subscription._id });
       patch.cancelledAt = Date.now();
       patch.nextRenewalAt = undefined;
     }

@@ -4,7 +4,7 @@ import { groupDeadlines } from "./deadlineGroups";
 
 const DAY = 86_400_000;
 const NOW = Date.UTC(2026, 10, 15, 10, 0, 0);
-const item = (key: string, at: number): DeadlineItem => ({ key, kind: "manual", title: key, clientId: null, clientName: null, at, amountCents: null, manualId: null, category: "other", notes: null });
+const item = (key: string, at: number): DeadlineItem => ({ key, kind: "manual", title: key, clientId: null, clientName: null, at, amountCents: null, manualId: null, category: "other", notes: null, related: [] });
 
 describe("scadenziario: gruppi per urgenza", () => {
   it("divide in scadute / 7 giorni / 30 giorni / più avanti e salta i gruppi vuoti", () => {
