@@ -132,6 +132,7 @@ export function SubscriptionsPanel({ clientId }: { clientId: Id<"clients"> }) {
                 <TableHead>Abbonamento</TableHead>
                 <TableHead className="text-right">Importo</TableHead>
                 <TableHead>Prossimo rinnovo</TableHead>
+                <TableHead>Fatture collegate</TableHead>
                 <TableHead>Stato</TableHead>
                 <TableHead className="sr-only">Azioni</TableHead>
               </TableRow>
@@ -147,6 +148,19 @@ export function SubscriptionsPanel({ clientId }: { clientId: Id<"clients"> }) {
                     {formatCents(s.amountCents)} <span className="text-xs text-muted-foreground">{intervalLabel[s.interval]}</span>
                   </TableCell>
                   <TableCell>{formatDate(s.nextRenewalAt)}</TableCell>
+                  <TableCell>
+                    {s.linkedCount === 0 ? (
+                      <span className="text-xs text-muted-foreground">Nessuna</span>
+                    ) : (
+                      <div className="text-sm">
+                        {s.linkedCount}
+                        <div className="text-xs text-muted-foreground">
+                          {s.openCount > 0 ? `${s.openCount} da saldare (${formatCents(s.openCents)})` : "tutte saldate"}
+                          {s.lastPaidAt ? ` · ultimo incasso ${formatDate(s.lastPaidAt)}` : ""}
+                        </div>
+                      </div>
+                    )}
+                  </TableCell>
                   <TableCell>
                     <Badge variant={s.status === "active" ? "default" : "secondary"}>{subscriptionStatusLabel[s.status]}</Badge>
                   </TableCell>

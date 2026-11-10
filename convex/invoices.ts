@@ -1,6 +1,6 @@
 import { v } from "convex/values";
-import type { Doc } from "./_generated/dataModel";
-import { mutation, query } from "./_generated/server";
+import type { Doc, Id } from "./_generated/dataModel";
+import { mutation, query, type QueryCtx } from "./_generated/server";
 import { audit } from "./lib/audit";
 import { requireAdmin } from "./lib/auth";
 import { INVOICE_TRANSITIONS, isInvoiceFinal } from "./lib/invoiceFlow";
@@ -22,6 +22,7 @@ export const create = mutation({
   args: {
     clientId: v.id("clients"),
     projectId: v.optional(v.id("projects")),
+    subscriptionId: v.optional(v.id("subscriptions")),
     number: v.string(),
     issuedAt: v.number(),
     dueAt: v.number(),
@@ -40,6 +41,13 @@ export const create = mutation({
       if (!project || project.clientId !== args.clientId) return fail("NOT_FOUND", "Progetto non trovato.");
     }
 
+    if (args.subscriptionId !== undefined) {
+      const sub = await ctx.db.get("subscriptions", args.subscriptionId);
+      // L'abbonamento deve essere dello stesso cliente e non annullato.
+      if (!sub || sub.clientId !== args.clientId) return fail("NOT_FOUND", "Abbonamento non trovato.");
+      if (sub.status === "cancelled") return fail("BAD_STATE", "L'abbonamento è annullato.");
+    }
+
     const number = cleanInvoiceNumber(args.number);
     const duplicate = await ctx.db
       .query("invoices")
@@ -54,6 +62,7 @@ export const create = mutation({
     const invoiceId = await ctx.db.insert("invoices", {
       clientId: args.clientId,
       projectId: args.projectId,
+      subscriptionId: args.subscriptionId,
       number,
       issuedAt,
       dueAt,
@@ -164,14 +173,84 @@ export const setStatus = mutation({
   },
 });
 
+/** Collega (o scollega, con null) un pagamento a un abbonamento. Vale anche sui pagamenti gia' chiusi: serve a sistemare lo storico. */
+export const setSubscription = mutation({
+  args: { invoiceId: v.id("invoices"), subscriptionId: v.union(v.id("subscriptions"), v.null()) },
+  handler: async (ctx, args) => {
+    const { actorId } = await requireAdmin(ctx);
+    const invoice = await ctx.db.get("invoices", args.invoiceId);
+    if (!invoice) return fail("NOT_FOUND", "Pagamento non trovato.");
+    if (args.subscriptionId !== null) {
+      const sub = await ctx.db.get("subscriptions", args.subscriptionId);
+      if (!sub || sub.clientId !== invoice.clientId) return fail("NOT_FOUND", "Abbonamento non trovato.");
+    }
+    await ctx.db.patch("invoices", args.invoiceId, { subscriptionId: args.subscriptionId ?? undefined });
+    await audit(ctx, {
+      actorType: "admin",
+      actorId,
+      clientId: invoice.clientId,
+      action: "invoice.subscription_linked",
+      resourceType: "invoice",
+      resourceId: args.invoiceId,
+      metadata: { subscriptionId: args.subscriptionId ?? "none" },
+    });
+    return null;
+  },
+});
+
 export const listByClient = query({
   args: { clientId: v.id("clients") },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
-    return await ctx.db
+    const invoices = await ctx.db
       .query("invoices")
       .withIndex("by_clientId", (q) => q.eq("clientId", args.clientId))
       .order("desc")
       .take(200);
+    const names = new Map<string, string>();
+    for (const i of invoices) {
+      if (!i.subscriptionId || names.has(i.subscriptionId)) continue;
+      const sub = await ctx.db.get("subscriptions", i.subscriptionId);
+      names.set(i.subscriptionId, sub?.name ?? "Abbonamento eliminato");
+    }
+    return invoices.map((i) => ({ ...i, subscriptionName: i.subscriptionId ? names.get(i.subscriptionId) : undefined }));
+  },
+});
+
+/**
+ * Collegamenti proposti per lo storico: un pagamento non collegato viene proposto solo se il cliente ha UN SOLO abbonamento
+ * non annullato con lo stesso importo. Nei casi dubbi (piu' candidati) non propone nulla: decide l'amministratore.
+ */
+async function computeSuggestions(ctx: QueryCtx, clientId: Id<"clients">) {
+  const subs = (await ctx.db.query("subscriptions").withIndex("by_clientId", (q) => q.eq("clientId", clientId)).take(100)).filter((s) => s.status !== "cancelled");
+  const invoices = await ctx.db.query("invoices").withIndex("by_clientId", (q) => q.eq("clientId", clientId)).take(200);
+  const out: { invoiceId: Id<"invoices">; number: string; subscriptionId: Id<"subscriptions">; subscriptionName: string }[] = [];
+  for (const i of invoices) {
+    if (i.subscriptionId || i.status === "cancelled") continue;
+    const matches = subs.filter((s) => s.amountCents === i.amountCents);
+    if (matches.length === 1) out.push({ invoiceId: i._id, number: i.number, subscriptionId: matches[0]._id, subscriptionName: matches[0].name });
+  }
+  return out;
+}
+
+export const linkSuggestions = query({
+  args: { clientId: v.id("clients") },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    return await computeSuggestions(ctx, args.clientId);
+  },
+});
+
+/** Applica in un colpo i collegamenti proposti per il cliente. */
+export const applyLinkSuggestions = mutation({
+  args: { clientId: v.id("clients") },
+  handler: async (ctx, args): Promise<number> => {
+    const { actorId } = await requireAdmin(ctx);
+    const list = await computeSuggestions(ctx, args.clientId);
+    for (const s of list) {
+      await ctx.db.patch("invoices", s.invoiceId, { subscriptionId: s.subscriptionId });
+      await audit(ctx, { actorType: "admin", actorId, clientId: args.clientId, action: "invoice.subscription_linked", resourceType: "invoice", resourceId: s.invoiceId, metadata: { subscriptionId: s.subscriptionId, auto: "suggested" } });
+    }
+    return list.length;
   },
 });

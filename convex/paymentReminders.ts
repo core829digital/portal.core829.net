@@ -32,20 +32,27 @@ async function collectDue(ctx: QueryCtx | MutationCtx, from: number, to: number,
   const out = new Map<Id<"clients">, DueItem[]>();
   const push = (i: DueItem) => out.set(i.clientId, [...(out.get(i.clientId) ?? []), i]);
   const invoices = await ctx.db.query("invoices").withIndex("by_status_and_dueAt", (q) => q.eq("status", "sent").gte("dueAt", from).lt("dueAt", to)).take(MAX_ROWS);
+  // Un pagamento collegato a un abbonamento «copre» il rinnovo: niente doppia riga per lo stesso importo.
+  const covered = new Set<string>();
   for (const i of invoices) {
     if (!i.visibleToClient) continue;
+    if (i.subscriptionId) covered.add(i.subscriptionId);
     if (opts.onlyNotYetReminded && i.eveReminderSentAt !== undefined) continue;
     push({ kind: "invoice", id: i._id, clientId: i.clientId, label: `Pagamento n. ${i.number}`, dueAt: i.dueAt, amountCents: i.amountCents });
   }
   const subs = await ctx.db.query("subscriptions").withIndex("by_status_and_nextRenewalAt", (q) => q.eq("status", "active").gte("nextRenewalAt", from).lt("nextRenewalAt", to)).take(MAX_ROWS);
   for (const s of subs) {
     if (s.nextRenewalAt === undefined) continue;
+    if (covered.has(s._id)) continue;
     if (opts.onlyNotYetReminded && s.eveReminderForRenewalAt === s.nextRenewalAt) continue;
     push({ kind: "subscription", id: s._id, clientId: s.clientId, label: `Rinnovo: ${s.name}`, dueAt: s.nextRenewalAt, amountCents: s.amountCents });
   }
   for (const list of out.values()) list.sort((a, b) => a.dueAt - b.dueAt);
   return out;
 }
+
+/** Solo per i test. */
+export const collectDueForTest = (ctx: QueryCtx, from: number, to: number) => collectDue(ctx, from, to, { onlyNotYetReminded: false });
 
 const lineOf = (i: DueItem) => `• ${i.label} · ${formatEuroIt(i.amountCents)} · scade il ${formatDateIt(i.dueAt)}`;
 

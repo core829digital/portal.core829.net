@@ -107,6 +107,8 @@ export default defineSchema({
   invoices: defineTable({
     clientId: v.id("clients"),
     projectId: v.optional(v.id("projects")),
+    /** Abbonamento a cui si riferisce il pagamento (stesso cliente). Se manca, e' un pagamento singolo. */
+    subscriptionId: v.optional(v.id("subscriptions")),
     number: v.string(),
     issuedAt: v.number(),
     dueAt: v.number(),
@@ -127,6 +129,7 @@ export default defineSchema({
     .index("by_clientId", ["clientId"])
     .index("by_clientId_and_status", ["clientId", "status"])
     .index("by_number", ["number"])
+    .index("by_subscriptionId", ["subscriptionId"])
     .index("by_status_and_dueAt", ["status", "dueAt"]),
 
   subscriptions: defineTable({

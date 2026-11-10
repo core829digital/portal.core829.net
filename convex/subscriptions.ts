@@ -126,10 +126,24 @@ export const listByClient = query({
   args: { clientId: v.id("clients") },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
-    return await ctx.db
+    const subs = await ctx.db
       .query("subscriptions")
       .withIndex("by_clientId", (q) => q.eq("clientId", args.clientId))
       .order("desc")
       .take(100);
+    // Pagamenti collegati: quanti, quanti ancora da saldare, ultimo incasso.
+    return await Promise.all(
+      subs.map(async (s) => {
+        const linked = await ctx.db.query("invoices").withIndex("by_subscriptionId", (q) => q.eq("subscriptionId", s._id)).order("desc").take(100);
+        const open = linked.filter((i) => i.status === "sent" || i.status === "overdue");
+        return {
+          ...s,
+          linkedCount: linked.length,
+          openCount: open.length,
+          openCents: open.reduce((t, i) => t + i.amountCents, 0),
+          lastPaidAt: linked.reduce<number | undefined>((m, i) => (i.paidAt !== undefined && (m === undefined || i.paidAt > m) ? i.paidAt : m), undefined),
+        };
+      }),
+    );
   },
 });
