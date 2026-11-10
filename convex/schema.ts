@@ -58,6 +58,8 @@ export default defineSchema({
     internalNotes: v.optional(v.string()),
     /** Se false, il cliente non riceve le email automatiche del portale (restano al registro come «saltate»). Predefinito: si. */
     notifyEmail: v.optional(v.boolean()),
+    /** Id del cliente nel CRM (b2b.core829.net): rende l'importazione dal CRM ripetibile senza doppioni. */
+    crmRef: v.optional(v.string()),
   })
     .index("by_email", ["email"])
     .index("by_status", ["status"]),
@@ -71,6 +73,7 @@ export default defineSchema({
     progress: v.number(),
     startDate: v.optional(v.number()),
     dueDate: v.optional(v.number()),
+    crmRef: v.optional(v.string()),
   }).index("by_clientId", ["clientId"]),
 
   /** Cronologia degli aggiornamenti di un progetto. */
@@ -125,6 +128,7 @@ export default defineSchema({
     dueReminderSentAt: v.optional(v.number()),
     /** Quando e' partito il promemoria «scade domani» delle 10:30: evita invii doppi. */
     eveReminderSentAt: v.optional(v.number()),
+    crmRef: v.optional(v.string()),
   })
     .index("by_clientId", ["clientId"])
     .index("by_clientId_and_status", ["clientId", "status"])

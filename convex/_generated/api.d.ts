@@ -22,6 +22,7 @@ import type * as brand from "../brand.js";
 import type * as brandActions from "../brandActions.js";
 import type * as clients from "../clients.js";
 import type * as crmExport from "../crmExport.js";
+import type * as crmImport from "../crmImport.js";
 import type * as crons from "../crons.js";
 import type * as dashboard from "../dashboard.js";
 import type * as deadlines from "../deadlines.js";
@@ -105,6 +106,7 @@ declare const fullApi: ApiFromModules<{
   brandActions: typeof brandActions;
   clients: typeof clients;
   crmExport: typeof crmExport;
+  crmImport: typeof crmImport;
   crons: typeof crons;
   dashboard: typeof dashboard;
   deadlines: typeof deadlines;

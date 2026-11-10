@@ -53,3 +53,9 @@ Il promemoria delle 10:30 del giorno prima è **l'unico** che i clienti ricevono
 - Il file passa dal controllo di sicurezza come ogni documento («PDF in controllo…» poi apribile; se viene rifiutato lo vedi scritto).
 - Si salva anche tra i **Documenti** del cliente (tipo «Fattura»). Il cliente lo vede lì solo se la fattura è visibile e non è più una bozza: premendo «Segna come inviata» il PDF diventa visibile da solo. Nello spazio del cliente la fattura mostra «Il PDF è disponibile nella sezione Documenti».
 - **Stacca** non cancella il file (resta nei Documenti); eliminare il documento stacca il PDF dalla fattura, che resta.
+
+## Portale ⇄ CRM (collegati con due file)
+- **Portale → CRM:** pagina **Clienti → Esporta per il CRM** scarica un file; nel CRM **Data → Import from portal** (anteprima, poi importa).
+- **CRM → Portale:** nel CRM **Data → Export / Backup → Download backup**; nel portale **Clienti → Importa dal CRM** (anteprima, poi importa). Importa clienti, progetti e fatture. I lead restano nel CRM; i preventivi/servizi del CRM non diventano abbonamenti.
+- Entrambe le direzioni: **non cancellano nulla**, si possono ripetere senza doppioni (ogni record ricorda l'id dell'altro sistema), completano i campi vuoti senza sovrascrivere. Le fatture importate nel portale sono **nascoste al cliente e senza email**.
+- I file contengono dati personali: tienili privati, mai su GitHub.

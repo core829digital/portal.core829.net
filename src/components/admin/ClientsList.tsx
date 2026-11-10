@@ -8,6 +8,7 @@ import { CreateClientDialog } from "@/components/admin/CreateClientDialog";
 import { NativeSelect } from "@/components/admin/Field";
 import { PageHeader } from "@/components/dash/DashShell";
 import { Badge } from "@/components/ui/badge";
+import { ImportFromCrmDialog } from "@/components/admin/ImportFromCrmDialog";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import { toast } from "@/lib/toast";
@@ -65,7 +66,7 @@ export function ClientsList() {
 
   return (
     <>
-      <PageHeader kicker="Clienti" title="Tutti i clienti" description="Apri un cliente per vedere progetti, fatture, abbonamenti, documenti e link." actions={<div className="flex flex-wrap gap-2"><ExportForCrmButton /><CreateClientDialog /></div>} />
+      <PageHeader kicker="Clienti" title="Tutti i clienti" description="Apri un cliente per vedere progetti, fatture, abbonamenti, documenti e link." actions={<div className="flex flex-wrap gap-2"><ExportForCrmButton /><ImportFromCrmDialog /><CreateClientDialog /></div>} />
 
       <div className="flex flex-wrap gap-3">
         <Input
