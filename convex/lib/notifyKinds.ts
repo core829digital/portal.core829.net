@@ -24,6 +24,10 @@ export type KindSpec = {
 const MIN = 60_000;
 const HOUR = 60 * MIN;
 
+/** Avviso sui costi aggiuntivi: stesso testo in ogni promemoria. Va allineato al contratto (vedi docs/PROMEMORIA-PAGAMENTO.md). */
+export const PAYMENT_NOTICE =
+  "Ti ricordiamo che la rata concordata all'inizio del rapporto deve essere saldata entro la scadenza indicata. In caso di mancato pagamento verranno addebitati costi aggiuntivi insieme alla rata successiva: per reintegrare i dati è necessario ricostruire il server da capo e configurarlo nuovamente.";
+
 const OPEN_PORTAL = "Apri il tuo spazio";
 
 export const NOTIFY_KINDS = {
@@ -133,6 +137,18 @@ export const NOTIFY_KINDS = {
       subject: `Promemoria: pagamento di ${d.amount} in scadenza il ${d.date}`,
       heading: "Promemoria di pagamento",
       body: `Il pagamento di ${d.amount} per «${d.name}» è in scadenza il ${d.date}.`,
+    }),
+  },
+  payment_reminder: {
+    audience: "client",
+    label: "Promemoria di pagamento",
+    description: "Il giorno prima della scadenza di una rata o di una fattura, alle 10:30 (ora italiana), con l'avviso sui costi aggiuntivi in caso di mancato pagamento. Interruttore = invio automatico; l'invio a mano dalla pagina «Promemoria di pagamento» funziona sempre.",
+    defaultEnabled: true,
+    dedupeMs: 20 * HOUR,
+    render: (d) => ({
+      subject: `Promemoria di pagamento: ${d.when}`,
+      heading: "Promemoria di pagamento",
+      body: `Buongiorno ${d.name},\n\n${d.intro}\n\n${d.lines}\n\n${PAYMENT_NOTICE}\n\nSe hai già provveduto, ignora questo messaggio. Per qualsiasi dubbio scrivici: siamo a disposizione.`,
     }),
   },
   approval_requested: {

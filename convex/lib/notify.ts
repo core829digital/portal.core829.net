@@ -16,6 +16,8 @@ export type NotifyInput = {
   dedupeSubject?: string;
   /** Se vero la riga e' solo una traccia: l'email e' gia' stata inviata da un altro flusso. */
   logOnly?: boolean;
+  /** Invio deciso a mano dall'amministratore: ignora l'interruttore del tipo (che governa solo l'invio automatico). Le esclusioni del cliente restano valide. */
+  ignoreSetting?: boolean;
 };
 
 /** Destinatari per l'amministrazione: NOTIFY_ADMIN_EMAILS, altrimenti gli indirizzi autorizzati al login. */
@@ -40,7 +42,7 @@ export async function notify(ctx: MutationCtx, kind: NotifyKind, input: NotifyIn
     if (!isNotifyKind(kind)) return 0;
     const spec = NOTIFY_KINDS[kind];
     const setting = await ctx.db.query("notificationSettings").withIndex("by_kind", (q) => q.eq("kind", kind)).unique();
-    if (!(setting ? setting.enabled : spec.defaultEnabled)) return 0;
+    if (!input.ignoreSetting && !(setting ? setting.enabled : spec.defaultEnabled)) return 0;
 
     const now = Date.now();
     const dedupeMs = "dedupeMs" in spec ? spec.dedupeMs : undefined;

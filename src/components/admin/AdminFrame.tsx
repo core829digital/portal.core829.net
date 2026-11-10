@@ -6,6 +6,7 @@ import {
   Activity,
   CalendarClock,
   BarChart3,
+  BellRing,
   CircleCheck,
   Bell,
   CreditCard,
@@ -85,6 +86,7 @@ function Frame({ children }: { children: ReactNode }) {
       label: "Lavoro e incassi",
       items: [
         { href: "/admin/deadlines", label: "Scadenziario", icon: CalendarClock },
+        { href: "/admin/payment-reminders", label: "Promemoria di pagamento", icon: BellRing },
         { href: "/admin/tickets", label: "Ticket di assistenza", icon: LifeBuoy, ...(waiting ? { badge: waiting } : {}) },
         { href: "/admin/projects", label: "Progetti", icon: FolderKanban },
         { href: "/admin/invoices", label: "Fatture", icon: Receipt },

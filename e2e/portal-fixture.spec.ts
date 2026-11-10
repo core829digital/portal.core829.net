@@ -9,7 +9,7 @@ test("con il consenso esplicito (E2E_FIXTURES=1) la pagina di prova esiste", asy
   expect((await request.get("/c/fixture")).status()).toBe(200);
 });
 
-const PAGES = ["/c/fixture", "/c/fixture/projects", "/c/fixture/billing", "/c/fixture/subscriptions", "/c/fixture/documents", "/c/fixture/support"] as const;
+const PAGES = ["/c/fixture", "/c/fixture/projects", "/c/fixture/billing", "/c/fixture/subscriptions", "/c/fixture/documents", "/c/fixture/support", "/c/fixture/reminders"] as const;
 
 for (const path of PAGES) {
   test(`accessibilita' di ${path}: nessuna violazione WCAG 2 A/AA`, async ({ page }) => {
@@ -568,4 +568,15 @@ test("approvazione: la finestra e' accessibile, chiede il nome e, per le modific
   await dialog.getByLabel("Nome e cognome").fill("Mario Rossi");
   await dialog.getByRole("button", { name: "Invia la richiesta" }).click();
   await expect(page.getByRole("status")).toHaveText("changes:Mario Rossi:Togliere il dominio dal prezzo.");
+});
+
+test("promemoria di pagamento: elenco leggibile, scelta dei clienti, chi e' escluso dalle email non si puo' selezionare", async ({ page }) => {
+  await page.goto("/c/fixture/reminders");
+  const list = page.getByRole("list", { name: "Clienti con scadenze" });
+  await expect(list.getByRole("checkbox")).toHaveCount(3);
+  await expect(page.getByRole("checkbox", { name: /Officina Bianchi/ })).toBeDisabled();
+  await expect(page.getByText("Escluso dalle email")).toBeVisible();
+  await page.getByRole("checkbox", { name: /Studio Verdi/ }).uncheck();
+  await expect(page.getByRole("status")).toHaveText("Selezionati: c1");
+  await expect(list).toContainText("Rinnovo: Server dedicato");
 });

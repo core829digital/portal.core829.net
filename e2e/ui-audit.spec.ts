@@ -21,6 +21,7 @@ const PAGES = [
   "/c/fixture/kpi",
   "/c/fixture/support",
   "/c/fixture/approval",
+  "/c/fixture/reminders",
 ] as const;
 
 async function audit(page: Page) {

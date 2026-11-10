@@ -121,6 +121,8 @@ export default defineSchema({
     visibleToClient: v.boolean(),
     /** Quando e' partito il promemoria «scade tra pochi giorni»: evita invii doppi. */
     dueReminderSentAt: v.optional(v.number()),
+    /** Quando e' partito il promemoria «scade domani» delle 10:30: evita invii doppi. */
+    eveReminderSentAt: v.optional(v.number()),
   })
     .index("by_clientId", ["clientId"])
     .index("by_clientId_and_status", ["clientId", "status"])
@@ -142,6 +144,8 @@ export default defineSchema({
     reminderDaysBefore: v.optional(v.number()),
     /** Rinnovo (`nextRenewalAt`) per cui il promemoria e' gia' stato inviato: evita invii doppi. */
     lastReminderForRenewalAt: v.optional(v.number()),
+    /** Rinnovo (`nextRenewalAt`) per cui e' gia' partito il promemoria «scade domani» delle 10:30. */
+    eveReminderForRenewalAt: v.optional(v.number()),
   })
     .index("by_clientId", ["clientId"])
     .index("by_clientId_and_status", ["clientId", "status"])
