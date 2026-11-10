@@ -152,6 +152,11 @@ export const setStatus = mutation({
       return fail("BAD_STATE", "Questo cambio di stato non è consentito.");
     }
     const patch: Partial<Doc<"invoices">> = { status: args.status };
+    // Quando la fattura viene inviata al cliente, il suo PDF (se c'e') diventa visibile nei suoi Documenti.
+    if (args.status === "sent" && invoice.visibleToClient && invoice.documentId) {
+      const pdf = await ctx.db.get("documents", invoice.documentId);
+      if (pdf && !pdf.visibleToClient) await ctx.db.patch("documents", pdf._id, { visibleToClient: true });
+    }
     if (args.status === "paid" || args.status === "cancelled") await closeLinkedDeadlines(ctx, { invoiceId: invoice._id });
     if (args.status === "paid") {
       patch.paidAt = args.paidAt === undefined ? Date.now() : assertTimestamp(args.paidAt, "data di pagamento");
@@ -171,6 +176,28 @@ export const setStatus = mutation({
       if (args.status === "sent") await notify(ctx, "invoice_sent", { clientId: invoice.clientId, data, dedupeSubject: invoice._id });
       if (args.status === "paid") await notify(ctx, "invoice_paid", { clientId: invoice.clientId, data });
     }
+    return null;
+  },
+});
+
+/**
+ * Allega (o stacca, con null) il PDF di una fattura. Vale in ogni stato, anche per le fatture gia' pagate.
+ * Il file deve essere un PDF dello stesso cliente e non rifiutato dal controllo di sicurezza. Staccare non cancella il file (resta nei Documenti).
+ */
+export const attachDocument = mutation({
+  args: { invoiceId: v.id("invoices"), documentId: v.union(v.id("documents"), v.null()) },
+  handler: async (ctx, args): Promise<null> => {
+    const { actorId } = await requireAdmin(ctx);
+    const invoice = await ctx.db.get("invoices", args.invoiceId);
+    if (!invoice) return fail("NOT_FOUND", "Fattura non trovata.");
+    if (args.documentId !== null) {
+      const doc = await ctx.db.get("documents", args.documentId);
+      if (!doc || doc.clientId !== invoice.clientId) return fail("NOT_FOUND", "Documento non trovato.");
+      if (doc.mimeType !== "application/pdf") return fail("BAD_STATE", "Alla fattura si allega solo un file PDF.");
+      if (doc.scanStatus === "rejected") return fail("BAD_STATE", "Questo file è stato rifiutato dal controllo di sicurezza.");
+    }
+    await ctx.db.patch("invoices", invoice._id, { documentId: args.documentId ?? undefined });
+    await audit(ctx, { actorType: "admin", actorId, clientId: invoice.clientId, action: args.documentId ? "invoice.pdf_attached" : "invoice.pdf_detached", resourceType: "invoice", resourceId: invoice._id });
     return null;
   },
 });
@@ -215,7 +242,13 @@ export const listByClient = query({
       const sub = await ctx.db.get("subscriptions", i.subscriptionId);
       names.set(i.subscriptionId, sub?.name ?? "Abbonamento eliminato");
     }
-    return invoices.map((i) => ({ ...i, subscriptionName: i.subscriptionId ? names.get(i.subscriptionId) : undefined }));
+    const pdf = new Map<string, "pending" | "clean" | "rejected" | "missing">();
+    for (const i of invoices) {
+      if (!i.documentId || pdf.has(i.documentId)) continue;
+      const d = await ctx.db.get("documents", i.documentId);
+      pdf.set(i.documentId, d ? d.scanStatus : "missing");
+    }
+    return invoices.map((i) => ({ ...i, subscriptionName: i.subscriptionId ? names.get(i.subscriptionId) : undefined, pdfStatus: i.documentId ? (pdf.get(i.documentId) ?? "missing") : null }));
   },
 });
 

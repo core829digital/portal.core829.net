@@ -1,13 +1,14 @@
 "use client";
 
 import { useMutation, useQuery } from "convex/react";
-import { Plus } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import { Download, FileUp, Plus } from "lucide-react";
+import { useRef, useState, type FormEvent } from "react";
 import { api } from "@convex/_generated/api";
 import type { Doc, Id } from "@convex/_generated/dataModel";
 import { INVOICE_TRANSITIONS } from "@convex/lib/invoiceFlow";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { Field, NativeSelect, TextField } from "@/components/admin/Field";
+import { MAX_FILE_BYTES } from "@convex/lib/files";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -135,6 +136,81 @@ function CreateInvoiceDialog({ open, onClose, clientId }: { open: boolean; onClo
   );
 }
 
+type InvoiceRow = Invoice & { pdfStatus: "pending" | "clean" | "rejected" | "missing" | null };
+
+/** PDF della fattura: carica, apri, stacca. Il file passa dal controllo di sicurezza come ogni documento. */
+function InvoicePdfCell({ invoice }: { invoice: InvoiceRow }) {
+  const generateUploadUrl = useMutation(api.documents.generateUploadUrl);
+  const finalize = useMutation(api.documents.finalize);
+  const attach = useMutation(api.invoices.attachDocument);
+  const url = useQuery(api.documents.adminUrl, invoice.documentId && invoice.pdfStatus === "clean" ? { documentId: invoice.documentId } : "skip");
+  const input = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function onFile(file: File | undefined) {
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith(".pdf") || (file.type && file.type !== "application/pdf")) return void toast.error("Per la fattura serve un file PDF.");
+    if (file.size === 0 || file.size > MAX_FILE_BYTES) return void toast.error(`Il file deve essere un PDF fino a ${MAX_FILE_BYTES / (1024 * 1024)} MB.`);
+    setBusy(true);
+    try {
+      const uploadUrl = await generateUploadUrl({});
+      const response = await fetch(uploadUrl, { method: "POST", headers: { "Content-Type": "application/pdf" }, body: file });
+      if (!response.ok) throw new Error("upload");
+      const body: unknown = await response.json();
+      const storageId = typeof body === "object" && body !== null && "storageId" in body ? (body as { storageId: unknown }).storageId : null;
+      if (typeof storageId !== "string") throw new Error("upload");
+      // Il cliente lo vede nei Documenti solo se la fattura e' visibile e non e' piu' una bozza.
+      const result = await finalize({
+        clientId: invoice.clientId,
+        storageId: storageId as Id<"_storage">,
+        fileName: file.name,
+        title: `Fattura ${invoice.number}`,
+        kind: "invoice",
+        visibleToClient: invoice.visibleToClient && invoice.status !== "draft",
+      });
+      if (!result.ok) return void toast.error(result.message);
+      await attach({ invoiceId: invoice._id, documentId: result.documentId as Id<"documents"> });
+      toast.success(`PDF allegato alla fattura ${invoice.number}. Lo stiamo controllando.`);
+    } catch (error) {
+      toast.error(errorMessage(error, "Caricamento non riuscito. Riprova."));
+    } finally {
+      setBusy(false);
+      if (input.current) input.current.value = "";
+    }
+  }
+
+  return (
+    <div className="flex flex-col items-start gap-1 text-xs">
+      <input ref={input} type="file" accept="application/pdf,.pdf" className="sr-only" tabIndex={-1} aria-label={`PDF della fattura ${invoice.number}`} onChange={(e) => void onFile(e.target.files?.[0])} />
+      {invoice.documentId && invoice.pdfStatus !== "missing" ? (
+        <>
+          {invoice.pdfStatus === "clean" && url ? (
+            <a href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-medium underline-offset-4 hover:underline">
+              <Download className="size-3.5" aria-hidden /> Apri PDF
+            </a>
+          ) : invoice.pdfStatus === "rejected" ? (
+            <span className="text-destructive">PDF rifiutato dal controllo</span>
+          ) : (
+            <span className="text-muted-foreground">PDF in controllo…</span>
+          )}
+          <span className="flex gap-2 text-muted-foreground">
+            <button type="button" className="underline-offset-4 hover:underline disabled:opacity-50" disabled={busy} onClick={() => input.current?.click()}>
+              Sostituisci
+            </button>
+            <button type="button" className="underline-offset-4 hover:underline" onClick={() => void attach({ invoiceId: invoice._id, documentId: null }).then(() => toast.success("PDF staccato (il file resta nei Documenti).")).catch((e: unknown) => toast.error(errorMessage(e)))}>
+              Stacca
+            </button>
+          </span>
+        </>
+      ) : (
+        <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => input.current?.click()}>
+          <FileUp aria-hidden /> {busy ? "Caricamento…" : "Carica PDF"}
+        </Button>
+      )}
+    </div>
+  );
+}
+
 export function InvoicesPanel({ clientId }: { clientId: Id<"clients"> }) {
   const invoices = useQuery(api.invoices.listByClient, { clientId });
   const setStatus = useMutation(api.invoices.setStatus);
@@ -205,6 +281,7 @@ export function InvoicesPanel({ clientId }: { clientId: Id<"clients"> }) {
               <TableRow>
                 <TableHead>Numero</TableHead>
                 <TableHead>Abbonamento</TableHead>
+                <TableHead>PDF</TableHead>
                 <TableHead>Emessa</TableHead>
                 <TableHead>Scadenza</TableHead>
                 <TableHead className="text-right">Importo</TableHead>
@@ -230,6 +307,9 @@ export function InvoicesPanel({ clientId }: { clientId: Id<"clients"> }) {
                           </option>
                         ))}
                     </NativeSelect>
+                  </TableCell>
+                  <TableCell>
+                    <InvoicePdfCell invoice={invoice as InvoiceRow} />
                   </TableCell>
                   <TableCell>{formatDate(invoice.issuedAt)}</TableCell>
                   <TableCell>{formatDate(invoice.dueAt)}</TableCell>

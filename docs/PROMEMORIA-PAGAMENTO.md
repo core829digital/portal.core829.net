@@ -46,4 +46,10 @@ Il promemoria delle 10:30 del giorno prima è **l'unico** che i clienti ricevono
 - **Ticket:** quando il cliente apre una richiesta può scegliere «Riguarda» (un suo pagamento, abbonamento o progetto: solo cose che vede nel suo spazio, mai bozze o abbonamenti annullati). Nell'area admin il ticket mostra cosa riguarda e lo si può collegare, cambiare o scollegare (anche con cose che il cliente non vede). Un collegamento a elementi di un altro cliente viene rifiutato.
 - **Scadenze manuali:** si possono collegare a una fattura, un abbonamento o un progetto (il cliente si ricava da solo, ed è sempre lo stesso). **Incassando o annullando la fattura, o annullando l'abbonamento, la scadenza collegata si chiude da sola.**
 - Nell'elenco dei ticket e nello Scadenziario il collegamento è scritto accanto al titolo.
-- Restano da fare: caricare il PDF della fattura dall'interfaccia (il campo esiste ma non c'è il pulsante).
+
+
+## PDF della fattura
+- Nella tabella Fatture del cliente, colonna **PDF**: **Carica PDF** (solo file PDF, max come gli altri documenti), poi **Apri PDF**, **Sostituisci**, **Stacca**. Funziona anche sulle fatture già pagate.
+- Il file passa dal controllo di sicurezza come ogni documento («PDF in controllo…» poi apribile; se viene rifiutato lo vedi scritto).
+- Si salva anche tra i **Documenti** del cliente (tipo «Fattura»). Il cliente lo vede lì solo se la fattura è visibile e non è più una bozza: premendo «Segna come inviata» il PDF diventa visibile da solo. Nello spazio del cliente la fattura mostra «Il PDF è disponibile nella sezione Documenti».
+- **Stacca** non cancella il file (resta nei Documenti); eliminare il documento stacca il PDF dalla fattura, che resta.

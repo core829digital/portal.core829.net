@@ -49,6 +49,14 @@ export async function buildOverview(ctx: QueryCtx, clientId: Id<"clients">) {
       .take(200)
   ).filter((i) => i.visibleToClient && VISIBLE_INVOICE_STATUSES.has(i.status));
 
+  // Quali fatture hanno un PDF che il cliente puo' scaricare dai Documenti (controllato e visibile).
+  const pdfReady = new Set<string>();
+  for (const i of invoices) {
+    if (!i.documentId) continue;
+    const d = await ctx.db.get("documents", i.documentId);
+    if (d && d.scanStatus === "clean" && d.visibleToClient) pdfReady.add(i._id);
+  }
+
   const outstandingCents = invoices
     .filter((i) => i.status === "sent" || i.status === "overdue")
     .reduce((sum, i) => sum + i.amountCents, 0);
@@ -114,6 +122,7 @@ export async function buildOverview(ctx: QueryCtx, clientId: Id<"clients">) {
         paidAt: i.paidAt ?? null,
         note: i.note ?? null,
         // Il servizio a cui si riferisce il pagamento (lo stesso nome dell'abbonamento, cosi' il cliente li riconosce).
+        hasPdf: pdfReady.has(i._id),
         subscriptionName: i.subscriptionId ? (subscriptions.find((s) => s._id === i.subscriptionId)?.name ?? null) : null,
       })),
     },
