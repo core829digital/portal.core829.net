@@ -1,6 +1,7 @@
 import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
+import { internal } from "./_generated/api";
 import { mutation, query } from "./_generated/server";
 import { audit } from "./lib/audit";
 import { requireAdmin } from "./lib/auth";
@@ -90,6 +91,7 @@ export const update = mutation({
     const { actorId } = await requireAdmin(ctx);
     const client = await ctx.db.get("clients", args.clientId);
     if (!client) return fail("NOT_FOUND", "Cliente non trovato.");
+    if (client.deletionStartedAt !== undefined) return fail("BAD_STATE", "Cliente in eliminazione.");
 
     const patch: Partial<Omit<Doc<"clients">, "_id" | "_creationTime">> = {};
     if (args.displayName !== undefined) patch.displayName = cleanText(args.displayName, { field: "nome", min: 1, max: 120 });
@@ -175,5 +177,35 @@ export const get = query({
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
     return await ctx.db.get("clients", args.clientId);
+  },
+});
+
+/**
+ * Elimina DEFINITIVAMENTE un cliente con tutti i suoi dati (progetti, fatture, abbonamenti, documenti e file, ticket,
+ * firme, approvazioni, scadenze, report, link d'accesso, email registrate). Si conferma scrivendo il nome esatto.
+ * L'accesso del cliente si chiude subito; la cancellazione prosegue a lotti in background. Il registro di audit resta.
+ */
+export const remove = mutation({
+  args: { clientId: v.id("clients"), confirmName: v.string() },
+  handler: async (ctx, args) => {
+    const { actorId } = await requireAdmin(ctx);
+    const client = await ctx.db.get("clients", args.clientId);
+    if (!client) return fail("NOT_FOUND", "Cliente non trovato.");
+    if (client.deletionStartedAt !== undefined) return fail("BAD_STATE", "Eliminazione già in corso.");
+    if (args.confirmName.trim() !== client.displayName) {
+      return fail("BAD_STATE", "Il nome scritto non coincide: eliminazione annullata.");
+    }
+    await ctx.db.patch("clients", args.clientId, { deletionStartedAt: Date.now(), status: "closed", notifyEmail: false });
+    await audit(ctx, {
+      actorType: "admin",
+      actorId,
+      clientId: args.clientId,
+      action: "client.delete_started",
+      resourceType: "client",
+      resourceId: args.clientId,
+      metadata: { displayName: client.displayName },
+    });
+    await ctx.scheduler.runAfter(0, internal.clientPurge.step, { clientId: args.clientId });
+    return null;
   },
 });

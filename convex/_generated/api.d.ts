@@ -20,6 +20,7 @@ import type * as auth from "../auth.js";
 import type * as b2b from "../b2b.js";
 import type * as brand from "../brand.js";
 import type * as brandActions from "../brandActions.js";
+import type * as clientPurge from "../clientPurge.js";
 import type * as clients from "../clients.js";
 import type * as crmExport from "../crmExport.js";
 import type * as crmImport from "../crmImport.js";
@@ -104,6 +105,7 @@ declare const fullApi: ApiFromModules<{
   b2b: typeof b2b;
   brand: typeof brand;
   brandActions: typeof brandActions;
+  clientPurge: typeof clientPurge;
   clients: typeof clients;
   crmExport: typeof crmExport;
   crmImport: typeof crmImport;

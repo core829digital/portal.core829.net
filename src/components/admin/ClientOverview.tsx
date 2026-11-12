@@ -1,7 +1,8 @@
 "use client";
 
 import { useMutation } from "convex/react";
-import { Pencil } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { toast } from "@/lib/toast";
 import { api } from "@convex/_generated/api";
@@ -39,6 +40,11 @@ function nullable(form: FormData, name: string): string | null {
 
 export function ClientOverview({ client }: { client: Doc<"clients"> }) {
   const updateClient = useMutation(api.clients.update);
+  const removeClient = useMutation(api.clients.remove);
+  const router = useRouter();
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [confirmName, setConfirmName] = useState("");
+  const [deleting, setDeleting] = useState(false);
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
 
@@ -81,7 +87,22 @@ export function ClientOverview({ client }: { client: Doc<"clients"> }) {
     }
   }
 
+  async function onDelete() {
+    setDeleting(true);
+    try {
+      await removeClient({ clientId: client._id, confirmName });
+      toast.success("Cliente eliminato. La pulizia dei dati prosegue in background.");
+      setDeleteOpen(false);
+      router.replace("/admin/clients");
+    } catch (error) {
+      toast.error(errorMessage(error));
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   return (
+    <>
     <Card>
       <CardHeader className="flex flex-row items-center justify-between gap-3">
         <CardTitle>Dati del cliente</CardTitle>
@@ -178,5 +199,38 @@ export function ClientOverview({ client }: { client: Doc<"clients"> }) {
         </DialogContent>
       </Dialog>
     </Card>
+
+    <Card className="border-destructive/40">
+      <CardHeader>
+        <CardTitle>Zona pericolosa</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-muted-foreground">
+          Elimina il cliente con tutti i suoi dati: progetti, fatture, abbonamenti, documenti e file, ticket, firme, approvazioni, scadenze, report e link di accesso. Non si può annullare.
+        </p>
+        <Button variant="destructive" size="sm" onClick={() => { setConfirmName(""); setDeleteOpen(true); }}>
+          <Trash2 aria-hidden /> Elimina cliente
+        </Button>
+      </CardContent>
+    </Card>
+
+    <Dialog open={deleteOpen} onOpenChange={(o) => { if (!deleting) setDeleteOpen(o); }}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Eliminare «{client.displayName}»?</DialogTitle>
+          <DialogDescription>
+            Il cliente perde subito l&apos;accesso e tutti i suoi dati vengono cancellati per sempre (file inclusi). Resta solo il registro di audit. Per confermare, scrivi il nome esatto del cliente.
+          </DialogDescription>
+        </DialogHeader>
+        <TextField id="confirmName" label="Nome del cliente" value={confirmName} onChange={(e) => setConfirmName(e.target.value)} autoComplete="off" />
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setDeleteOpen(false)} disabled={deleting}>Annulla</Button>
+          <Button variant="destructive" onClick={() => void onDelete()} disabled={deleting || confirmName.trim() !== client.displayName}>
+            {deleting ? "Eliminazione…" : "Elimina definitivamente"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }

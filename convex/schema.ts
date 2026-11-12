@@ -60,6 +60,8 @@ export default defineSchema({
     notifyEmail: v.optional(v.boolean()),
     /** Id del cliente nel CRM (b2b.core829.net): rende l'importazione dal CRM ripetibile senza doppioni. */
     crmRef: v.optional(v.string()),
+    /** Impostato all'avvio dell'eliminazione definitiva: il cliente non e' piu' modificabile e i dati vengono cancellati a lotti. */
+    deletionStartedAt: v.optional(v.number()),
   })
     .index("by_email", ["email"])
     .index("by_status", ["status"]),
@@ -345,6 +347,7 @@ export default defineSchema({
     subscriptionId: v.optional(v.id("subscriptions")),
     projectId: v.optional(v.id("projects")),
   })
+    .index("by_clientId", ["clientId"])
     .index("by_done_and_dueAt", ["done", "dueAt"])
     .index("by_invoiceId", ["invoiceId"])
     .index("by_subscriptionId", ["subscriptionId"]),
@@ -394,6 +397,7 @@ export default defineSchema({
     clientId: v.optional(v.id("clients")),
   })
     .index("by_createdAt", ["createdAt"])
+    .index("by_clientId", ["clientId"])
     .index("by_status_and_createdAt", ["status", "createdAt"]),
 
   /** Risposte inviate dal portale alle richieste del sito (email da clients@core829.net). */
