@@ -4,9 +4,9 @@ import Link from "next/link";
 import { CompanyDetails } from "@/components/brand/CompanyDetails";
 import { LandingNav } from "@/components/brand/LandingNav";
 import { SplitWords } from "@/components/brand/SplitWords";
-import { SpotlightCard } from "@/components/brand/SpotlightCard";
 import { ContactCtas } from "@/components/brand/ContactCtas";
-import NeuralNoise from "@/components/brand/NeuralNoise";
+import { NeuralScene } from "@/components/ui/NeuralScene";
+import { GLASS } from "@/lib/glass";
 import { COMPANY } from "@/lib/company";
 import { PRIVACY_URL, SITE_URL } from "@/lib/contact";
 
@@ -16,8 +16,8 @@ import { PRIVACY_URL, SITE_URL } from "@/lib/contact";
  */
 export default function Home() {
   return (
-    <div className="relative isolate flex min-h-dvh flex-1 flex-col overflow-hidden bg-ink text-on-ink">
-      <NeuralNoise />
+    <NeuralScene className="dash-scene min-h-dvh flex-1">
+    <div className="relative isolate flex min-h-dvh flex-col overflow-hidden text-on-ink">
       {/* Velo scuro leggero in basso: tiene leggibili i testi sopra lo sfondo animato. */}
       <div aria-hidden className="pointer-events-none absolute inset-0 -z-0 bg-gradient-to-b from-transparent via-transparent to-ink/80" />
 
@@ -41,9 +41,10 @@ export default function Home() {
         </div>
 
         <div className="grid gap-4 lg:grid-cols-2">
-          <SpotlightCard
+          <section
+            {...GLASS}
             aria-labelledby="gia-cliente"
-            className="reveal spotlight-dark flex flex-col gap-4 rounded-3xl bg-white/[0.06] p-6 ring-1 ring-white/15 backdrop-blur-md sm:p-8"
+            className="glass-card reveal flex flex-col gap-4 rounded-3xl bg-white/[0.06] p-6 ring-1 ring-white/15 backdrop-blur-md sm:p-8"
             style={{ "--i": 4 } as React.CSSProperties}
           >
             <KeyRound aria-hidden className="size-6 text-white" />
@@ -63,11 +64,12 @@ export default function Home() {
             <p className="mt-auto text-sm text-on-ink-muted">
               Non trovi il link? Scrivici con uno dei contatti qui accanto e te ne inviamo subito uno nuovo.
             </p>
-          </SpotlightCard>
+          </section>
 
-          <SpotlightCard
+          <section
+            {...GLASS}
             aria-labelledby="non-cliente"
-            className="reveal spotlight-light flex flex-col gap-4 rounded-3xl bg-white p-6 text-foreground ring-1 ring-white/20 sm:p-8"
+            className="glass-card-light reveal flex flex-col gap-4 rounded-3xl bg-white p-6 text-foreground ring-1 ring-white/20 sm:p-8"
             style={{ "--i": 5 } as React.CSSProperties}
           >
             <Sparkles aria-hidden className="size-6 text-brand" />
@@ -78,7 +80,7 @@ export default function Home() {
               Siti web, software su misura, marketing e servizi digitali per eventi. Raccontaci il tuo progetto: ti rispondiamo con un piano chiaro e un preventivo trasparente.
             </p>
             <ContactCtas className="mt-auto" />
-          </SpotlightCard>
+          </section>
         </div>
 
         <section
@@ -107,5 +109,6 @@ export default function Home() {
         </nav>
       </footer>
     </div>
+    </NeuralScene>
   );
 }

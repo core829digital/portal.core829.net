@@ -529,37 +529,159 @@ html[data-onboarding-seen] [data-onboarding] {
 }
 
 /* ============================================================
-   Liquid glass (components/ui/LiquidGlass.tsx): <GlassEnhancer> aggiunge .glass-on agli elementi resi vetro
-   e inserisce al loro interno la scena (.glass-layer) che disegna lo sfondo e il vetro.
+   Liquid glass — scene <liquid-glass> (guida ufficiale). Vedi src/components/ui/LiquidGlass.tsx.
+   Prima del caricamento di WebGL (o senza JavaScript) la scena è un fondo piatto e gli elementi `glass`
+   mantengono il loro aspetto; a WebGL pronto il loro sfondo diventa trasparente e lo disegna il vetro.
    ============================================================ */
-.glass-on {
+liquid-glass {
+  display: block;
+  position: relative;
+  min-height: 0;
+  background: #141416;
+  --image: linear-gradient(#141416, #141416);
+}
+liquid-glass.glass-light {
+  background: #f8f8f8;
+  --image: url(/brand/glass-light.webp);
+}
+liquid-glass.glass-dark {
+  --image: url(/brand/glass-dark.webp);
+}
+liquid-glass[data-renderer="webgl"][data-ready] [glass] {
   background: transparent !important;
   background-image: none !important;
+  border-color: transparent !important;
   box-shadow: none !important;
   -webkit-backdrop-filter: none !important;
   backdrop-filter: none !important;
-  isolation: isolate;
 }
-.glass-layer:not([data-ready]) {
-  opacity: 0;
+liquid-glass.nav-scene {
+  overflow: visible;
+  border-radius: 9999px;
 }
-.glass-layer {
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  display: block;
-  width: 100%;
-  height: 100%;
-  min-height: 0;
-  border-radius: inherit;
-  overflow: hidden;
-  pointer-events: none;
-  background: transparent;
-  transition: filter 0.2s ease;
+liquid-glass.nav-scene::part(canvas),
+liquid-glass.nav-scene::part(fallback) {
+  border-radius: 9999px;
 }
-.glass-on:hover > .glass-layer {
-  filter: brightness(1.07);
+liquid-glass [glass].glass-bar {
+  --glass-tint: rgba(248, 248, 248, 0.5);
+  --glass-frost: 0.18;
+  --glass-pull: 0;
 }
-.glass-on:active > .glass-layer {
-  filter: brightness(0.95);
+/* ── Colore del testo sul vetro (costante: normale, hover e pressione restano leggibili) ── */
+liquid-glass {
+  --glass-fg: #f8f8f8; /* scene scure: Bianco Polare */
+}
+liquid-glass.glass-light {
+  --glass-fg: #141416; /* scene chiare: Nero Pista */
+}
+liquid-glass.glass-red {
+  --glass-fg: #141416;
+}
+liquid-glass.glass-dark {
+  --image: url(/brand/glass-dark.webp);
+}
+
+/* ── Pulsanti: sempre vetro, mai un colore piatto. Il Rosso Racing è solo una tinta del vetro. ── */
+liquid-glass [glass].btn {
+  --btn-fg: var(--glass-fg);
+  --btn-fg-hover: var(--glass-fg);
+  --btn-border: transparent;
+  --btn-bg-hover: transparent;
+  --btn-bg-active: transparent;
+  --glass-shadow: 0.12;
+  color: var(--glass-fg);
+}
+liquid-glass [glass].btn:hover,
+liquid-glass [glass].btn:active,
+liquid-glass [glass].btn:focus-visible {
+  color: var(--glass-fg);
+}
+liquid-glass [glass].btn-primary {
+  --glass-tint: rgba(255, 39, 67, 0.42);
+  --glass-frost: 0.22;
+}
+liquid-glass [glass].btn-secondary,
+liquid-glass [glass].btn-ghost {
+  --glass-tint: rgba(20, 20, 22, 0.3);
+  --glass-frost: 0.2;
+}
+liquid-glass.glass-light [glass].btn-primary {
+  --glass-tint: rgba(255, 39, 67, 0.32);
+}
+liquid-glass.glass-light [glass].btn-secondary,
+liquid-glass.glass-light [glass].btn-ghost {
+  --glass-tint: rgba(255, 255, 255, 0.55);
+  --glass-frost: 0.2;
+}
+liquid-glass.glass-red [glass].btn-primary {
+  --glass-tint: rgba(248, 248, 248, 0.45);
+}
+liquid-glass.glass-red [glass].btn-secondary {
+  --glass-tint: rgba(255, 255, 255, 0.25);
+}
+
+/* ── Card: vetro traslucido pulito. Nessun punto di luce, nessuna barra rossa, nessun colore piatto. ── */
+liquid-glass [glass].card-lift,
+liquid-glass [glass].glass-card {
+  --glass-tint: rgba(20, 20, 22, 0.3);
+  --glass-frost: 0.2;
+  color: var(--glass-fg);
+}
+liquid-glass.glass-light [glass].card-lift,
+liquid-glass.glass-light [glass].glass-card {
+  --glass-tint: rgba(255, 255, 255, 0.45);
+  --glass-frost: 0.25;
+}
+liquid-glass [glass].card-lift::before {
+  display: none;
+}
+liquid-glass [glass].card-lift:hover,
+liquid-glass [glass].card-lift:focus-visible {
+  border-color: transparent;
+  box-shadow: none;
+}
+
+
+liquid-glass [glass].btn-glass {
+  --btn-fg: var(--glass-fg);
+  color: var(--glass-fg);
+  --glass-shadow: 0.12;
+}
+liquid-glass [glass].btn-glass:hover,
+liquid-glass [glass].btn-glass:active {
+  color: var(--glass-fg);
+}
+liquid-glass [glass].btn-glass-primary {
+  --glass-tint: rgba(255, 39, 67, 0.42);
+  --glass-frost: 0.22;
+}
+liquid-glass [glass].btn-glass-secondary {
+  --glass-tint: rgba(20, 20, 22, 0.3);
+  --glass-frost: 0.2;
+}
+liquid-glass.dash-scene [glass].glass-bar {
+  --glass-tint: rgba(248, 248, 248, 0.84);
+  --glass-frost: 0.3;
+  --glass-pull: 0;
+}
+liquid-glass.dash-scene [glass].glass-card-light {
+  --glass-tint: rgba(255, 255, 255, 0.82);
+  --glass-frost: 0.25;
+  color: #141416;
+}
+
+/* Pulsanti dentro una card di vetro: vetro sottile, senza ombra né bordo scuro (rifrangono lo sfondo della scena). */
+liquid-glass [glass].glass-cta {
+  --glass-tint: rgba(255, 39, 67, 0.6);
+  --glass-frost: 0.2;
+  --glass-depth: 0.45;
+  --glass-dome: 0.4;
+  --glass-shadow: 0;
+  --glass-pull: 0;
+  color: #f8f8f8;
+}
+liquid-glass [glass].glass-cta-soft {
+  --glass-tint: rgba(255, 255, 255, 0.7);
+  color: #141416;
 }

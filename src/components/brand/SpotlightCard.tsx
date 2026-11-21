@@ -18,6 +18,7 @@ export function SpotlightCard({
   style?: CSSProperties;
   children: ReactNode;
   "aria-labelledby"?: string;
+  glass?: string;
 }) {
   const ref = useRef<HTMLElement>(null);
   useEffect(() => {
