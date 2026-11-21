@@ -1,6 +1,6 @@
 "use client";
 
-import { createElement, useEffect, type CSSProperties, type ReactNode } from "react";
+import { createElement, useEffect, useRef, type CSSProperties, type ReactNode } from "react";
 
 /**
  * Liquid glass CORE829 — struttura identica alla guida ufficiale (github.com/MuhammadaliMS/liquid-glass):
@@ -40,6 +40,9 @@ export function GlassScene({
   dim = 0,
   backdrop = "aurora",
   id,
+  source,
+  fixedLight = true,
+  lazy = true,
 }: {
   children: ReactNode;
   className?: string;
@@ -51,13 +54,34 @@ export function GlassScene({
   /** "aurora" (animato) oppure URL di un'immagine/video. */
   backdrop?: string;
   id?: string;
+  /**
+   * Estensione CORE829: canvas/video live usato come sfondo al posto di `backdrop` (resta interattivo).
+   * Il resto è HTML identico alla guida ufficiale.
+   */
+  source?: HTMLCanvasElement | HTMLVideoElement | null;
+  /** Il riflesso del vetro resta fermo (nessun "punto di luce" che segue il mouse). Default true. */
+  fixedLight?: boolean;
+  /** Il contesto WebGL esiste solo con la scena vicina al viewport (default true). */
+  lazy?: boolean;
 }) {
+  const ref = useRef<HTMLElement | null>(null);
   useEffect(() => {
     void loadLiquidGlass();
   }, []);
+  // La proprietà `source` esiste solo dopo che il custom element è definito (assegnarla prima la oscurerebbe).
+  useEffect(() => {
+    let cancelled = false;
+    void loadLiquidGlass().then(() => customElements.whenDefined("liquid-glass")).then(() => {
+      const el = ref.current as (HTMLElement & { source?: unknown }) | null;
+      if (!cancelled && el) el.source = source ?? null;
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [source]);
   return createElement(
     "liquid-glass",
-    { id, class: className, style, backdrop, colors, dim: String(dim) },
+    { ref, id, class: className, style, backdrop, colors, dim: String(dim), ...(fixedLight ? { "fixed-light": "" } : {}), ...(lazy ? { lazy: "" } : {}) },
     children
   );
 }

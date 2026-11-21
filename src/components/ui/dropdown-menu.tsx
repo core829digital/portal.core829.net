@@ -1,5 +1,6 @@
 "use client";
 
+import { useGlassAttr } from "@/lib/glassGate";
 import { Menu } from "@base-ui/react/menu";
 import { ChevronDown } from "lucide-react";
 import type { ComponentProps, ReactNode } from "react";
@@ -13,8 +14,9 @@ import { cn } from "cn";
 export const DropdownMenu = Menu.Root;
 
 export function DropdownMenuTrigger({ className, variant = "outline", size = "default", children, ...props }: ComponentProps<typeof Menu.Trigger> & { variant?: "outline" | "default" | "ghost"; size?: "default" | "sm" | "icon" }) {
+  const glass = useGlassAttr();
   return (
-    <Menu.Trigger className={cn(buttonVariants({ variant, size }), "gap-1.5", className)} {...props}>
+    <Menu.Trigger {...(variant === "ghost" ? {} : glass)} className={cn(buttonVariants({ variant, size }), "gap-1.5", className)} {...props}>
       {children}
     </Menu.Trigger>
   );

@@ -4,7 +4,6 @@ import { ArrowUpRight, ExternalLink, FileText, Mail, MessageCircle, Phone } from
 import Image from "next/image";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuLink, DropdownMenuTrigger, MenuChevron } from "@/components/ui/dropdown-menu";
 import { COMPANY, telHref } from "@/lib/company";
-import { GlassScene } from "@/components/ui/LiquidGlass";
 import { GLASS } from "@/lib/glass";
 import { CONTACT_EMAIL, CONTACT_FORM_URL, SITE_URL } from "@/lib/contact";
 
@@ -12,8 +11,7 @@ import { CONTACT_EMAIL, CONTACT_FORM_URL, SITE_URL } from "@/lib/contact";
 export function LandingNav() {
   return (
     <header className="fixed inset-x-0 top-0 z-50 flex justify-center px-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-6">
-      <GlassScene className="nav-scene glass-light h-14 w-full max-w-3xl rounded-full" backdrop="/brand/glass-light.webp">
-      <div {...GLASS} className="glass-bar fade-in flex h-14 w-full items-center justify-between gap-1 rounded-full pl-4 pr-1.5">
+      <div {...GLASS} className="glass-bar fade-in flex h-14 w-full max-w-3xl items-center justify-between gap-1 rounded-full pl-4 pr-1.5">
         <a href={SITE_URL} aria-label="CORE829, vai al sito" className="flex min-h-11 items-center px-2">
           <Image src="/brand/symbol-black.svg" alt="CORE829" width={61} height={41} priority unoptimized className="h-7 w-auto" />
         </a>
@@ -47,7 +45,6 @@ export function LandingNav() {
           </DropdownMenu>
         </div>
       </div>
-      </GlassScene>
     </header>
   );
 }
