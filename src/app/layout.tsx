@@ -1,20 +1,20 @@
 import type { Metadata, Viewport } from "next";
-import { DM_Sans, Michroma } from "next/font/google";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import { canonicalAppUrl } from "@/lib/appUrl";
 import "./globals.css";
 
-// Tipografia del brand CORE829 (Guidelines 1.0): Michroma per H1 ed etichette, DM Sans per testi e interfacce.
-// Self-hosted da next/font; i token --font-* sono in globals.css.
-const dmSans = DM_Sans({
-  variable: "--font-dm-sans",
+// Stack tipografico: "Saans" se installato, altrimenti Inter self-hosted da next/font, più JetBrains Mono.
+// Michroma/DM Sans (brand) valutati e scartati: non coprono cirillico e greco.
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin", "latin-ext"],
   display: "swap",
 });
 
-const michroma = Michroma({
-  variable: "--font-michroma",
-  subsets: ["latin", "latin-ext"],
-  weight: "400",
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains-mono",
+  subsets: ["latin"],
+  weight: ["400", "500"],
   display: "swap",
 });
 
@@ -55,7 +55,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang="it"
-      className={`${dmSans.variable} ${michroma.variable} h-full antialiased`}
+      className={`${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
