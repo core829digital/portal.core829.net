@@ -66,6 +66,14 @@ function effectiveColor(el: Element): number[] {
   return [r + 255 * w, g + 255 * w, b + 255 * w];
 }
 
+function isPinned(el: HTMLElement) {
+  for (let n: HTMLElement | null = el; n; n = n.parentElement) {
+    const p = getComputedStyle(n).position;
+    if (p === "fixed" || p === "sticky") return true;
+  }
+  return false;
+}
+
 /**
  * Il vetro rifrange solo lo sfondo della propria scena (limite del WebGL: non può leggere la pagina). Per ottenere un
  * vetro davvero traslucido, lo sfondo della scena è un'istantanea di ciò che sta DIETRO l'elemento: i colori degli
@@ -98,9 +106,10 @@ function snapshotBehind(el: HTMLElement): { url: string; avg: number[] } | null 
     }
     x.globalAlpha = 1;
     if (!withMedia) return;
+    const pinned = isPinned(el); // un elemento fisso sta sopra tutto il contenuto: tutto ciò che lo attraversa è "dietro"
     document.querySelectorAll<HTMLElement>("canvas, img, video").forEach((m) => {
       if (m === el || el.contains(m) || m.contains(el) || m.classList.contains(LAYER) || m.closest(`.${LAYER}`)) return;
-      if (!(m.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING)) return; // solo ciò che sta sotto (prima nel DOM)
+      if (!pinned && !(m.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING)) return; // solo ciò che sta sotto (prima nel DOM)
       const r = m.getBoundingClientRect();
       if (r.right <= rect.left || r.left >= rect.right || r.bottom <= rect.top || r.top >= rect.bottom || r.width < 2) return;
       let op = 1;
@@ -187,11 +196,17 @@ export function GlassEnhancer({ selector, disabled = false }: { selector: string
 
     const attach = (el: HTMLElement) => {
       if (live.has(el) || live.size >= max || !eligible(el)) return;
+      // I pulsanti hanno `transition: all`: si leggono i colori finali, non quelli intermedi di una transizione in corso.
+      const prevTransition = el.style.transition;
+      el.style.transition = "none";
       const cs = getComputedStyle(el);
       const own = toRgba(cs.backgroundColor);
+      const textNow = toRgba(cs.color) ?? [0, 0, 0, 1];
+      const posNow = cs.position;
+      el.style.transition = prevTransition;
       if (!own || own[3] < 0.03) return; // senza sfondo (es. ghost, contenitori trasparenti): niente vetro
       if (el.offsetWidth * el.offsetHeight > innerWidth * innerHeight * 0.5) return; // niente vetro su aree gigantesche
-      const rgb = own[3] >= 0.97 ? own : [...effectiveColor(el), 1];
+      const rgb = own[3] >= 0.3 ? own : [...effectiveColor(el), 1]; // molto trasparente: colore composto sugli antenati
       const snap = snapshotBehind(el);
       const url = snap?.url ?? null;
       const layer = document.createElement("liquid-glass");
@@ -203,12 +218,12 @@ export function GlassEnhancer({ selector, disabled = false }: { selector: string
       const face = document.createElement("span");
       face.setAttribute("glass", "");
       // Tinta: la più trasparente che mantiene il testo a ≥4,5:1 sopra ciò che sta dietro (istantanea).
-      const text = toRgba(cs.color) ?? [0, 0, 0, 1];
+      const text = textNow;
       const identity = own[3] >= 0.97 && el.matches('button, a, [role="button"], .btn, [class*="btn"]');
       const avg = snap?.avg ?? [255, 255, 255];
       let tint = 0.97;
       const l = relLum(rgb);
-      for (const t of identity ? [0.98] : l > 0.55 || l < 0.03 ? [0.9, 0.97] : [0.45, 0.6, 0.75, 0.88]) {
+      for (const t of identity ? [0.98] : l > 0.55 ? [0.9, 0.97] : l < 0.06 ? [0.82, 0.92] : [0.45, 0.6, 0.75, 0.88]) {
         const blend = [0, 1, 2].map((i) => avg[i] * (1 - t) + rgb[i] * t);
         if (contrast(text, blend) >= 4.6) {
           tint = t;
@@ -219,7 +234,7 @@ export function GlassEnhancer({ selector, disabled = false }: { selector: string
       face.style.cssText = `position:absolute;inset:0;border-radius:inherit;background:transparent;--glass-tint:rgba(${Math.round(rgb[0])},${Math.round(rgb[1])},${Math.round(rgb[2])},${tint});--glass-frost:${frost};--glass-shadow:.25;--glass-pull:0`;
       layer.appendChild(face);
       const pos = el.style.position;
-      if (cs.position === "static") el.style.position = "relative";
+      if (posNow === "static") el.style.position = "relative";
       el.insertBefore(layer, el.firstChild);
       // Perdita di contesto WebGL o passaggio al vetro CSS: l'elemento torna subito normale (niente sfondo "vuoto").
       const obs = new MutationObserver(() => {
@@ -262,13 +277,6 @@ export function GlassEnhancer({ selector, disabled = false }: { selector: string
     };
 
     // Elementi fissi/sticky (barra di navigazione): lo sfondo cambia mentre si scorre, quindi si ricampiona.
-    const isPinned = (el: HTMLElement) => {
-      for (let n: HTMLElement | null = el; n; n = n.parentElement) {
-        const p = getComputedStyle(n).position;
-        if (p === "fixed" || p === "sticky") return true;
-      }
-      return false;
-    };
     const resample = (el: HTMLElement) => {
       const s = live.get(el);
       if (!s) return;
@@ -294,6 +302,12 @@ export function GlassEnhancer({ selector, disabled = false }: { selector: string
     const watchdog = window.setInterval(() => {
       for (const [el, v] of [...live]) if (v.layer.dataset.renderer === "css") demote(el);
     }, 1500);
+    // Cambio di tema (es. tunnel scuro attivo/disattivo): colori e tinte vanno ricalcolati.
+    const themeObs = new MutationObserver(() => {
+      for (const el of [...live.keys()]) detach(el);
+      for (const v of visible) attach(v);
+    });
+    themeObs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-tunnel", "class"] });
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", onResize);
 
@@ -339,6 +353,7 @@ export function GlassEnhancer({ selector, disabled = false }: { selector: string
       window.removeEventListener("resize", onResize);
       if (tick) clearTimeout(tick);
       clearInterval(watchdog);
+      themeObs.disconnect();
       if (raf) cancelAnimationFrame(raf);
       mo?.disconnect();
       io?.disconnect();
