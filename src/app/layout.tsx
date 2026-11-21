@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { canonicalAppUrl } from "@/lib/appUrl";
+import GlassLayer from "@/components/ui/GlassLayer";
 import "./globals.css";
 
 // Stack tipografico: "Saans" se installato, altrimenti Inter self-hosted da next/font, più JetBrains Mono.
@@ -57,7 +58,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       lang="it"
       className={`${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {children}
+        <GlassLayer />
+      </body>
     </html>
   );
 }

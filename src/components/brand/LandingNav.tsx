@@ -12,7 +12,7 @@ export function LandingNav() {
     <header className="fixed inset-x-0 top-0 z-50 flex justify-center px-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-6">
       <div className="glass-bar fade-in flex h-14 w-full max-w-3xl items-center justify-between gap-1 rounded-full pl-4 pr-1.5">
         <a href={SITE_URL} aria-label="CORE829, vai al sito" className="flex min-h-11 items-center">
-          <Image src="/brand/app-icon.svg" alt="CORE829" width={36} height={36} priority unoptimized className="h-9 w-9 rounded-[22%]" />
+          <Image src="/brand/symbol-black.svg" alt="CORE829" width={61} height={41} priority unoptimized className="h-10 w-auto" />
         </a>
         <div className="flex items-center gap-1">
           <a
