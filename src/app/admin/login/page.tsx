@@ -10,7 +10,7 @@ export default function LoginPage() {
     <main className="flex min-h-dvh flex-1 items-center justify-center bg-surface px-4 py-16">
       <div className="reveal w-full max-w-sm rounded-3xl bg-card p-6 ring-1 ring-foreground/10 shadow-(--shadow-lift) sm:p-8">
         <Link href="/" aria-label="CORE829, pagina iniziale" className="inline-block">
-          <Image src="/brand/symbol-red.svg" alt="CORE829" width={47} height={32} priority unoptimized className="h-8 w-auto" />
+          <Image src="/brand/app-icon.svg" alt="CORE829" width={40} height={40} priority unoptimized className="h-10 w-10 rounded-[22%]" />
         </Link>
         <p className="mt-6 flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.18em] text-brand-deep">
           <span aria-hidden className="h-px w-8 bg-primary" />

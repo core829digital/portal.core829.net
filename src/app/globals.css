@@ -4,14 +4,36 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Saans (Displaay) e' un font commerciale: se e' installato sul dispositivo viene usato direttamente,
+   altrimenti si usa Inter (self-hosted da next/font). Configurazione identica ad Andromedia Web. */
+@font-face {
+  font-family: "Saans";
+  src: local("Saans"), local("Saans Regular"), local("Saans-Regular");
+  font-weight: 300 800;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Saans Display";
+  src: local("Saans Display"), local("SaansDisplay-Regular"), local("Saans Display Regular"), local("Saans");
+  font-weight: 300 800;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Saans Text";
+  src: local("Saans Text"), local("SaansText-Regular"), local("Saans Text Regular"), local("Saans");
+  font-weight: 300 800;
+  font-style: normal;
+  font-display: swap;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  /* Tipografia del brand (Guidelines 1.0): DM Sans per testi e interfacce, Michroma per H1 ed etichette. */
-  --font-sans: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-brand: var(--font-michroma), "Arial Black", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-michroma), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Saans Text", "Saans", var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Saans Display", "Saans", var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
   --font-heading: var(--font-display);
   --color-brand: var(--brand-red);
   --color-brand-deep: var(--brand-red-deep);
@@ -151,21 +173,13 @@
   html {
     @apply font-sans;
   }
-  /* Gerarchia del brand: H1 Michroma maiuscolo; H2 e sotto DM Sans SemiBold. */
-  h1 {
-    font-family: var(--font-brand);
-    font-weight: 400;
-    text-transform: uppercase;
-    letter-spacing: 0;
-    overflow-wrap: break-word;
-    text-wrap: balance;
-  }
+  h1,
   h2,
   h3,
   h4 {
     font-family: var(--font-display);
-    font-weight: 600;
-    letter-spacing: -0.015em;
+    font-weight: 560;
+    letter-spacing: -0.03em;
     overflow-wrap: break-word;
     text-wrap: balance;
   }
@@ -179,15 +193,13 @@
   }
 }
 
-/* Titoli: H1 a peso 400 (Michroma), H2 e sotto a 600 (anche dove un componente chiede un altro peso). Testo con interlinea 1.6.
+/* Titoli sempre a peso 560 (anche dove un componente chiede "semibold"), testo con interlinea 1.6.
    Fuori da @layer di proposito: prevale sulle classi di utilita'. */
-h1 {
-  font-weight: 400;
-}
+h1,
 h2,
 h3,
 h4 {
-  font-weight: 600;
+  font-weight: 560;
 }
 body {
   line-height: 1.6;
@@ -514,4 +526,28 @@ html[data-onboarding-seen] [data-onboarding] {
     animation: none !important;
   }
   .spotlight::before { display: none; }
+}
+
+/* ============================================================
+   Liquid glass (components/ui/LiquidGlass.tsx)
+   Prima del caricamento (o senza JavaScript) la scena è un riquadro Rosso Racing piatto con i pulsanti normali;
+   a libreria pronta l'elemento custom prende il controllo e i pulsanti diventano vetro.
+   ============================================================ */
+.glass-scene {
+  display: block;
+  position: relative;
+  min-height: 0;
+  background: #ff2743;
+}
+.glass-scene:defined {
+  background: transparent;
+}
+.glass-scene:defined [glass] {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  color: #141416;
+  --glass-tint: rgba(255, 39, 67, 0.28);
+  --glass-frost: 0.12;
+  --glass-shadow: 0.35;
 }
