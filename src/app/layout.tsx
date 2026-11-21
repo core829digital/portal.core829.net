@@ -1,21 +1,21 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
+import { DM_Sans, Michroma } from "next/font/google";
 import { canonicalAppUrl } from "@/lib/appUrl";
 import "./globals.css";
 
-// Stesso stack di Andromedia Web (repo andromediaweb.it) e del sito core829.net: "Saans" se installato sul
-// dispositivo, altrimenti Inter self-hosted da next/font (font variabile: normale, bold e ogni peso intermedio),
-// piu' JetBrains Mono per i dettagli tecnici. I token --font-* sono in globals.css.
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
+// Tipografia del brand CORE829 (Guidelines 1.0): Michroma per H1 ed etichette, DM Sans per testi e interfacce.
+// Self-hosted da next/font; i token --font-* sono in globals.css.
+const dmSans = DM_Sans({
+  variable: "--font-dm-sans",
+  subsets: ["latin", "latin-ext"],
   display: "swap",
 });
 
-const jetbrainsMono = JetBrains_Mono({
-  variable: "--font-jetbrains-mono",
-  subsets: ["latin"],
-  weight: ["400", "500"],
+const michroma = Michroma({
+  variable: "--font-michroma",
+  subsets: ["latin", "latin-ext"],
+  weight: "400",
+  display: "swap",
 });
 
 // Ogni risposta ha un nonce CSP diverso, quindi nessuna pagina puo' essere pre-generata
@@ -48,14 +48,14 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#ffffff",
+  themeColor: "#f8f8f8",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html
       lang="it"
-      className={`${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}
+      className={`${dmSans.variable} ${michroma.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>
     </html>

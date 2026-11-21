@@ -4,45 +4,22 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Saans (Displaay) e' un font commerciale: se e' installato sul dispositivo viene usato direttamente,
-   altrimenti si usa Inter (self-hosted da next/font). Configurazione identica ad Andromedia Web. */
-@font-face {
-  font-family: "Saans";
-  src: local("Saans"), local("Saans Regular"), local("Saans-Regular");
-  font-weight: 300 800;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: "Saans Display";
-  src: local("Saans Display"), local("SaansDisplay-Regular"), local("Saans Display Regular"), local("Saans");
-  font-weight: 300 800;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: "Saans Text";
-  src: local("Saans Text"), local("SaansText-Regular"), local("Saans Text Regular"), local("Saans");
-  font-weight: 300 800;
-  font-style: normal;
-  font-display: swap;
-}
-
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  /* Stack identico ad Andromedia Web: Saans (se installato) -> Inter -> sistema; JetBrains Mono per i dettagli tecnici. */
-  --font-sans: "Saans Text", "Saans", var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Saans Display", "Saans", var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+  /* Tipografia del brand (Guidelines 1.0): DM Sans per testi e interfacce, Michroma per H1 ed etichette. */
+  --font-sans: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-brand: var(--font-michroma), "Arial Black", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-michroma), ui-sans-serif, system-ui, sans-serif;
   --font-heading: var(--font-display);
   --color-brand: var(--brand-red);
   --color-brand-deep: var(--brand-red-deep);
   --color-brand-tint: var(--brand-tint);
   --color-surface: var(--surface);
-  --color-ink: #111217;
-  --color-on-ink: #f2f5f8;
-  --color-on-ink-muted: #a9b2be;
+  --color-ink: #141416;
+  --color-on-ink: #f8f8f8;
+  --color-on-ink-muted: #a8a8ad;
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -83,55 +60,55 @@
 }
 
 :root {
-  /* Palette CORE829 (nuovo brand): Obsidian Black #111217, Ice Grey #DFE5EB, Racing Red #EF233C.
-     Il Racing Red puro (4,22:1 su bianco) e' per superfici grandi e grafica; per pulsanti e testo piccolo si usa
-     #E52139 (stesso aspetto, contrasto 4,56:1) e #B8132A per il rosso scritto su fondi chiari/grigi (>= 5:1). */
-  --obsidian: #111217;
-  --ice-grey: #dfe5eb;
-  --racing-red: #ef233c;
-  --brand-red: #ef233c;
-  --brand-red-deep: #b8132a;
-  --brand-tint: #fdecef; /* rosato tenue per stati attivi e card in evidenza */
-  --surface: #f2f5f8; /* Ice Grey schiarito */
+  /* Brand CORE829, Guidelines 1.0 (novembre 2026): Rosso Racing #FF2743, Bianco Polare #F8F8F8, Nero Pista #141416.
+     Tinta piatta. Il bianco su rosso (3,5:1) e' ammesso solo per testi grandi: i pulsanti usano testo Nero Pista su rosso
+     (4,9:1); il rosso scritto su fondi chiari usa #D31B37 (4,97:1). */
+  --nero-pista: #141416;
+  --bianco-polare: #f8f8f8;
+  --rosso-racing: #ff2743;
+  --brand-red: #ff2743;
+  --brand-red-deep: #d31b37;
+  --brand-tint: #fff0f2; /* rosato tenue per stati attivi e card in evidenza */
+  --surface: #efeff0;
 
-  --background: #ffffff;
-  --foreground: #111217;
-  --card: #ffffff;
-  --card-foreground: #111217;
-  --popover: #ffffff;
-  --popover-foreground: #111217;
-  --primary: #e52139;
-  --primary-foreground: #ffffff;
-  --secondary: #f2f5f8;
-  --secondary-foreground: #111217;
-  --muted: #f2f5f8;
-  --muted-foreground: #4a5160;
-  --accent: #ebeff3;
-  --accent-foreground: #111217;
+  --background: #f8f8f8;
+  --foreground: #141416;
+  --card: #f8f8f8;
+  --card-foreground: #141416;
+  --popover: #f8f8f8;
+  --popover-foreground: #141416;
+  --primary: #ff2743;
+  --primary-foreground: #141416;
+  --secondary: #efeff0;
+  --secondary-foreground: #141416;
+  --muted: #efeff0;
+  --muted-foreground: #58585d;
+  --accent: #e8e8ea;
+  --accent-foreground: #141416;
   --destructive: #b8132a;
-  --border: #dfe5eb;
-  --input: #dfe5eb;
-  --ring: #ef233c;
-  --chart-1: #ef233c;
-  --chart-2: #f58a98;
-  --chart-3: #111217;
-  --chart-4: #8b95a3;
-  --chart-5: #dfe5eb;
+  --border: #e2e2e4;
+  --input: #e2e2e4;
+  --ring: #ff2743;
+  --chart-1: #ff2743;
+  --chart-2: #ff93a1;
+  --chart-3: #141416;
+  --chart-4: #8a8a8f;
+  --chart-5: #e2e2e4;
   --radius: 0.875rem;
-  --sidebar: #ffffff;
-  --sidebar-foreground: #111217;
-  --sidebar-primary: #e52139;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #fdecef;
-  --sidebar-accent-foreground: #b8132a;
-  --sidebar-border: #dfe5eb;
-  --sidebar-ring: #ef233c;
-  --shadow-soft: 0 1px 2px rgba(17, 18, 23, 0.04), 0 8px 24px -12px rgba(17, 18, 23, 0.12);
-  --shadow-lift: 0 2px 4px rgba(17, 18, 23, 0.05), 0 18px 40px -16px rgba(17, 18, 23, 0.2);
+  --sidebar: #f8f8f8;
+  --sidebar-foreground: #141416;
+  --sidebar-primary: #ff2743;
+  --sidebar-primary-foreground: #141416;
+  --sidebar-accent: #fff0f2;
+  --sidebar-accent-foreground: #d31b37;
+  --sidebar-border: #e2e2e4;
+  --sidebar-ring: #ff2743;
+  --shadow-soft: 0 1px 2px rgba(20, 20, 22, 0.04), 0 8px 24px -12px rgba(20, 20, 22, 0.12);
+  --shadow-lift: 0 2px 4px rgba(20, 20, 22, 0.05), 0 18px 40px -16px rgba(20, 20, 22, 0.2);
 }
 
 .dark {
-  --background: #111217;
+  --background: #141416;
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
   --card-foreground: oklch(0.985 0 0);
@@ -174,19 +151,27 @@
   html {
     @apply font-sans;
   }
-  h1,
+  /* Gerarchia del brand: H1 Michroma maiuscolo; H2 e sotto DM Sans SemiBold. */
+  h1 {
+    font-family: var(--font-brand);
+    font-weight: 400;
+    text-transform: uppercase;
+    letter-spacing: 0;
+    overflow-wrap: break-word;
+    text-wrap: balance;
+  }
   h2,
   h3,
   h4 {
     font-family: var(--font-display);
-    font-weight: 560; /* come Andromedia Web */
-    letter-spacing: -0.03em;
+    font-weight: 600;
+    letter-spacing: -0.015em;
     overflow-wrap: break-word;
     text-wrap: balance;
   }
   ::selection {
     background-color: var(--brand-red);
-    color: #fff;
+    color: #141416;
   }
   :focus-visible {
     outline: 2px solid var(--brand-red);
@@ -194,13 +179,15 @@
   }
 }
 
-/* Tipografia Andromedia Web / core829.net: titoli sempre a peso 560 (anche dove un componente chiede "semibold"),
-   testo con interlinea 1.6. Fuori da @layer di proposito: prevale sulle classi di utilita'. */
-h1,
+/* Titoli: H1 a peso 400 (Michroma), H2 e sotto a 600 (anche dove un componente chiede un altro peso). Testo con interlinea 1.6.
+   Fuori da @layer di proposito: prevale sulle classi di utilita'. */
+h1 {
+  font-weight: 400;
+}
 h2,
 h3,
 h4 {
-  font-weight: 560;
+  font-weight: 600;
 }
 body {
   line-height: 1.6;
@@ -333,37 +320,31 @@ html[data-onboarding-seen] [data-onboarding] {
    Valori identici a core829.net-new/app/globals.css, cosi' sito e portale sembrano un unico prodotto.
    --------------------------------------------------------------------------------------------- */
 .glass-bar {
-  background-color: rgb(255 255 255 / 0.72);
-  background-image: linear-gradient(180deg, rgb(255 255 255 / 0.55), rgb(255 255 255 / 0) 70%);
-  -webkit-backdrop-filter: blur(22px) saturate(180%);
-  backdrop-filter: blur(22px) saturate(180%);
-  border: 1px solid rgb(255 255 255 / 0.6);
-  box-shadow: 0 0 0 1px rgb(10 10 10 / 0.06), inset 0 1px 0 rgb(255 255 255 / 0.85), 0 12px 32px -14px rgb(10 10 10 / 0.4);
+  background-color: rgb(248 248 248 / 0.92);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+  border: 1px solid var(--border);
+  box-shadow: 0 10px 28px -16px rgb(20 20 22 / 0.35);
 }
 .glass-panel {
-  background-color: rgb(255 255 255 / 0.95);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  backdrop-filter: blur(24px) saturate(180%);
-  border: 1px solid rgb(255 255 255 / 0.7);
-  box-shadow: 0 0 0 1px rgb(10 10 10 / 0.07), inset 0 1px 0 rgb(255 255 255 / 0.9), 0 18px 40px -16px rgb(10 10 10 / 0.45);
+  background-color: var(--background);
+  border: 1px solid var(--border);
+  box-shadow: 0 18px 40px -18px rgb(20 20 22 / 0.4);
 }
 .dark .glass-bar,
 .dark .glass-panel {
-  background-color: rgb(28 28 30 / 0.78);
+  background-color: rgb(29 29 32 / 0.92);
   background-image: none;
-  border-color: rgb(255 255 255 / 0.12);
-  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.06), 0 18px 40px -16px rgb(0 0 0 / 0.7);
+  border-color: rgb(248 248 248 / 0.14);
+  box-shadow: 0 18px 40px -16px rgb(0 0 0 / 0.7);
 }
 
+/* Pulsanti a capsula in tinta piatta (classi storiche .btn-glass*): Rosso Racing con testo Nero Pista. */
 .btn-glass {
   border: 1px solid var(--btn-border, transparent);
   background-color: var(--btn-bg);
-  background-image: var(--btn-sheen, none);
   color: var(--btn-fg);
-  box-shadow: var(--btn-shadow, none);
-  -webkit-backdrop-filter: blur(16px) saturate(170%);
-  backdrop-filter: blur(16px) saturate(170%);
-  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
 }
 .btn-glass:hover,
 .btn-glass[aria-expanded="true"] {
@@ -374,31 +355,28 @@ html[data-onboarding-seen] [data-onboarding] {
   background-color: var(--btn-bg-active);
 }
 .btn-glass-primary {
-  --btn-bg: rgb(221 26 43 / 0.95);
-  --btn-bg-hover: rgb(196 18 31 / 0.98);
-  --btn-bg-active: rgb(160 12 24);
-  --btn-fg: #fff;
-  --btn-border: rgb(255 255 255 / 0.38);
-  --btn-sheen: linear-gradient(180deg, rgb(255 255 255 / 0.3), rgb(255 255 255 / 0) 60%);
-  --btn-shadow: inset 0 1px 0 rgb(255 255 255 / 0.45), 0 8px 20px -8px rgb(221 26 43 / 0.55);
+  --btn-bg: #ff2743;
+  --btn-bg-hover: #141416;
+  --btn-bg-active: #2c2c30;
+  --btn-fg: #141416;
+  --btn-fg-hover: #f8f8f8;
+  --btn-border: #ff2743;
 }
 .btn-glass-secondary {
-  --btn-bg: rgb(255 255 255 / 0.62);
-  --btn-bg-hover: rgb(255 255 255 / 0.92);
-  --btn-bg-active: rgb(232 232 232 / 0.96);
+  --btn-bg: #f8f8f8;
+  --btn-bg-hover: #141416;
+  --btn-bg-active: #2c2c30;
   --btn-fg: var(--foreground);
-  --btn-fg-hover: var(--brand-deep, #b3121f);
-  --btn-border: rgb(255 255 255 / 0.7);
-  --btn-sheen: linear-gradient(180deg, rgb(255 255 255 / 0.7), rgb(255 255 255 / 0) 60%);
-  --btn-shadow: 0 0 0 1px rgb(10 10 10 / 0.09), inset 0 1px 0 rgb(255 255 255 / 0.9), 0 6px 18px -10px rgb(10 10 10 / 0.35);
+  --btn-fg-hover: #f8f8f8;
+  --btn-border: rgb(20 20 22 / 0.28);
 }
 .dark .btn-glass-secondary {
-  --btn-bg: rgb(255 255 255 / 0.08);
-  --btn-bg-hover: rgb(255 255 255 / 0.16);
-  --btn-bg-active: rgb(255 255 255 / 0.22);
-  --btn-border: rgb(255 255 255 / 0.16);
-  --btn-sheen: none;
-  --btn-shadow: 0 6px 18px -10px rgb(0 0 0 / 0.6);
+  --btn-bg: transparent;
+  --btn-bg-hover: #f8f8f8;
+  --btn-bg-active: #e2e2e4;
+  --btn-fg: #f8f8f8;
+  --btn-fg-hover: #141416;
+  --btn-border: rgb(248 248 248 / 0.4);
 }
 
 /* Menu a tendina: apertura morbida (opacita' + scala), come sul sito. */
@@ -422,18 +400,13 @@ html[data-onboarding-seen] [data-onboarding] {
   }
   .glass-bar,
   .glass-panel {
-    background-color: #fff;
+    background-color: var(--background);
     background-image: none;
-  }
-  .btn-glass-secondary {
-    --btn-bg: #fff;
-    --btn-bg-hover: #f2f2f2;
-    --btn-sheen: none;
   }
 }
 @media (prefers-contrast: more) {
   .glass-bar {
-    background-color: #fff;
+    background-color: var(--background);
     border-color: currentColor;
   }
   .btn-glass {

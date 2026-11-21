@@ -74,8 +74,8 @@ const FRAGMENT = `
 
 export type RGB = readonly [number, number, number];
 
-/** Racing Red CORE829 (#ef233c) in componenti 0-1, leggermente acceso per lo shader. */
-export const CORE829_RED: RGB = [0.94, 0.14, 0.24];
+/** Rosso Racing CORE829 (#FF2743) in componenti 0-1. */
+export const CORE829_RED: RGB = [1, 0.153, 0.263];
 
 interface NeuralNoiseProps {
   /** Colore del flusso (componenti 0-1). Default: rosso CORE829. */

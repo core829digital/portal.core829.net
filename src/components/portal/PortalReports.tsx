@@ -104,7 +104,7 @@ export function ReportsBrowser({
               type="button"
               aria-pressed={m.month === selected}
               onClick={() => onSelect(m.month)}
-              className={cn("min-h-9 rounded-full px-3.5 text-sm capitalize ring-1 transition-colors", m.month === selected ? "bg-primary text-white ring-brand" : "ring-foreground/15 hover:bg-muted")}
+              className={cn("min-h-9 rounded-full px-3.5 text-sm capitalize ring-1 transition-colors", m.month === selected ? "bg-primary text-primary-foreground ring-brand" : "ring-foreground/15 hover:bg-muted")}
             >
               {monthLabel(m.month)}
             </button>
