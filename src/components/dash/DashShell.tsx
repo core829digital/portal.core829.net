@@ -102,7 +102,7 @@ export function DashShell({
       {/* Barra superiore (telefono e tablet) */}
       <div className="glass-bar sticky top-2 z-40 mx-3 mt-2 flex h-14 items-center justify-between gap-2 rounded-full pl-4 pr-1.5 lg:hidden">
         <Link href={groups[0]?.items[0]?.href ?? "/"}>
-          <Image src="/brand/core829-logo.webp" alt="CORE829" width={96} height={26} priority unoptimized className="h-6 w-auto" />
+          <Image src="/brand/symbol-red.svg" alt="CORE829" width={35} height={24} priority unoptimized className="h-6 w-auto" />
         </Link>
         <div className="flex items-center gap-1">
           {toolbar}
@@ -132,7 +132,7 @@ export function DashShell({
       >
         <div className="flex items-start justify-between gap-2">
           <Link href={groups[0]?.items[0]?.href ?? "/"} className="block">
-            <Image src="/brand/core829-logo.webp" alt="CORE829" width={120} height={32} priority unoptimized className="h-7 w-auto" />
+            <Image src="/brand/symbol-red.svg" alt="CORE829" width={41} height={28} priority unoptimized className="h-7 w-auto" />
             <span className="mt-2 block font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{kicker}</span>
           </Link>
           <button

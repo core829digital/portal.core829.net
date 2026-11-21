@@ -4,7 +4,7 @@ import { useState } from "react";
 import { DocThumb } from "@/components/preview/DocThumb";
 
 /** Miniature con file INVENTATI per le prove nel browser (caricamento pigro, PDF, errori). Solo con E2E_FIXTURES=1. */
-const PNG = "data:image/svg+xml;utf8," + encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' width='120' height='90'><rect width='120' height='90' fill='#dd1a2b'/><circle cx='60' cy='45' r='25' fill='white'/></svg>");
+const PNG = "data:image/svg+xml;utf8," + encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' width='120' height='90'><rect width='120' height='90' fill='#ff2743'/><circle cx='60' cy='45' r='25' fill='white'/></svg>");
 
 export function PreviewsFixture() {
   const [calls, setCalls] = useState<Record<string, number>>({});

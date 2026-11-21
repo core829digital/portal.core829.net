@@ -8,8 +8,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Area riservata ai clienti di CORE829 SRL.",
     start_url: "/",
     display: "standalone",
-    background_color: "#ffffff",
-    theme_color: "#ef233c",
+    background_color: "#f8f8f8",
+    theme_color: "#ff2743",
     icons: [
       { src: "/brand/icon-192.png", sizes: "192x192", type: "image/png" },
       { src: "/brand/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
