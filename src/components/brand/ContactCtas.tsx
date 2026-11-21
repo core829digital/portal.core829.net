@@ -7,7 +7,7 @@ export function ContactCtas({ tone = "light", className }: { tone?: "light" | "d
   const base = "inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-6 text-sm font-medium transition-colors";
   return (
     <div className={cn("flex flex-col gap-3 sm:flex-row", className)}>
-      <a href={CONTACT_FORM_URL} target="_blank" rel="noopener noreferrer" className={cn(base, "bg-primary text-primary-foreground hover:bg-brand-deep")}>
+      <a href={CONTACT_FORM_URL} target="_blank" rel="noopener noreferrer" className={cn(base, "glass-cta bg-primary text-primary-foreground hover:bg-brand-deep")}>
         Scrivici dal modulo contatti
         <ArrowRight aria-hidden className="size-4" />
         <span className="sr-only">(si apre in una nuova scheda)</span>
